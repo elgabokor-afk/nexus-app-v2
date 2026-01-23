@@ -28,7 +28,7 @@ if url and key:
     client.headers.update(headers)
     client.base_url = base_url
 
-def insert_signal(symbol, price, rsi, signal_type, confidence):
+def insert_signal(symbol, price, rsi, signal_type, confidence, stop_loss=0, take_profit=0):
     if not client:
         return
     
@@ -37,7 +37,9 @@ def insert_signal(symbol, price, rsi, signal_type, confidence):
         "price": price,
         "rsi": rsi,
         "signal_type": signal_type,
-        "confidence": confidence
+        "confidence": confidence,
+        "stop_loss": stop_loss,
+        "take_profit": take_profit
     }
     
     try:

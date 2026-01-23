@@ -64,19 +64,31 @@ def analyze_market(df):
     if pd.isna(rsi_val) or pd.isna(ema_val):
         return None
 
+    stop_loss = 0
+    take_profit = 0
+
     if rsi_val < 30 and close_val > ema_val:
         signal = "STRONG BUY (Oversold in Uptrend)"
         confidence = 90
+        # Long Strategy: SL 2% below, TP 4% above
+        stop_loss = close_val * 0.98
+        take_profit = close_val * 1.04
+        
     elif rsi_val > 70 and close_val < ema_val:
         signal = "STRONG SELL (Overbought in Downtrend)"
         confidence = 85
+        # Short Strategy: SL 2% above, TP 4% below
+        stop_loss = close_val * 1.02
+        take_profit = close_val * 0.96
     
     return {
         'timestamp': latest['timestamp'],
         'price': close_val,
         'rsi': round(rsi_val, 2),
         'signal': signal,
-        'confidence': confidence
+        'confidence': confidence,
+        'stop_loss': round(stop_loss, 2),
+        'take_profit': round(take_profit, 2)
     }
 
 from db import insert_signal
@@ -105,7 +117,9 @@ def main():
                     price=float(analysis['price']),
                     rsi=float(analysis['rsi']),
                     signal_type=analysis['signal'],
-                    confidence=int(analysis['confidence'])
+                    confidence=int(analysis['confidence']),
+                    stop_loss=float(analysis['stop_loss']),
+                    take_profit=float(analysis['take_profit'])
                 )
             else:
                 print("   --- No Signal")

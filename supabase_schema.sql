@@ -10,6 +10,8 @@ create table public.market_signals (
   rsi numeric,
   signal_type text not null, -- 'BUY', 'SELL', 'NEUTRAL'
   confidence int default 0,
+  stop_loss numeric,  -- [NEW] Advice
+  take_profit numeric, -- [NEW] Advice
   meta jsonb -- Extra data like volume, ema values
 );
 
