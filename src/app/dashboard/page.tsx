@@ -13,6 +13,8 @@ interface Signal {
     signal_type: string;
     confidence: number;
     timestamp: string;
+    stop_loss?: number;
+    take_profit?: number;
 }
 
 import { ChartComponent } from '@/components/ChartComponent';
