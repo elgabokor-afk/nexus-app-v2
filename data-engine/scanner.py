@@ -39,66 +39,107 @@ def fetch_data(symbol='BTC/USD', timeframe='1h', limit=100):
         print(f"Error fetching data: {e}")
         return pd.DataFrame()
 
+def calculate_atr(df, period=14):
+    high = df['high']
+    low = df['low']
+    close = df['close'].shift(1)
+    
+    tr1 = high - low
+    tr2 = (high - close).abs()
+    tr3 = (low - close).abs()
+    
+    tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+    atr = tr.ewm(alpha=1/period, adjust=False).mean()
+    return atr
+
 def analyze_market(df):
-    if df.empty:
+    if df.empty or len(df) < 50:
         return None
     
-    # 2. Calculate Indicators (Manual Pandas)
-    # RSI 14
+    # 2. Calculate Indicators
     df['RSI'] = calculate_rsi(df['close'], 14)
-    # EMA 200
     df['EMA_200'] = calculate_ema(df['close'], 200)
+    df['ATR'] = calculate_atr(df, 14)
     
-    # Get latest values
+    # Volume MA for confirmation
+    df['Vol_MA'] = df['volume'].rolling(window=20).mean()
+    
     latest = df.iloc[-1]
     
-    signal = "NEUTRAL"
-    confidence = 0
+    # Metric Extraction
+    price = latest['close']
+    rsi = latest['RSI']
+    ema = latest['EMA_200']
+    atr = latest['ATR']
+    volume = latest['volume']
+    vol_ma = latest['Vol_MA']
     
-    # Simple Logic: RSI Oversold + Above EMA (Trend Pullback)
-    rsi_val = latest['RSI']
-    close_val = latest['close']
-    ema_val = latest['EMA_200']
-    
-    # Handle NaN at start of series
-    if pd.isna(rsi_val) or pd.isna(ema_val):
+    # Validation
+    if pd.isna(rsi) or pd.isna(ema) or pd.isna(atr):
         return None
 
+    # --- SENIOR LOGIC: CONFIDENCE SCORING (0-100) ---
+    score = 50 # Neutral Base
+    signal_type = "NEUTRAL"
+    
+    # 1. RSI Confluence (Max +30)
+    if rsi < 30: score += 25       # Deep Oversold
+    elif rsi < 45: score += 15     # Dip
+    elif rsi > 70: score -= 25     # Deep Overbought
+    elif rsi > 55: score -= 15     # Pullback Top
+    
+    # 2. Trend Filter (Max +10)
+    uptrend = price > ema
+    if uptrend and rsi < 50: score += 10    # Buying dips in uptrend
+    if not uptrend and rsi > 50: score -= 10 # Selling rips in downtrend
+    
+    # 3. Volume Confirmation (Max +20)
+    if volume > (vol_ma * 1.5):
+        if uptrend: score += 10
+        else: score -= 10
+    
+    # Determine Signal based on Score
+    confidence = 0
+    if score >= 75:
+        signal_type = "STRONG BUY"
+        confidence = score
+    elif score >= 65:
+        signal_type = "MODERATE BUY"
+        confidence = score
+    elif score <= 25:
+        signal_type = "STRONG SELL"
+        confidence = 100 - score # Invert for display confidence
+    elif score <= 35:
+        signal_type = "MODERATE SELL"
+        confidence = 100 - score
+        
+    if signal_type == "NEUTRAL":
+        return None
+
+    # ATR Based Risk Management
+    # Buy: SL below price, TP above
+    # Sell: SL above price, TP below
+    
     stop_loss = 0
     take_profit = 0
-
-    if rsi_val < 45 and close_val > ema_val:
-        signal = "MODERATE BUY (Dip in Uptrend)"
-        confidence = 75
-        stop_loss = close_val * 0.985
-        take_profit = close_val * 1.03
-        
-    elif rsi_val > 55 and close_val < ema_val:
-        signal = "MODERATE SELL (Pullback in Downtrend)"
-        confidence = 70
-        stop_loss = close_val * 1.015
-        take_profit = close_val * 0.97
-
-    elif rsi_val < 30 and close_val > ema_val:
-        signal = "STRONG BUY (Oversold in Uptrend)"
-        confidence = 90
-        stop_loss = close_val * 0.98
-        take_profit = close_val * 1.04
-        
-    elif rsi_val > 70 and close_val < ema_val:
-        signal = "STRONG SELL (Overbought in Downtrend)"
-        confidence = 85
-        stop_loss = close_val * 1.02
-        take_profit = close_val * 0.96
     
+    if "BUY" in signal_type:
+        stop_loss = price - (atr * 1.5)
+        take_profit = price + (atr * 2.5)
+    else: # SELL
+        stop_loss = price + (atr * 1.5)
+        take_profit = price - (atr * 2.5)
+
     return {
         'timestamp': latest['timestamp'],
-        'price': close_val,
-        'rsi': round(rsi_val, 2),
-        'signal': signal,
-        'confidence': confidence,
-        'stop_loss': round(stop_loss, 2),
-        'take_profit': round(take_profit, 2)
+        'price': price,
+        'rsi': round(rsi, 2),
+        'signal': signal_type,
+        'confidence': int(confidence),
+        'stop_loss': round(stop_loss, 4),
+        'take_profit': round(take_profit, 4),
+        'atr_value': round(atr, 4),
+        'volume_ratio': round(volume / vol_ma, 2) if vol_ma > 0 else 1.0
     }
 
 from db import insert_signal
@@ -137,7 +178,10 @@ def main():
                             signal_type=analysis['signal'],
                             confidence=int(analysis['confidence']),
                             stop_loss=float(analysis['stop_loss']),
-                            take_profit=float(analysis['take_profit'])
+                            take_profit=float(analysis['take_profit']),
+                            # New Senior Metrics
+                            atr_value=float(analysis['atr_value']),
+                            volume_ratio=float(analysis['volume_ratio'])
                         )
                     else:
                         print("   --- No Signal")

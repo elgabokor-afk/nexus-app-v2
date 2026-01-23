@@ -64,7 +64,11 @@ def check_new_entries():
                     "symbol": signal['symbol'],
                     "entry_price": signal['price'],
                     "quantity": quantity,
-                    "status": "OPEN"
+                    "status": "OPEN",
+                    "confidence_score": signal.get('confidence'),
+                    "signal_type": signal.get('signal_type'),
+                    "rsi_entry": signal.get('rsi'),
+                    "atr_entry": signal.get('atr_value')
                 }
                 
                 supabase.table("paper_positions").insert(trade_data).execute()

@@ -8,7 +8,7 @@ echo "1. Adding files..."
 git add .
 echo.
 echo "2. Committing changes..."
-git commit -m "fix: lightweight-charts v5 api update"
+git commit -m "feat: senior engineer upgrade (advanced logic + database metrics)"
 echo.
 echo "3. Pushing to GitHub (Vercel Deploy)..."
 git push origin main
