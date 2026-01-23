@@ -1,1 +1,1 @@
-worker: cd data-engine && python scanner.py
+worker: bash start_services.sh
