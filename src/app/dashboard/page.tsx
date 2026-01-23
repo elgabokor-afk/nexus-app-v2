@@ -77,7 +77,7 @@ export default function Dashboard() {
         // Real-time Subscription
         const channel = supabase
             .channel('realtime signals')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'market_signals' }, (payload) => {
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'market_signals' }, (payload: any) => {
                 const newSignal = payload.new as Signal;
                 setSignals((prev) => [newSignal, ...prev].slice(0, 100));
             })
