@@ -44,7 +44,9 @@ const SignalCard: React.FC<SignalProps> = ({ symbol, price, rsi, signal_type, co
             <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
                     <p className="text-xs text-gray-500 uppercase">Price</p>
-                    <p className="text-lg font-mono text-white">${price.toLocaleString()}</p>
+                    <p className="text-lg font-mono text-white">
+                        ${typeof price === 'number' ? price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : Number(price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
                 </div>
                 <div>
                     <p className="text-xs text-gray-500 uppercase">RSI (14)</p>
