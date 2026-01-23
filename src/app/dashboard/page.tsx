@@ -5,6 +5,12 @@ import { supabase } from '@/lib/supabaseClient';
 import SignalCard from '@/components/SignalCard';
 import { Zap } from 'lucide-react';
 
+declare global {
+    interface Window {
+        TradingView: any;
+    }
+}
+
 interface Signal {
     id: number;
     symbol: string;
