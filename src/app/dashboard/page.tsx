@@ -4,8 +4,16 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import SignalCard from '@/components/SignalCard';
 import { Zap } from 'lucide-react';
-import { SmartChart } from '@/components/SmartChart';
 import PaperBotWidget from '@/components/PaperBotWidget';
+import dynamic from 'next/dynamic';
+
+const SmartChart = dynamic(
+    () => import('@/components/SmartChart').then((mod) => mod.SmartChart),
+    {
+        ssr: false,
+        loading: () => <div className="w-full h-full bg-[#050505] animate-pulse flex items-center justify-center text-gray-800">Initializing Chart Engine...</div>
+    }
+);
 
 declare global {
     interface Window {
@@ -59,7 +67,11 @@ export default function Dashboard() {
         setLoading(false);
     };
 
+    // Prevent Hydration Mismatch by running only on client
+    const [mounted, setMounted] = useState(false);
+
     useEffect(() => {
+        setMounted(true);
         fetchSignals();
 
         // Real-time Subscription
@@ -75,6 +87,8 @@ export default function Dashboard() {
             supabase.removeChannel(channel);
         };
     }, []);
+
+    if (!mounted) return <div className="h-screen bg-[#050505] flex items-center justify-center text-gray-800 font-mono">Initializing Nexus Terminal...</div>;
 
     return (
         <div className="h-screen bg-[#050505] text-white font-sans overflow-hidden flex flex-col">
