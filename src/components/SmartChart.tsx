@@ -89,7 +89,7 @@ export const SmartChart: React.FC<SmartChartProps> = ({ symbol, signalData }) =>
             },
         });
 
-        const newSeries = chart.addCandlestickSeries({
+        const newSeries = (chart as any).addCandlestickSeries({
             upColor: '#00ffa3', // Green
             downColor: '#ff4d4d', // Red
             borderVisible: false,
