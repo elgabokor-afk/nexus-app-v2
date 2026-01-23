@@ -13,7 +13,9 @@ interface SignalProps {
     onViewChart?: (symbol: string) => void;
 }
 
-const SignalCard: React.FC<SignalProps> = ({ symbol, price, rsi, signal_type, confidence, timestamp, stop_loss, take_profit, onViewChart }) => {
+const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
+    symbol, price, rsi, signal_type, confidence, timestamp, stop_loss, take_profit, onViewChart, compact = false
+}) => {
     const isBuy = signal_type.includes('BUY');
     const isSell = signal_type.includes('SELL');
     const isNeutral = !isBuy && !isSell;
@@ -27,77 +29,91 @@ const SignalCard: React.FC<SignalProps> = ({ symbol, price, rsi, signal_type, co
         borderColor = 'border-[#00ffa3]';
         textColor = 'text-[#00ffa3]';
         badgeBg = 'bg-[#00ffa3]/10';
-        actionText = 'LONG ENTRY';
+        actionText = 'LONG';
     } else if (isSell) {
         borderColor = 'border-[#ff4d4d]';
         textColor = 'text-[#ff4d4d]';
         badgeBg = 'bg-[#ff4d4d]/10';
-        actionText = 'SHORT ENTRY';
+        actionText = 'SHORT';
     }
 
     const formatPrice = (p: number | undefined) =>
         p ? `$${Number(p).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '---';
 
     return (
-        <div className={`bg-[#0a0a0c] border border-opacity-40 ${borderColor} rounded-lg p-0 overflow-hidden hover:shadow-2xl hover:shadow-${isBuy ? 'green' : isSell ? 'red' : 'gray'}-500/10 transition-all duration-300 group`}>
+        <div
+            onClick={() => compact && onViewChart && onViewChart(symbol)}
+            className={`bg-[#0a0a0c] border border-opacity-40 ${borderColor} rounded-lg overflow-hidden hover:shadow-2xl hover:shadow-${isBuy ? 'green' : isSell ? 'red' : 'gray'}-500/10 transition-all duration-300 group ${compact ? 'cursor-pointer hover:bg-[#111]' : ''}`}
+        >
             {/* Header */}
-            <div className="p-5 border-b border-gray-800 flex justify-between items-center bg-[#111]">
+            <div className={`${compact ? 'p-3' : 'p-5'} border-b border-gray-800 flex justify-between items-center bg-[#111]`}>
                 <div className="flex items-center gap-3">
-                    <div className={`w-2 h-8 rounded-full ${isBuy ? 'bg-[#00ffa3]' : isSell ? 'bg-[#ff4d4d]' : 'bg-gray-600'}`}></div>
+                    <div className={`w-1.5 h-6 rounded-full ${isBuy ? 'bg-[#00ffa3]' : isSell ? 'bg-[#ff4d4d]' : 'bg-gray-600'}`}></div>
                     <div>
-                        <h3 className="text-xl font-bold font-mono text-white tracking-wider">{symbol}</h3>
-                        <p className="text-[10px] text-gray-500 font-mono uppercase tracking-widest">
-                            {new Date(timestamp).toLocaleTimeString()} • {confidence}% CONFIDENCE
-                        </p>
-                        <p className={`text-xs font-bold mt-1 ${textColor}`}>
-                            {signal_type.split('(')[0].trim()}
+                        <h3 className={`${compact ? 'text-sm' : 'text-xl'} font-bold font-mono text-white tracking-wider`}>{symbol}</h3>
+                        {!compact && (
+                            <p className="text-[10px] text-gray-500 font-mono uppercase tracking-widest">
+                                {new Date(timestamp).toLocaleTimeString()} • {confidence}% CONFIDENCE
+                            </p>
+                        )}
+                        <p className={`${compact ? 'text-[10px]' : 'text-xs'} font-bold mt-1 ${textColor}`}>
+                            {compact ? actionText : signal_type.split('(')[0].trim()}
                         </p>
                     </div>
                 </div>
-                <div className={`px-3 py-1 rounded text-xs font-bold ${textColor} ${badgeBg} border border-current border-opacity-20`}>
-                    {actionText}
-                </div>
-            </div>
-
-            {/* Metrics Grid */}
-            <div className="p-5 grid grid-cols-2 gap-y-4 gap-x-8">
-                <div>
-                    <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Entry Price</p>
-                    <p className="text-lg font-mono text-white font-medium">{formatPrice(price)}</p>
-                </div>
-                <div className="text-right">
-                    <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">RSI (14)</p>
-                    <div className="flex items-center justify-end gap-2">
-                        <span className={`font-bold font-mono ${rsi < 30 ? 'text-[#00ffa3]' : rsi > 70 ? 'text-[#ff4d4d]' : 'text-gray-300'}`}>
-                            {rsi}
-                        </span>
-                        <Activity size={14} className="text-gray-600" />
+                {!compact && (
+                    <div className={`px-3 py-1 rounded text-xs font-bold ${textColor} ${badgeBg} border border-current border-opacity-20`}>
+                        {actionText} ENTRY
                     </div>
-                </div>
-
-                {/* SL / TP Section */}
-                {!isNeutral && (
-                    <>
-                        <div className="col-span-2 h-px bg-gray-800 my-1"></div>
-
-                        <div>
-                            <p className="text-[10px] text-red-500 uppercase tracking-wider mb-1 flex items-center gap-1">
-                                Stop Loss <span className="opacity-50 text-[9px]">(Estimated)</span>
-                            </p>
-                            <p className="text-sm font-mono text-red-400">{formatPrice(stop_loss)}</p>
-                        </div>
-                        <div className="text-right">
-                            <p className="text-[10px] text-[#00ffa3] uppercase tracking-wider mb-1 flex items-center justify-end gap-1">
-                                Take Profit <span className="opacity-50 text-[9px]">(Target)</span>
-                            </p>
-                            <p className="text-sm font-mono text-[#00ffa3]">{formatPrice(take_profit)}</p>
-                        </div>
-                    </>
+                )}
+                {compact && (
+                    <div className="text-right">
+                        <p className="text-xs font-mono text-white font-medium">{formatPrice(price)}</p>
+                    </div>
                 )}
             </div>
 
+            {/* Metrics Grid */}
+            {!compact && (
+                <div className="p-5 grid grid-cols-2 gap-y-4 gap-x-8">
+                    <div>
+                        <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Entry Price</p>
+                        <p className="text-lg font-mono text-white font-medium">{formatPrice(price)}</p>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">RSI (14)</p>
+                        <div className="flex items-center justify-end gap-2">
+                            <span className={`font-bold font-mono ${rsi < 30 ? 'text-[#00ffa3]' : rsi > 70 ? 'text-[#ff4d4d]' : 'text-gray-300'}`}>
+                                {rsi}
+                            </span>
+                            <Activity size={14} className="text-gray-600" />
+                        </div>
+                    </div>
+
+                    {/* SL / TP Section */}
+                    {!isNeutral && (
+                        <>
+                            <div className="col-span-2 h-px bg-gray-800 my-1"></div>
+
+                            <div>
+                                <p className="text-[10px] text-red-500 uppercase tracking-wider mb-1 flex items-center gap-1">
+                                    Stop Loss <span className="opacity-50 text-[9px]">(Estimated)</span>
+                                </p>
+                                <p className="text-sm font-mono text-red-400">{formatPrice(stop_loss)}</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-[10px] text-[#00ffa3] uppercase tracking-wider mb-1 flex items-center justify-end gap-1">
+                                    Take Profit <span className="opacity-50 text-[9px]">(Target)</span>
+                                </p>
+                                <p className="text-sm font-mono text-[#00ffa3]">{formatPrice(take_profit)}</p>
+                            </div>
+                        </>
+                    )}
+                </div>
+            )}
+
             {/* Action Footer */}
-            {!isNeutral && (
+            {!compact && !isNeutral && (
                 <div className="p-4 bg-[#111] border-t border-gray-800">
                     <button
                         onClick={() => onViewChart && onViewChart(symbol)}

@@ -25,6 +25,7 @@ interface Signal {
     take_profit?: number;
 }
 
+// ... (imports remain same, just ensure structure)
 export default function Dashboard() {
     const [signals, setSignals] = useState<Signal[]>([]);
     const [loading, setLoading] = useState(true);
@@ -34,9 +35,10 @@ export default function Dashboard() {
         const sig = signals.find(s => s.symbol === symbol);
         if (sig) {
             setSelectedSignal(sig);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
     };
+
+    // ... (fetchSignals and useEffect remain same)
 
     // Fetch initial data
     const fetchSignals = async () => {
@@ -44,10 +46,16 @@ export default function Dashboard() {
             .from('market_signals')
             .select('*')
             .order('timestamp', { ascending: false })
-            .limit(20);
+            .limit(50); // Increased limit for feed
 
         if (error) console.error('Error fetching signals:', error);
-        else setSignals(data || []);
+        else {
+            setSignals(data || []);
+            // Auto-select first signal if none selected
+            if (data && data.length > 0 && !selectedSignal) {
+                setSelectedSignal(data[0]);
+            }
+        }
         setLoading(false);
     };
 
@@ -59,7 +67,7 @@ export default function Dashboard() {
             .channel('realtime signals')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'market_signals' }, (payload) => {
                 const newSignal = payload.new as Signal;
-                setSignals((prev) => [newSignal, ...prev].slice(0, 50)); // Keep last 50
+                setSignals((prev) => [newSignal, ...prev].slice(0, 100));
             })
             .subscribe();
 
@@ -69,84 +77,95 @@ export default function Dashboard() {
     }, []);
 
     return (
-        <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-[#00ffa3] selection:text-black">
-            {/* HEADER */}
-            <header className="fixed top-0 w-full h-16 bg-[#000]/80 backdrop-blur-md border-b border-[#222] z-50 flex items-center justify-between px-6">
+        <div className="h-screen bg-[#050505] text-white font-sans overflow-hidden flex flex-col">
+            {/* COMPACT HEADER */}
+            <header className="h-14 bg-[#000] border-b border-[#222] flex items-center justify-between px-4 shrink-0 z-50">
                 <div className="flex items-center gap-2">
-                    <Zap className="text-[#00ffa3] fill-current" size={20} />
-                    <span className="font-mono font-bold text-lg tracking-wider">
-                        TRENDS<span className="text-[#00ffa3]">AI</span> v2
+                    <Zap className="text-[#00ffa3] fill-current" size={18} />
+                    <span className="font-mono font-bold tracking-wider">
+                        TRENDS<span className="text-[#00ffa3]">AI</span> TERMINAL
                     </span>
                 </div>
                 <div className="flex items-center gap-4">
-                    <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-[#111] rounded-full border border-[#333]">
-                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                        <span className="text-xs text-gray-400 font-mono">SYSTEM ONLINE</span>
+                    <div className="flex items-center gap-2 px-2 py-1 bg-[#111] rounded border border-[#333]">
+                        <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                        <span className="text-[10px] text-gray-400 font-mono">LIVE</span>
                     </div>
-                    <a href="/" className="text-sm text-gray-500 hover:text-white transition-colors">Exit</a>
                 </div>
             </header>
 
-            {/* MAIN CONTENT */}
-            <main className="pt-24 px-4 md:px-8 max-w-7xl mx-auto">
-                <div className="flex justify-between items-end mb-8">
-                    <div>
-                        <h1 className="text-3xl font-bold mb-2">Live Market Scanner</h1>
-                        <p className="text-gray-400">Monitoring 50+ High Volume Pairs via Kraken API</p>
+            {/* MAIN TERMINAL GRID */}
+            <main className="flex-1 grid grid-cols-12 overflow-hidden">
+                {/* COL 1: SIGNAL FEED (LEFT) */}
+                <div className="col-span-3 border-r border-[#222] flex flex-col bg-[#080808]">
+                    <div className="p-3 border-b border-[#222] bg-[#0a0a0c]">
+                        <h2 className="text-xs font-bold text-gray-500 uppercase tracking-widest">Signal Feed</h2>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar">
+                        {loading ? (
+                            <div className="text-center py-10 text-xs text-gray-500 font-mono">Connecting to Node...</div>
+                        ) : (
+                            signals.map((signal) => (
+                                <SignalCard
+                                    key={signal.id}
+                                    {...signal}
+                                    onViewChart={handleViewChart}
+                                    compact={true}
+                                />
+                            ))
+                        )}
                     </div>
                 </div>
 
-
-
-                {/* MARKET OVERVIEW - SMART CHART & PAPER BOT */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
-                    <div className="lg:col-span-2 shadow-2xl">
-                        {selectedSignal ? (
-                            <SmartChart
-                                symbol={selectedSignal.symbol}
-                                signalData={{
-                                    entry: selectedSignal.price,
-                                    stop_loss: selectedSignal.stop_loss,
-                                    take_profit: selectedSignal.take_profit,
-                                    confidence: selectedSignal.confidence,
-                                    signal_type: selectedSignal.signal_type
-                                }}
-                            />
-                        ) : (
-                            <div className="h-[500px] border border-[#222] rounded-2xl bg-[#0a0a0c] flex items-center justify-center text-gray-500 font-mono">
-                                SELECT A SIGNAL TO VIEW CHART ANALYSIS
+                {/* COL 2: CENTER STAGE (CHART) */}
+                <div className="col-span-6 bg-black flex flex-col relative border-r border-[#222]">
+                    {selectedSignal ? (
+                        <>
+                            <div className="absolute top-4 left-4 z-10">
+                                <h1 className="text-2xl font-bold font-mono tracking-tighter flex items-center gap-2">
+                                    {selectedSignal.symbol}
+                                    <span className="text-lg text-gray-500 font-normal">
+                                        ${selectedSignal.price.toLocaleString()}
+                                    </span>
+                                </h1>
                             </div>
-                        )}
-                    </div>
+                            <div className="flex-1 w-full h-full">
+                                <SmartChart
+                                    symbol={selectedSignal.symbol}
+                                    signalData={{
+                                        entry: selectedSignal.price,
+                                        stop_loss: selectedSignal.stop_loss,
+                                        take_profit: selectedSignal.take_profit,
+                                        confidence: selectedSignal.confidence,
+                                        signal_type: selectedSignal.signal_type
+                                    }}
+                                />
+                            </div>
+                        </>
+                    ) : (
+                        <div className="flex-1 flex items-center justify-center text-gray-600 font-mono">
+                            SELECT SIGNAL TO INITIALIZE FEED
+                        </div>
+                    )}
+                </div>
 
-                    {/* PAPER BOT WIDGET */}
-                    <div className="lg:col-span-1">
+                {/* COL 3: EXECUTION / PAPER BOT (RIGHT) */}
+                <div className="col-span-3 bg-[#0a0a0c] flex flex-col overflow-y-auto border-l border-[#222]">
+                    <div className="p-3 border-b border-[#222] bg-[#0a0a0c]">
+                        <h2 className="text-xs font-bold text-gray-500 uppercase tracking-widest">Algo Execution</h2>
+                    </div>
+                    <div className="p-4">
                         <PaperBotWidget />
                     </div>
+
+                    {/* Additional Stats Placeholder */}
+                    <div className="p-4 border-t border-[#222] mt-auto">
+                        <div className="bg-[#111] rounded p-3 text-center">
+                            <p className="text-[10px] text-gray-500 mb-1">SYSTEM STATUS</p>
+                            <p className="text-xs text-[#00ffa3] font-mono">OPTIMAL</p>
+                        </div>
+                    </div>
                 </div>
-
-                {/* SIGNALS GRID */}
-                {loading ? (
-                    <div className="flex justify-center items-center h-64 text-[#00ffa3] font-mono animate-pulse">
-                        INITIALIZING NEURAL NET...
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {signals.map((signal) => (
-                            <SignalCard
-                                key={signal.id}
-                                {...signal}
-                                onViewChart={handleViewChart}
-                            />
-                        ))}
-
-                        {signals.length === 0 && (
-                            <div className="col-span-full text-center py-20 text-gray-600 border border-dashed border-[#222] rounded-xl font-mono">
-                                Searching for institutional patterns...
-                            </div>
-                        )}
-                    </div>
-                )}
             </main>
         </div>
     );
