@@ -4,7 +4,7 @@ import { createChart, ColorType, ISeriesApi, AreaSeries } from 'lightweight-char
 import React, { useEffect, useRef } from 'react';
 
 interface ChartProps {
-    data: { time: string; value: number }[];
+    data: { time: string | number; value: number }[];
     colors?: {
         backgroundColor?: string;
         lineColor?: string;

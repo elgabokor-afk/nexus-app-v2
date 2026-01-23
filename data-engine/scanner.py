@@ -67,17 +67,27 @@ def analyze_market(df):
     stop_loss = 0
     take_profit = 0
 
-    if rsi_val < 30 and close_val > ema_val:
+    elif rsi_val < 45 and close_val > ema_val:
+        signal = "MODERATE BUY (Dip in Uptrend)"
+        confidence = 75
+        stop_loss = close_val * 0.985
+        take_profit = close_val * 1.03
+        
+    elif rsi_val > 55 and close_val < ema_val:
+        signal = "MODERATE SELL (Pullback in Downtrend)"
+        confidence = 70
+        stop_loss = close_val * 1.015
+        take_profit = close_val * 0.97
+
+    elif rsi_val < 30 and close_val > ema_val:
         signal = "STRONG BUY (Oversold in Uptrend)"
         confidence = 90
-        # Long Strategy: SL 2% below, TP 4% above
         stop_loss = close_val * 0.98
         take_profit = close_val * 1.04
         
     elif rsi_val > 70 and close_val < ema_val:
         signal = "STRONG SELL (Overbought in Downtrend)"
         confidence = 85
-        # Short Strategy: SL 2% above, TP 4% below
         stop_loss = close_val * 1.02
         take_profit = close_val * 0.96
     
@@ -103,27 +113,37 @@ def main():
     # Kraken typically uses USD pairs for high volume
     symbols = ['BTC/USD', 'ETH/USD', 'SOL/USD', 'USDT/USD']
     
-    for symbol in symbols:
-        df = fetch_data(symbol)
-        analysis = analyze_market(df)
-        
-        if analysis:
-            print(f"[{symbol}] Price: {analysis['price']} | RSI: {analysis['rsi']}")
-            if analysis['signal'] != "NEUTRAL":
-                print(f"   >>> SIGNAL: {analysis['signal']} ({analysis['confidence']}%)")
-                # Save to Supabase
-                insert_signal(
-                    symbol=symbol,
-                    price=float(analysis['price']),
-                    rsi=float(analysis['rsi']),
-                    signal_type=analysis['signal'],
-                    confidence=int(analysis['confidence']),
-                    stop_loss=float(analysis['stop_loss']),
-                    take_profit=float(analysis['take_profit'])
-                )
-            else:
-                print("   --- No Signal")
-        time.sleep(0.5) # Rate limit friendly
+    while True:
+        try:
+            print(f"\n--- Scan at {datetime.now().strftime('%H:%M:%S')} ---")
+            for symbol in symbols:
+                df = fetch_data(symbol)
+                analysis = analyze_market(df)
+                
+                if analysis:
+                    print(f"[{symbol}] Price: {analysis['price']} | RSI: {analysis['rsi']}")
+                    if analysis['signal'] != "NEUTRAL":
+                        print(f"   >>> SIGNAL: {analysis['signal']} ({analysis['confidence']}%)")
+                        # Save to Supabase
+                        insert_signal(
+                            symbol=symbol,
+                            price=float(analysis['price']),
+                            rsi=float(analysis['rsi']),
+                            signal_type=analysis['signal'],
+                            confidence=int(analysis['confidence']),
+                            stop_loss=float(analysis['stop_loss']),
+                            take_profit=float(analysis['take_profit'])
+                        )
+                    else:
+                        print("   --- No Signal")
+                time.sleep(1) # Rate limit friendly per symbol
+
+            print("Waiting 60s for next scan...")
+            time.sleep(60)
+            
+        except Exception as e:
+            print(f"!!! CRITICAL ERROR in Main Loop: {e}")
+            time.sleep(60)
 
 if __name__ == "__main__":
     main()

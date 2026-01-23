@@ -53,19 +53,45 @@ export default function Dashboard() {
         };
     }, []);
 
-    // Mock Data for the chart demonstration
-    const chartData = [
-        { time: '2023-12-22', value: 32.51 },
-        { time: '2023-12-23', value: 31.11 },
-        { time: '2023-12-24', value: 27.02 },
-        { time: '2023-12-25', value: 27.32 },
-        { time: '2023-12-26', value: 25.17 },
-        { time: '2023-12-27', value: 28.89 },
-        { time: '2023-12-28', value: 25.46 },
-        { time: '2023-12-29', value: 23.92 },
-        { time: '2023-12-30', value: 22.68 },
-        { time: '2023-12-31', value: 22.67 },
-    ];
+    const [chartData, setChartData] = useState<{ time: string | number; value: number }[]>([]);
+
+    useEffect(() => {
+        const fetchChartData = async () => {
+            try {
+                // Fetch BTC/USD 1-hour candles from Kraken
+                const response = await fetch('https://api.kraken.com/0/public/OHLC?pair=XBTUSD&interval=60');
+                const result = await response.json();
+
+                if (result.error && result.error.length > 0) {
+                    console.error("Kraken API Error:", result.error);
+                    return;
+                }
+
+                // Kraken returns { result: { XXBTZUSD: [ [time, open, high, low, close, ...], ... ] } }
+                const pairs = result.result;
+                const key = Object.keys(pairs).find(k => k !== 'last');
+                if (key && pairs[key]) {
+                    const candles = pairs[key];
+                    const formattedData = candles.map((item: any) => ({
+                        time: item[0], // Unix timestamp (seconds)
+                        value: parseFloat(item[4]), // Close price
+                    }));
+
+                    // Take the last 100 candles for a clean view, sorted by time
+                    setChartData(formattedData.slice(-100));
+                }
+            } catch (err) {
+                console.error("Failed to fetch chart data:", err);
+            }
+        };
+
+        fetchChartData();
+
+        // Refresh chart every 60 seconds
+        const interval = setInterval(fetchChartData, 60000);
+
+        return () => clearInterval(interval);
+    }, []);
 
     return (
         <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-[#00ffa3] selection:text-black">
