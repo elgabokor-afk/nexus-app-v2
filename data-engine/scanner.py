@@ -114,7 +114,7 @@ def main():
     symbols = [
         'BTC/USD', 'ETH/USD', 'SOL/USD',
         'ADA/USD', 'XRP/USD', 'DOT/USD', 'DOGE/USD',
-        'LINK/USD', 'MATIC/USD', 'LTC/USD', 'BCH/USD',
+        'LINK/USD', 'POL/USD', 'LTC/USD', 'BCH/USD',
         'UNI/USD'
     ]
     
