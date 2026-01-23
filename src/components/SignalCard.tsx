@@ -48,6 +48,9 @@ const SignalCard: React.FC<SignalProps> = ({ symbol, price, rsi, signal_type, co
                         <p className="text-[10px] text-gray-500 font-mono uppercase tracking-widest">
                             {new Date(timestamp).toLocaleTimeString()} • {confidence}% CONFIDENCE
                         </p>
+                        <p className={`text-xs font-bold mt-1 ${textColor}`}>
+                            {signal_type.split('(')[0].trim()}
+                        </p>
                     </div>
                 </div>
                 <div className={`px-3 py-1 rounded text-xs font-bold ${textColor} ${badgeBg} border border-current border-opacity-20`}>
