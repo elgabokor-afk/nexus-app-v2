@@ -1,8 +1,15 @@
 import React from 'react';
 import { ArrowUpRight, ArrowDownRight, Activity } from 'lucide-react';
 
-stop_loss ?: number;
-take_profit ?: number;
+interface SignalProps {
+    symbol: string;
+    price: number;
+    rsi: number;
+    signal_type: string;
+    confidence: number;
+    timestamp: string;
+    stop_loss?: number;
+    take_profit?: number;
 }
 
 const SignalCard: React.FC<SignalProps> = ({ symbol, price, rsi, signal_type, confidence, timestamp, stop_loss, take_profit }) => {
