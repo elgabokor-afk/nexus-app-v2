@@ -43,88 +43,93 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
     return (
         <div
             onClick={() => compact && onViewChart && onViewChart(symbol)}
-            className={`bg-[#0a0a0c] border border-opacity-40 ${borderColor} rounded-lg overflow-hidden hover:shadow-2xl hover:shadow-${isBuy ? 'green' : isSell ? 'red' : 'gray'}-500/10 transition-all duration-300 group ${compact ? 'cursor-pointer hover:bg-[#111]' : ''}`}
+            className={`
+                relative overflow-hidden group transition-all duration-300
+                ${compact ? 'p-3 cursor-pointer hover:bg-white/5' : 'p-0 backdrop-blur-xl bg-[#0a0a0c]/80 border border-white/5 rounded-2xl hover:border-white/10 hover:shadow-2xl hover:shadow-green-500/5'}
+                ${isBuy && !compact ? 'shadow-[0_0_30px_-10px_rgba(0,255,163,0.1)]' : ''}
+                ${isSell && !compact ? 'shadow-[0_0_30px_-10px_rgba(255,77,77,0.1)]' : ''}
+            `}
         >
-            {/* Header */}
-            <div className={`${compact ? 'p-3' : 'p-5'} border-b border-gray-800 flex justify-between items-center bg-[#111]`}>
-                <div className="flex items-center gap-3">
-                    <div className={`w-1.5 h-6 rounded-full ${isBuy ? 'bg-[#00ffa3]' : isSell ? 'bg-[#ff4d4d]' : 'bg-gray-600'}`}></div>
-                    <div>
-                        <h3 className={`${compact ? 'text-sm' : 'text-xl'} font-bold font-mono text-white tracking-wider`}>{symbol}</h3>
-                        {!compact && (
-                            <p className="text-[10px] text-gray-500 font-mono uppercase tracking-widest">
-                                {new Date(timestamp).toLocaleTimeString()} • {confidence}% CONFIDENCE
-                            </p>
-                        )}
-                        <p className={`${compact ? 'text-[10px]' : 'text-xs'} font-bold mt-1 ${textColor}`}>
-                            {compact ? actionText : signal_type.split('(')[0].trim()}
-                        </p>
-                    </div>
-                </div>
-                {!compact && (
-                    <div className={`px-3 py-1 rounded text-xs font-bold ${textColor} ${badgeBg} border border-current border-opacity-20`}>
-                        {actionText} ENTRY
-                    </div>
-                )}
-                {compact && (
-                    <div className="text-right">
-                        <p className="text-xs font-mono text-white font-medium">{formatPrice(price)}</p>
-                    </div>
-                )}
-            </div>
-
-            {/* Metrics Grid */}
+            {/* Top Gradient Line */}
             {!compact && (
-                <div className="p-5 grid grid-cols-2 gap-y-4 gap-x-8">
-                    <div>
-                        <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Entry Price</p>
-                        <p className="text-lg font-mono text-white font-medium">{formatPrice(price)}</p>
+                <div className={`absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-${isBuy ? 'green' : isSell ? 'red' : 'gray'}-500/50 to-transparent opacity-50`}></div>
+            )}
+
+            {/* Header */}
+            <div className={`${compact ? '' : 'p-5 flex justify-between items-start'}`}>
+                <div className="flex items-center gap-3">
+                    {/* Coin Icon / Placeholder */}
+                    <div className={`
+                        flex items-center justify-center rounded-full font-bold text-black
+                        ${compact ? 'w-8 h-8 text-xs' : 'w-10 h-10 text-sm'}
+                        ${isBuy ? 'bg-gradient-to-br from-[#00ffa3] to-[#00ce82]' : isSell ? 'bg-gradient-to-br from-[#ff4d4d] to-[#cc0000]' : 'bg-gray-700'}
+                    `}>
+                        {symbol.substring(0, 1)}
                     </div>
-                    <div className="text-right">
-                        <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">RSI (14)</p>
-                        <div className="flex items-center justify-end gap-2">
-                            <span className={`font-bold font-mono ${rsi < 30 ? 'text-[#00ffa3]' : rsi > 70 ? 'text-[#ff4d4d]' : 'text-gray-300'}`}>
-                                {rsi}
+
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <h3 className={`${compact ? 'text-sm' : 'text-lg'} font-bold font-sans text-white tracking-tight`}>{symbol}</h3>
+                            {!compact && <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-white/5 text-gray-400 border border-white/5">USDT</span>}
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className={`text-[10px] font-bold tracking-wider uppercase ${textColor}`}>
+                                {compact ? actionText : signal_type.replace(/_/g, ' ')}
                             </span>
-                            <Activity size={14} className="text-gray-600" />
+                            {!compact && <span className="text-[10px] text-gray-600">• {new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
                         </div>
                     </div>
+                </div>
 
-                    {/* SL / TP Section */}
-                    {!isNeutral && (
-                        <>
-                            <div className="col-span-2 h-px bg-gray-800 my-1"></div>
-
-                            <div>
-                                <p className="text-[10px] text-red-500 uppercase tracking-wider mb-1 flex items-center gap-1">
-                                    Stop Loss <span className="opacity-50 text-[9px]">(Estimated)</span>
-                                </p>
-                                <p className="text-sm font-mono text-red-400">{formatPrice(stop_loss)}</p>
-                            </div>
-                            <div className="text-right">
-                                <p className="text-[10px] text-[#00ffa3] uppercase tracking-wider mb-1 flex items-center justify-end gap-1">
-                                    Take Profit <span className="opacity-50 text-[9px]">(Target)</span>
-                                </p>
-                                <p className="text-sm font-mono text-[#00ffa3]">{formatPrice(take_profit)}</p>
-                            </div>
-                        </>
+                {/* Price (Compact/Full) */}
+                <div className="text-right">
+                    <p className={`${compact ? 'text-xs' : 'text-xl'} font-mono font-medium text-white`}>
+                        {formatPrice(price)}
+                    </p>
+                    {!compact && (
+                        <div className="flex items-center justify-end gap-1.5 mt-1">
+                            <Activity size={12} className={rsi < 30 || rsi > 70 ? textColor : 'text-gray-600'} />
+                            <span className={`text-xs font-mono ${rsi < 30 || rsi > 70 ? 'text-white' : 'text-gray-500'}`}>RSI {rsi}</span>
+                        </div>
                     )}
+                </div>
+            </div>
+
+            {/* Metrics Grid (Full Mode Only) */}
+            {!compact && !isNeutral && (
+                <div className="px-5 py-4 grid grid-cols-2 gap-4 border-t border-white/5 bg-black/20">
+                    <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
+                            <p className="text-[10px] uppercase tracking-widest text-gray-500">Stop Loss</p>
+                        </div>
+                        <p className="text-sm font-mono text-gray-300 pl-3.5">{formatPrice(stop_loss)}</p>
+                    </div>
+                    <div className="space-y-1 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                            <p className="text-[10px] uppercase tracking-widest text-[#00ffa3]">Take Profit</p>
+                            <div className="w-1.5 h-1.5 rounded-full bg-[#00ffa3] shadow-[0_0_10px_#00ffa3]"></div>
+                        </div>
+                        <p className="text-sm font-mono text-white pr-3.5">{formatPrice(take_profit)}</p>
+                    </div>
                 </div>
             )}
 
-            {/* Action Footer */}
+            {/* Footer Action (Full Mode Only) */}
             {!compact && !isNeutral && (
-                <div className="p-4 bg-[#111] border-t border-gray-800">
+                <div className="p-4">
                     <button
                         onClick={() => onViewChart && onViewChart(symbol)}
-                        className={`w-full py-3 rounded font-bold text-sm tracking-widest uppercase transition-colors flex items-center justify-center gap-2 ${isBuy ? 'bg-[#00ffa3] text-black hover:bg-[#00cc82]' : 'bg-[#ff4d4d] text-white hover:bg-[#cc0000]'}`}
+                        className={`
+                            relative w-full py-3 rounded-lg font-bold text-xs tracking-[0.2em] uppercase overflow-hidden
+                            transition-all duration-300
+                            ${isBuy
+                                ? 'bg-[#00ffa3] text-black hover:bg-[#00ffaa] shadow-[0_4px_20px_-5px_rgba(0,255,163,0.3)] hover:shadow-[0_6px_25px_-5px_rgba(0,255,163,0.5)]'
+                                : 'bg-[#ff4d4d] text-white hover:bg-[#ff6666] shadow-[0_4px_20px_-5px_rgba(255,77,77,0.3)] hover:shadow-[0_6px_25px_-5px_rgba(255,77,77,0.5)]'}
+                        `}
                     >
-                        {isBuy ? <ArrowUpRight size={18} /> : <ArrowDownRight size={18} />}
-                        VIEW LIVE CHART
+                        Analyze Signal
                     </button>
-                    <p className="text-[9px] text-center text-gray-600 mt-2">
-                        Automated Analysis • Not Financial Advice
-                    </p>
                 </div>
             )}
         </div>

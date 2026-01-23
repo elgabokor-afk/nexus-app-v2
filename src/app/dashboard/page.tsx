@@ -91,94 +91,148 @@ export default function Dashboard() {
     if (!mounted) return <div className="h-screen bg-[#050505] flex items-center justify-center text-gray-800 font-mono">Initializing Nexus Terminal...</div>;
 
     return (
-        <div className="h-screen bg-[#050505] text-white font-sans overflow-hidden flex flex-col">
-            {/* COMPACT HEADER */}
-            <header className="h-14 bg-[#000] border-b border-[#222] flex items-center justify-between px-4 shrink-0 z-50">
-                <div className="flex items-center gap-2">
-                    <Zap className="text-[#00ffa3] fill-current" size={18} />
-                    <span className="font-mono font-bold tracking-wider">
-                        TRENDS<span className="text-[#00ffa3]">AI</span> TERMINAL
-                    </span>
-                </div>
-                <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2 px-2 py-1 bg-[#111] rounded border border-[#333]">
-                        <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-                        <span className="text-[10px] text-gray-400 font-mono">LIVE</span>
+        <div className="h-screen bg-[#050505] text-white font-sans overflow-hidden flex">
+            {/* SIDEBAR NAVIGATION */}
+            <aside className="w-64 border-r border-white/5 bg-[#0a0a0c] flex flex-col z-50">
+                {/* Logo Area */}
+                <div className="h-16 flex items-center px-6 border-b border-white/5">
+                    <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#00ffa3] to-[#00ce82] flex items-center justify-center text-black shadow-[0_0_20px_rgba(0,255,163,0.3)]">
+                            <Zap size={18} fill="currentColor" />
+                        </div>
+                        <span className="font-bold tracking-wide text-lg">NEXUS<span className="text-[#00ffa3]">AI</span></span>
                     </div>
                 </div>
-            </header>
 
-            {/* MAIN TERMINAL GRID */}
-            <main className="flex-1 grid grid-cols-12 overflow-hidden">
-                {/* COL 1: SIGNAL FEED (LEFT) */}
-                <div className="col-span-3 border-r border-[#222] flex flex-col bg-[#080808]">
-                    <div className="p-3 border-b border-[#222] bg-[#0a0a0c]">
-                        <h2 className="text-xs font-bold text-gray-500 uppercase tracking-widest">Signal Feed</h2>
+                {/* Nav Links */}
+                <nav className="flex-1 p-4 space-y-1">
+                    <div className="px-3 py-2 text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Platform</div>
+                    <button className="w-full flex items-center gap-3 px-3 py-2.5 bg-white/5 text-white rounded-lg border border-white/5">
+                        <div className="w-1.5 h-1.5 rounded-full bg-[#00ffa3] shadow-[0_0_10px_#00ffa3]"></div>
+                        <span className="text-sm font-medium">Terminal</span>
+                    </button>
+                    <button className="w-full flex items-center gap-3 px-3 py-2.5 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors">
+                        <div className="w-1.5 h-1.5 rounded-full bg-gray-600"></div>
+                        <span className="text-sm font-medium">Paper Bot</span>
+                    </button>
+                    <button className="w-full flex items-center gap-3 px-3 py-2.5 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors">
+                        <div className="w-1.5 h-1.5 rounded-full bg-gray-600"></div>
+                        <span className="text-sm font-medium">Settings</span>
+                    </button>
+                </nav>
+
+                {/* System Status */}
+                <div className="p-4 border-t border-white/5">
+                    <div className="p-3 rounded-xl bg-white/5 border border-white/5">
+                        <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">System Status</p>
+                        <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-[#00ffa3] animate-pulse"></div>
+                            <span className="text-xs font-bold text-[#00ffa3]">OPERATIONAL</span>
+                        </div>
                     </div>
-                    <div className="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar">
-                        {loading ? (
-                            <div className="text-center py-10 text-xs text-gray-500 font-mono">Connecting to Node...</div>
+                </div>
+            </aside>
+
+            {/* MAIN CONTENT AREA */}
+            <main className="flex-1 flex flex-col relative overflow-hidden bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-[#1a1a2e] via-[#050505] to-[#050505]">
+
+                {/* Top Bar */}
+                <header className="h-16 border-b border-white/5 flex items-center justify-between px-6 bg-[#0a0a0c]/50 backdrop-blur-md">
+                    <div className="flex items-center gap-4">
+                        <div className="h-8 w-px bg-white/10"></div>
+                        <h2 className="text-sm font-medium text-gray-400">Market Overview</h2>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#00ffa3]/10 border border-[#00ffa3]/20 text-[#00ffa3]">
+                            <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse"></span>
+                            <span className="text-xs font-bold tracking-wide">LIVE FEED</span>
+                        </div>
+                    </div>
+                </header>
+
+                {/* Dashboard Grid */}
+                <div className="flex-1 overflow-hidden p-6 grid grid-cols-12 gap-6">
+
+                    {/* LEFT COLUMN: SIGNALS */}
+                    <div className="col-span-3 flex flex-col gap-4 overflow-hidden">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest">Signal Feed</h3>
+                            <span className="text-xs text-gray-600 font-mono">{signals.length} Active</span>
+                        </div>
+                        <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
+                            {loading ? (
+                                <div className="space-y-3">
+                                    {[1, 2, 3].map(i => <div key={i} className="h-24 rounded-lg bg-white/5 animate-pulse"></div>)}
+                                </div>
+                            ) : (
+                                signals.map((signal) => (
+                                    <SignalCard
+                                        key={signal.id}
+                                        {...signal}
+                                        onViewChart={handleViewChart}
+                                        compact={true}
+                                    />
+                                ))
+                            )}
+                        </div>
+                    </div>
+
+                    {/* CENTER COLUMN: CHART */}
+                    <div className="col-span-6 flex flex-col gap-4">
+                        {selectedSignal ? (
+                            <div className="flex-1 rounded-3xl border border-white/5 bg-[#0a0a0c]/80 backdrop-blur-xl relative overflow-hidden shadow-2xl flex flex-col">
+                                {/* Chart Header overlay */}
+                                <div className="absolute top-0 left-0 w-full p-6 z-10 flex justify-between items-start bg-gradient-to-b from-black/80 to-transparent pointer-events-none">
+                                    <div>
+                                        <h1 className="text-3xl font-bold font-sans tracking-tight flex items-center gap-3">
+                                            {selectedSignal.symbol}
+                                            <span className="text-2xl text-gray-500 font-normal tracking-normal">
+                                                ${selectedSignal.price.toLocaleString()}
+                                            </span>
+                                        </h1>
+                                        <div className="flex items-center gap-2 mt-2">
+                                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-white/10 text-gray-300 border border-white/5">1H Interval</span>
+                                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#00ffa3]/10 text-[#00ffa3] border border-[#00ffa3]/20">AI Confidence: {selectedSignal.confidence}%</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Chart Container */}
+                                <div className="flex-1 w-full h-full pt-16">
+                                    <SmartChart
+                                        symbol={selectedSignal.symbol}
+                                        signalData={{
+                                            entry: selectedSignal.price,
+                                            stop_loss: selectedSignal.stop_loss,
+                                            take_profit: selectedSignal.take_profit,
+                                            confidence: selectedSignal.confidence,
+                                            signal_type: selectedSignal.signal_type
+                                        }}
+                                    />
+                                </div>
+                            </div>
                         ) : (
-                            signals.map((signal) => (
-                                <SignalCard
-                                    key={signal.id}
-                                    {...signal}
-                                    onViewChart={handleViewChart}
-                                    compact={true}
-                                />
-                            ))
+                            <div className="flex-1 rounded-3xl border border-white/5 bg-[#0a0a0c]/50 flex items-center justify-center">
+                                <div className="text-center">
+                                    <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4">
+                                        <Zap className="text-gray-600" />
+                                    </div>
+                                    <p className="text-gray-500 font-mono">Select a signal to initialize chart</p>
+                                </div>
+                            </div>
                         )}
                     </div>
-                </div>
 
-                {/* COL 2: CENTER STAGE (CHART) */}
-                <div className="col-span-6 bg-black flex flex-col relative border-r border-[#222]">
-                    {selectedSignal ? (
-                        <>
-                            <div className="absolute top-4 left-4 z-10">
-                                <h1 className="text-2xl font-bold font-mono tracking-tighter flex items-center gap-2">
-                                    {selectedSignal.symbol}
-                                    <span className="text-lg text-gray-500 font-normal">
-                                        ${selectedSignal.price.toLocaleString()}
-                                    </span>
-                                </h1>
-                            </div>
-                            <div className="flex-1 w-full h-full">
-                                <SmartChart
-                                    symbol={selectedSignal.symbol}
-                                    signalData={{
-                                        entry: selectedSignal.price,
-                                        stop_loss: selectedSignal.stop_loss,
-                                        take_profit: selectedSignal.take_profit,
-                                        confidence: selectedSignal.confidence,
-                                        signal_type: selectedSignal.signal_type
-                                    }}
-                                />
-                            </div>
-                        </>
-                    ) : (
-                        <div className="flex-1 flex items-center justify-center text-gray-600 font-mono">
-                            SELECT SIGNAL TO INITIALIZE FEED
+                    {/* RIGHT COLUMN: EXECUTION */}
+                    <div className="col-span-3 flex flex-col gap-4">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest">Active Bot</h3>
                         </div>
-                    )}
-                </div>
-
-                {/* COL 3: EXECUTION / PAPER BOT (RIGHT) */}
-                <div className="col-span-3 bg-[#0a0a0c] flex flex-col overflow-y-auto border-l border-[#222]">
-                    <div className="p-3 border-b border-[#222] bg-[#0a0a0c]">
-                        <h2 className="text-xs font-bold text-gray-500 uppercase tracking-widest">Algo Execution</h2>
-                    </div>
-                    <div className="p-4">
-                        <PaperBotWidget />
-                    </div>
-
-                    {/* Additional Stats Placeholder */}
-                    <div className="p-4 border-t border-[#222] mt-auto">
-                        <div className="bg-[#111] rounded p-3 text-center">
-                            <p className="text-[10px] text-gray-500 mb-1">SYSTEM STATUS</p>
-                            <p className="text-xs text-[#00ffa3] font-mono">OPTIMAL</p>
+                        <div className="flex-1 rounded-2xl border border-white/5 bg-[#0a0a0c]/60 backdrop-blur-md overflow-hidden">
+                            <PaperBotWidget />
                         </div>
                     </div>
+
                 </div>
             </main>
         </div>
