@@ -8,21 +8,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# 1. Setup Binance Connection
+# 1. Setup Exchange Connection (Kraken - US Friendly)
 exchange_config = {
     'enableRateLimit': True,
 }
 
-# Check for Proxy
-proxy_url = os.getenv('PROXY_URL')
-if proxy_url:
-    print(f"Using Proxy: {proxy_url}")
-    exchange_config['proxies'] = {
-        'http': proxy_url,
-        'https': proxy_url,
-    }
-
-exchange = ccxt.binance(exchange_config)
+# Use Kraken instead of Binance to avoid 451 Errors in US (Railway)
+exchange = ccxt.kraken(exchange_config)
+print("Connected to Kraken Exchange")
 
 def calculate_rsi(series, period=14):
     delta = series.diff()
@@ -35,7 +28,7 @@ def calculate_rsi(series, period=14):
 def calculate_ema(series, period=200):
     return series.ewm(span=period, adjust=False).mean()
 
-def fetch_data(symbol='BTC/USDT', timeframe='1h', limit=100):
+def fetch_data(symbol='BTC/USD', timeframe='1h', limit=100):
     try:
         # Fetch OHLCV (Open, High, Low, Close, Volume)
         bars = exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
@@ -92,10 +85,11 @@ from db import insert_signal
 
 def main():
     print("/// N E X U S  D A T A  E N G I N E  (v1.0) ///")
-    print("Scanning Binance Spot Markets...")
+    print("Scanning Kraken Spot Markets...")
     print("-" * 50)
     
-    symbols = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'BNB/USDT']
+    # Kraken typically uses USD pairs for high volume
+    symbols = ['BTC/USD', 'ETH/USD', 'SOL/USD', 'USDT/USD']
     
     for symbol in symbols:
         df = fetch_data(symbol)
