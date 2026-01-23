@@ -20,21 +20,26 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
     const isSell = signal_type.includes('SELL');
     const isNeutral = !isBuy && !isSell;
 
+    const coin = symbol.split('/')[0];
+    const logoUrl = `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${coin.toLowerCase()}.png`;
+
     let borderColor = 'border-gray-800';
     let textColor = 'text-gray-400';
-    let badgeBg = 'bg-gray-800';
     let actionText = 'WAITING';
+    let reasoning = "";
 
     if (isBuy) {
         borderColor = 'border-[#00ffa3]';
         textColor = 'text-[#00ffa3]';
-        badgeBg = 'bg-[#00ffa3]/10';
         actionText = 'LONG';
+        reasoning = rsi < 30 ? "Strong RSI Reversal" : "Trend Continuation";
     } else if (isSell) {
         borderColor = 'border-[#ff4d4d]';
         textColor = 'text-[#ff4d4d]';
-        badgeBg = 'bg-[#ff4d4d]/10';
         actionText = 'SHORT';
+        reasoning = rsi > 70 ? "Overbought Correction" : "Momentum Shift";
+    } else {
+        reasoning = "Range Bound";
     }
 
     const formatPrice = (p: number | undefined) =>
@@ -44,88 +49,122 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
         <div
             onClick={() => compact && onViewChart && onViewChart(symbol)}
             className={`
-                relative overflow-hidden group transition-all duration-300
-                ${compact ? 'p-3 cursor-pointer hover:bg-white/5 border border-white/5 rounded-xl' : 'p-0 backdrop-blur-xl bg-[#0a0a0c]/80 border border-white/5 rounded-2xl hover:border-white/10 hover:shadow-2xl hover:shadow-green-500/5'}
-                ${isBuy && !compact ? 'shadow-[0_0_30px_-10px_rgba(0,255,163,0.1)]' : ''}
-                ${isSell && !compact ? 'shadow-[0_0_30px_-10px_rgba(255,77,77,0.1)]' : ''}
+                relative overflow-hidden group transition-all duration-500
+                ${compact ? 'p-4 cursor-pointer hover:bg-white/5 border border-white/5 rounded-2xl hover:border-[#00ffa3]/30 transition-all active:scale-[0.98]' : 'p-0 backdrop-blur-xl bg-[#0a0a0c]/80 border border-white/5 rounded-3xl hover:border-white/10 hover:shadow-2xl hover:shadow-green-500/5'}
+                ${isBuy && !compact ? 'shadow-[0_0_40px_-10px_rgba(0,255,163,0.15)]' : ''}
+                ${isSell && !compact ? 'shadow-[0_0_40px_-10px_rgba(255,77,77,0.15)]' : ''}
+                bg-gradient-to-br from-white/[0.03] to-transparent
             `}
         >
-            {/* Top Gradient Line */}
-            {!compact && (
-                <div className={`absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-${isBuy ? 'green' : isSell ? 'red' : 'gray'}-500/50 to-transparent opacity-50`}></div>
-            )}
-
             {/* Header / Main Info */}
-            <div className={`${compact ? 'flex justify-between items-center' : 'p-5 flex justify-between items-start'}`}>
-                <div className="flex items-center gap-3">
-                    <div className={`
-                        flex items-center justify-center rounded-full font-bold text-black
-                        ${compact ? 'w-7 h-7 text-[10px]' : 'w-10 h-10 text-sm'}
-                        ${isBuy ? 'bg-gradient-to-br from-[#00ffa3] to-[#00ce82]' : isSell ? 'bg-gradient-to-br from-[#ff4d4d] to-[#cc0000]' : 'bg-gray-700'}
-                    `}>
-                        {symbol.substring(0, 1)}
+            <div className={`${compact ? 'flex justify-between items-start' : 'p-6 flex justify-between items-start'}`}>
+                <div className="flex items-center gap-4">
+                    <div className="relative">
+                        <div className={`
+                            flex items-center justify-center rounded-2xl p-1 overflow-hidden
+                            ${compact ? 'w-10 h-10' : 'w-14 h-14'}
+                            bg-white/[0.05] border border-white/10
+                        `}>
+                            <img
+                                src={logoUrl}
+                                alt={coin}
+                                className="w-full h-full object-contain"
+                                onError={(e) => {
+                                    (e.target as HTMLImageElement).style.display = 'none';
+                                    (e.target as HTMLImageElement).parentElement!.classList.add('flex', 'items-center', 'justify-center', 'font-bold', 'text-white');
+                                    (e.target as HTMLImageElement).parentElement!.innerText = coin.substring(0, 1);
+                                }}
+                            />
+                        </div>
+                        {confidence > 85 && (
+                            <div className="absolute -top-1 -right-1 w-3 h-3 bg-[#00ffa3] rounded-full shadow-[0_0_10px_#00ffa3] border-2 border-[#0a0a0c]"></div>
+                        )}
                     </div>
 
                     <div>
                         <div className="flex items-center gap-2">
-                            <h3 className={`${compact ? 'text-xs' : 'text-lg'} font-bold font-sans text-white tracking-tight`}>{symbol}</h3>
+                            <h3 className={`${compact ? 'text-sm' : 'text-xl'} font-bold font-sans text-white tracking-tight`}>{symbol}</h3>
+                            {confidence > 90 && <span className="px-1.5 py-0.5 rounded-[4px] text-[8px] font-black bg-[#00ffa3] text-black uppercase tracking-tighter">Premium</span>}
                         </div>
-                        <div className="flex items-center gap-2">
-                            <span className={`text-[9px] font-bold tracking-wider uppercase ${textColor}`}>
-                                {compact ? actionText : signal_type.replace(/_/g, ' ')}
+                        <div className="flex items-center gap-2 mt-0.5">
+                            <span className={`text-[10px] font-black tracking-widest uppercase ${textColor}`}>
+                                {actionText}
                             </span>
+                            <span className="text-[10px] text-white/20 font-mono">•</span>
+                            <span className="text-[10px] text-gray-500 font-medium">Confidence: {confidence}%</span>
                         </div>
                     </div>
                 </div>
 
                 <div className="text-right">
-                    <p className={`${compact ? 'text-xs' : 'text-xl'} font-mono font-medium text-white`}>
+                    <p className={`${compact ? 'text-sm' : 'text-2xl'} font-mono font-bold text-white tracking-tighter`}>
                         {formatPrice(price)}
                     </p>
-                    {!compact && (
-                        <div className="flex items-center justify-end gap-1.5 mt-1">
-                            <Activity size={12} className={rsi < 30 || rsi > 70 ? textColor : 'text-gray-600'} />
-                            <span className={`text-xs font-mono ${rsi < 30 || rsi > 70 ? 'text-white' : 'text-gray-500'}`}>RSI {rsi}</span>
-                        </div>
-                    )}
+                    <div className="flex items-center justify-end gap-1.5 mt-1">
+                        <Activity size={10} className={rsi < 30 || rsi > 70 ? textColor : 'text-gray-600'} />
+                        <span className={`text-[10px] font-mono ${rsi < 30 || rsi > 70 ? 'text-white' : 'text-gray-500'}`}>RSI: {rsi}</span>
+                    </div>
                 </div>
             </div>
 
-            {/* Metrics Row (Now adapted for both modes) */}
+            {/* AI Reasoning / Logic Breakdown */}
+            <div className={`px-4 pb-2 pt-1 ${compact ? 'block' : 'px-6 pb-6'}`}>
+                <div className="bg-white/[0.02] border border-white/5 rounded-xl p-2.5 flex items-center justify-between">
+                    <div>
+                        <p className="text-[8px] text-gray-500 uppercase tracking-widest font-bold">AI Logic</p>
+                        <p className="text-[11px] text-gray-300 font-medium">{reasoning}</p>
+                    </div>
+                    <div className="h-6 w-px bg-white/5 mx-3"></div>
+                    <div className="flex-1">
+                        <p className="text-[8px] text-gray-500 uppercase tracking-widest font-bold">Trend Status</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                            <div className="flex-1 h-1 bg-white/5 rounded-full overflow-hidden">
+                                <div
+                                    className={`h-full ${isBuy ? 'bg-[#00ffa3]' : isSell ? 'bg-[#ff4d4d]' : 'bg-gray-600'}`}
+                                    style={{ width: `${confidence}%` }}
+                                ></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Metrics Row */}
             {!isNeutral && (
                 <div className={`
-                    ${compact ? 'mt-2 pt-2 border-t border-white/5 grid grid-cols-2 gap-2' : 'px-5 py-4 grid grid-cols-2 gap-4 border-t border-white/5 bg-black/20'}
+                    ${compact ? 'mt-2 p-3 bg-black/40 border-t border-white/5 grid grid-cols-2 gap-4' : 'px-6 py-5 grid grid-cols-2 gap-6 border-t border-white/5 bg-black/40'}
                 `}>
-                    <div className="space-y-0.5">
-                        <p className={`${compact ? 'text-[8px]' : 'text-[10px]'} uppercase tracking-widest text-gray-500`}>Stop Loss</p>
-                        <p className={`${compact ? 'text-[10px]' : 'text-sm'} font-mono text-gray-400`}>{formatPrice(stop_loss)}</p>
+                    <div className="space-y-1">
+                        <p className="text-[9px] uppercase tracking-widest text-gray-500 font-bold">Target Stop</p>
+                        <p className={`${compact ? 'text-xs' : 'text-base'} font-mono text-gray-400 font-medium`}>{formatPrice(stop_loss)}</p>
                     </div>
-                    <div className="space-y-0.5 text-right">
-                        <p className={`${compact ? 'text-[8px]' : 'text-[10px]'} uppercase tracking-widest text-[#00ffa3]`}>Take Profit</p>
-                        <p className={`${compact ? 'text-[10px]' : 'text-sm'} font-mono text-white`}>{formatPrice(take_profit)}</p>
+                    <div className="space-y-1 text-right">
+                        <p className="text-[9px] uppercase tracking-widest text-[#00ffa3] font-bold">Target Profit</p>
+                        <p className={`${compact ? 'text-xs' : 'text-base'} font-mono text-white font-bold`}>{formatPrice(take_profit)}</p>
                     </div>
                 </div>
             )}
 
             {/* Footer Action (Full Mode Only) */}
             {!compact && !isNeutral && (
-                <div className="p-4">
+                <div className="p-6 pt-0">
                     <button
                         onClick={() => onViewChart && onViewChart(symbol)}
                         className={`
-                            relative w-full py-3 rounded-lg font-bold text-xs tracking-[0.2em] uppercase overflow-hidden
-                            transition-all duration-300
+                            relative w-full py-4 rounded-2xl font-black text-[10px] tracking-[0.25em] uppercase overflow-hidden
+                            transition-all duration-300 active:scale-[0.97]
                             ${isBuy
-                                ? 'bg-[#00ffa3] text-black hover:bg-[#00ffaa] shadow-[0_4px_20px_-5px_rgba(0,255,163,0.3)] hover:shadow-[0_6px_25px_-5px_rgba(0,255,163,0.5)]'
-                                : 'bg-[#ff4d4d] text-white hover:bg-[#ff6666] shadow-[0_4px_20px_-5px_rgba(255,77,77,0.3)] hover:shadow-[0_6px_25px_-5px_rgba(255,77,77,0.5)]'}
+                                ? 'bg-[#00ffa3] text-black hover:bg-white shadow-[0_10px_30px_-10px_rgba(0,255,163,0.5)]'
+                                : 'bg-[#ff4d4d] text-white hover:bg-white hover:text-black shadow-[0_10px_30px_-10px_rgba(255,77,77,0.5)]'}
                         `}
                     >
-                        Analyze Signal
+                        EXECUTE ANALYSIS
                     </button>
                 </div>
             )}
         </div>
     );
 };
+
 
 export default SignalCard;
