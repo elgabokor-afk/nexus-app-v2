@@ -17,7 +17,7 @@ interface Signal {
     take_profit?: number;
 }
 
-import { ChartComponent } from '@/components/ChartComponent';
+
 
 export default function Dashboard() {
     const [signals, setSignals] = useState<Signal[]>([]);
@@ -53,44 +53,38 @@ export default function Dashboard() {
         };
     }, []);
 
-    const [chartData, setChartData] = useState<{ time: string | number; value: number }[]>([]);
-
     useEffect(() => {
-        const fetchChartData = async () => {
-            try {
-                // Fetch BTC/USD 1-hour candles from Kraken
-                const response = await fetch('https://api.kraken.com/0/public/OHLC?pair=XBTUSD&interval=60');
-                const result = await response.json();
-
-                if (result.error && result.error.length > 0) {
-                    console.error("Kraken API Error:", result.error);
-                    return;
-                }
-
-                // Kraken returns { result: { XXBTZUSD: [ [time, open, high, low, close, ...], ... ] } }
-                const pairs = result.result;
-                const key = Object.keys(pairs).find(k => k !== 'last');
-                if (key && pairs[key]) {
-                    const candles = pairs[key];
-                    const formattedData = candles.map((item: any) => ({
-                        time: item[0], // Unix timestamp (seconds)
-                        value: parseFloat(item[4]), // Close price
-                    }));
-
-                    // Take the last 100 candles for a clean view, sorted by time
-                    setChartData(formattedData.slice(-100));
-                }
-            } catch (err) {
-                console.error("Failed to fetch chart data:", err);
+        // Load TradingView Script
+        const script = document.createElement('script');
+        script.src = 'https://s3.tradingview.com/tv.js';
+        script.async = true;
+        script.onload = () => {
+            // @ts-ignore
+            if (window.TradingView) {
+                new window.TradingView.widget({
+                    "autosize": true,
+                    "symbol": "KRAKEN:XBTUSD",
+                    "interval": "60",
+                    "timezone": "Etc/UTC",
+                    "theme": "dark",
+                    "style": "1",
+                    "locale": "en",
+                    "enable_publishing": false,
+                    "backgroundColor": "rgba(5, 5, 5, 1)",
+                    "gridColor": "rgba(40, 40, 40, 1)",
+                    "hide_top_toolbar": false,
+                    "hide_legend": false,
+                    "save_image": false,
+                    "container_id": "tradingview_widget"
+                });
             }
         };
+        document.head.appendChild(script);
 
-        fetchChartData();
-
-        // Refresh chart every 60 seconds
-        const interval = setInterval(fetchChartData, 60000);
-
-        return () => clearInterval(interval);
+        return () => {
+            // Cleanup provided by script remove isn't strict requirement but good practice
+            // if (document.head.contains(script)) document.head.removeChild(script);
+        };
     }, []);
 
     return (
@@ -117,18 +111,17 @@ export default function Dashboard() {
                 <div className="flex justify-between items-end mb-8">
                     <div>
                         <h1 className="text-3xl font-bold mb-2">Live Market Scanner</h1>
-                        <p className="text-gray-400">Monitoring 50+ High Volume Pairs via Binance API</p>
+                        <p className="text-gray-400">Monitoring 50+ High Volume Pairs via Kraken API</p>
                     </div>
                 </div>
 
-                {/* MARKET OVERVIEW CHART */}
-                <div className="mb-10 p-1 border border-[#222] rounded-2xl bg-[#0e0e12]">
-                    <div className="p-4 border-b border-[#222] flex justify-between items-center">
-                        <h3 className="text-sm font-bold text-gray-300">BTC/USDT TREND OVERVIEW</h3>
-                        <span className="text-xs text-[#00ffa3]">LIVE FEED</span>
-                    </div>
-                    <div className="p-4">
-                        <ChartComponent data={chartData} />
+                {/* MARKET OVERVIEW - TRADINGVIEW WIDGET */}
+                <div className="mb-10 h-[500px] border border-[#222] rounded-2xl overflow-hidden shadow-2xl bg-[#0a0a0c]">
+                    <div className="tradingview-widget-container" style={{ height: "100%", width: "100%" }}>
+                        <div id="tradingview_widget" style={{ height: "calc(100% - 32px)", width: "100%" }}></div>
+                        <div className="tradingview-widget-copyright" style={{ fontSize: '10px', padding: '8px', background: '#000', color: '#666', textAlign: 'center' }}>
+                            <a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank">Track all markets on TradingView</a>
+                        </div>
                     </div>
                 </div>
 
