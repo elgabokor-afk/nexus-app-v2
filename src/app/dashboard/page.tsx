@@ -28,6 +28,21 @@ interface Signal {
 export default function Dashboard() {
     const [signals, setSignals] = useState<Signal[]>([]);
     const [loading, setLoading] = useState(true);
+    const [selectedSymbol, setSelectedSymbol] = useState("BTC/USD");
+
+    const handleViewChart = (symbol: string) => {
+        setSelectedSymbol(symbol);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    // Helper to format symbol for TradingView (Kraken)
+    // BTC/USD -> KRAKEN:XBTUSD
+    // ETH/USD -> KRAKEN:ETHUSD
+    const getTradingViewSymbol = (s: string) => {
+        let clean = s.replace('/', '');
+        if (clean.startsWith('BTC')) clean = clean.replace('BTC', 'XBT');
+        return `KRAKEN:${clean}`;
+    };
 
     // Fetch initial data
     const fetchSignals = async () => {
@@ -61,6 +76,9 @@ export default function Dashboard() {
 
     useEffect(() => {
         // Load TradingView Script
+        const container = document.getElementById('tradingview_widget');
+        if (container) container.innerHTML = ''; // Clear previous widget
+
         const script = document.createElement('script');
         script.src = 'https://s3.tradingview.com/tv.js';
         script.async = true;
@@ -69,7 +87,7 @@ export default function Dashboard() {
             if (window.TradingView) {
                 new window.TradingView.widget({
                     "autosize": true,
-                    "symbol": "KRAKEN:XBTUSD",
+                    "symbol": getTradingViewSymbol(selectedSymbol),
                     "interval": "60",
                     "timezone": "Etc/UTC",
                     "theme": "dark",
@@ -88,10 +106,9 @@ export default function Dashboard() {
         document.head.appendChild(script);
 
         return () => {
-            // Cleanup provided by script remove isn't strict requirement but good practice
-            // if (document.head.contains(script)) document.head.removeChild(script);
+            // Cleanup
         };
-    }, []);
+    }, [selectedSymbol]);
 
     return (
         <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-[#00ffa3] selection:text-black">
@@ -139,7 +156,11 @@ export default function Dashboard() {
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {signals.map((signal) => (
-                            <SignalCard key={signal.id} {...signal} />
+                            <SignalCard
+                                key={signal.id}
+                                {...signal}
+                                onViewChart={handleViewChart}
+                            />
                         ))}
 
                         {signals.length === 0 && (

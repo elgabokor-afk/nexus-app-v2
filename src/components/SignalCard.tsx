@@ -10,9 +10,10 @@ interface SignalProps {
     timestamp: string;
     stop_loss?: number;
     take_profit?: number;
+    onViewChart?: (symbol: string) => void;
 }
 
-const SignalCard: React.FC<SignalProps> = ({ symbol, price, rsi, signal_type, confidence, timestamp, stop_loss, take_profit }) => {
+const SignalCard: React.FC<SignalProps> = ({ symbol, price, rsi, signal_type, confidence, timestamp, stop_loss, take_profit, onViewChart }) => {
     const isBuy = signal_type.includes('BUY');
     const isSell = signal_type.includes('SELL');
     const isNeutral = !isBuy && !isSell;
@@ -98,9 +99,12 @@ const SignalCard: React.FC<SignalProps> = ({ symbol, price, rsi, signal_type, co
             {/* Action Footer */}
             {!isNeutral && (
                 <div className="p-4 bg-[#111] border-t border-gray-800">
-                    <button className={`w-full py-3 rounded font-bold text-sm tracking-widest uppercase transition-colors flex items-center justify-center gap-2 ${isBuy ? 'bg-[#00ffa3] text-black hover:bg-[#00cc82]' : 'bg-[#ff4d4d] text-white hover:bg-[#cc0000]'}`}>
+                    <button
+                        onClick={() => onViewChart && onViewChart(symbol)}
+                        className={`w-full py-3 rounded font-bold text-sm tracking-widest uppercase transition-colors flex items-center justify-center gap-2 ${isBuy ? 'bg-[#00ffa3] text-black hover:bg-[#00cc82]' : 'bg-[#ff4d4d] text-white hover:bg-[#cc0000]'}`}
+                    >
                         {isBuy ? <ArrowUpRight size={18} /> : <ArrowDownRight size={18} />}
-                        Execute Signal
+                        VIEW LIVE CHART
                     </button>
                     <p className="text-[9px] text-center text-gray-600 mt-2">
                         Automated Analysis • Not Financial Advice
