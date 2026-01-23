@@ -3,10 +3,26 @@ import pandas as pd
 import time
 from datetime import datetime
 
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 # 1. Setup Binance Connection
-exchange = ccxt.binance({
+exchange_config = {
     'enableRateLimit': True,
-})
+}
+
+# Check for Proxy
+proxy_url = os.getenv('PROXY_URL')
+if proxy_url:
+    print(f"Using Proxy: {proxy_url}")
+    exchange_config['proxies'] = {
+        'http': proxy_url,
+        'https': proxy_url,
+    }
+
+exchange = ccxt.binance(exchange_config)
 
 def calculate_rsi(series, period=14):
     delta = series.diff()
