@@ -112,7 +112,7 @@ def main():
     
     # Kraken typically uses USD pairs for high volume
     symbols = [
-        'BTC/USD', 'ETH/USD', 'SOL/USD', 'USDT/USD',
+        'BTC/USD', 'ETH/USD', 'SOL/USD',
         'ADA/USD', 'XRP/USD', 'DOT/USD', 'DOGE/USD',
         'LINK/USD', 'MATIC/USD', 'LTC/USD', 'BCH/USD',
         'UNI/USD'
