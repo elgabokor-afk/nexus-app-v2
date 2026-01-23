@@ -67,7 +67,7 @@ def analyze_market(df):
     stop_loss = 0
     take_profit = 0
 
-    elif rsi_val < 45 and close_val > ema_val:
+    if rsi_val < 45 and close_val > ema_val:
         signal = "MODERATE BUY (Dip in Uptrend)"
         confidence = 75
         stop_loss = close_val * 0.985
