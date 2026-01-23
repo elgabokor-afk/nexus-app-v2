@@ -140,22 +140,28 @@ export default function PaperBotWidget() {
                     </div>
                 </div>
                 <div className="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar-thin pb-4">
-                    {positions.filter(p => p.status === 'CLOSED').map(pos => (
-                        <div key={pos.id} className="flex justify-between items-center p-3 bg-white/[0.02] hover:bg-white/[0.04] rounded-xl border border-white/5 transition-all group">
-                            <div className="flex items-center gap-3">
-                                <div className={`w-1.5 h-1.5 rounded-full ${(pos.pnl || 0) >= 0 ? 'bg-[#00ffa3] shadow-[0_0_8px_#00ffa3]' : 'bg-red-500 shadow-[0_0_8px_red]'}`}></div>
-                                <div>
-                                    <span className="font-black text-sm tracking-tight">{pos.symbol}</span>
-                                    <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest leading-none mt-0.5">{pos.exit_reason}</p>
+                    {positions.filter(p => p.status === 'CLOSED').length === 0 ? (
+                        <div className="py-4 px-4 border border-dashed border-white/5 rounded-2xl flex items-center justify-center bg-white/[0.01]">
+                            <span className="text-[9px] text-white/20 font-bold uppercase tracking-widest">Awaiting first settlement...</span>
+                        </div>
+                    ) : (
+                        positions.filter(p => p.status === 'CLOSED').map(pos => (
+                            <div key={pos.id} className="flex justify-between items-center p-3 bg-white/[0.02] hover:bg-white/[0.04] rounded-xl border border-white/5 transition-all group">
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-1.5 h-1.5 rounded-full ${(pos.pnl || 0) >= 0 ? 'bg-[#00ffa3] shadow-[0_0_8px_#00ffa3]' : 'bg-red-500 shadow-[0_0_8px_red]'}`}></div>
+                                    <div>
+                                        <span className="font-black text-sm tracking-tight">{pos.symbol}</span>
+                                        <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest leading-none mt-0.5">{pos.exit_reason}</p>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <span className={`font-mono text-xs font-black ${(pos.pnl || 0) >= 0 ? 'text-[#00ffa3]' : 'text-red-500'}`}>
+                                        {(pos.pnl || 0) >= 0 ? '+' : ''}${(pos.pnl || 0).toFixed(2)}
+                                    </span>
                                 </div>
                             </div>
-                            <div className="text-right">
-                                <span className={`font-mono text-xs font-black ${(pos.pnl || 0) >= 0 ? 'text-[#00ffa3]' : 'text-red-500'}`}>
-                                    {(pos.pnl || 0) >= 0 ? '+' : ''}${(pos.pnl || 0).toFixed(2)}
-                                </span>
-                            </div>
-                        </div>
-                    ))}
+                        ))
+                    )}
                 </div>
             </div>
         </div>

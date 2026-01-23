@@ -119,8 +119,19 @@ export default function Dashboard() {
                     </button>
 
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl overflow-hidden bg-black flex items-center justify-center shadow-[0_0_30px_rgba(0,255,163,0.3)] border border-[#00ffa3]/20">
-                            <img src="/logo.png" alt="Nexus Logo" className="w-full h-full object-cover" />
+                        <div className="w-10 h-10 rounded-xl overflow-hidden bg-black flex items-center justify-center shadow-[0_0_30px_rgba(0,255,163,0.3)] border border-[#00ffa3]/20 relative">
+                            <img
+                                src="/logo.png"
+                                alt="Nexus Logo"
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                    e.currentTarget.parentElement?.classList.add('bg-gradient-to-br', 'from-[#00ffa3]', 'to-[#00ce82]');
+                                    const fallback = document.createElement('div');
+                                    fallback.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-zap text-black"><path d="M4 14.71 14.5 4H15l-1.5 5.29H20l-10.5 10.71H9l1.5-5.29H4z"/></svg>';
+                                    e.currentTarget.parentElement?.appendChild(fallback.firstChild as Node);
+                                }}
+                            />
                         </div>
                         <div className="hidden sm:block">
                             <span className="font-black tracking-tighter text-xl">NEXUS<span className="text-[#00ffa3]">AI</span></span>
@@ -202,8 +213,19 @@ export default function Dashboard() {
                         <div className="p-5 rounded-3xl bg-white/[0.03] border border-white/5 relative overflow-hidden group">
                             <div className="absolute top-0 right-0 w-24 h-24 bg-[#00ffa3]/5 rounded-full blur-3xl -mr-12 -mt-12 transition-all group-hover:bg-[#00ffa3]/10"></div>
                             <div className="flex items-center gap-3 mb-2">
-                                <div className="w-5 h-5 rounded-lg overflow-hidden flex items-center justify-center bg-black border border-white/10">
-                                    <img src="/logo.png" alt="Node" className="w-full h-full object-cover" />
+                                <div className="w-5 h-5 rounded-lg overflow-hidden flex items-center justify-center bg-black border border-white/10 relative">
+                                    <img
+                                        src="/logo.png"
+                                        alt="Node"
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => {
+                                            e.currentTarget.style.display = 'none';
+                                            e.currentTarget.parentElement?.classList.add('bg-[#00ffa3]');
+                                            const dot = document.createElement('div');
+                                            dot.className = 'w-1.5 h-1.5 bg-black rounded-full';
+                                            e.currentTarget.parentElement?.appendChild(dot);
+                                        }}
+                                    />
                                 </div>
                                 <p className="text-[10px] text-gray-500 uppercase tracking-widest font-black flex items-center gap-2">
                                     <span className="w-1.5 h-1.5 rounded-full bg-[#00ffa3] animate-ping"></span>
