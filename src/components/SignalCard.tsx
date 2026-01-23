@@ -45,7 +45,7 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
             onClick={() => compact && onViewChart && onViewChart(symbol)}
             className={`
                 relative overflow-hidden group transition-all duration-300
-                ${compact ? 'p-3 cursor-pointer hover:bg-white/5' : 'p-0 backdrop-blur-xl bg-[#0a0a0c]/80 border border-white/5 rounded-2xl hover:border-white/10 hover:shadow-2xl hover:shadow-green-500/5'}
+                ${compact ? 'p-3 cursor-pointer hover:bg-white/5 border border-white/5 rounded-xl' : 'p-0 backdrop-blur-xl bg-[#0a0a0c]/80 border border-white/5 rounded-2xl hover:border-white/10 hover:shadow-2xl hover:shadow-green-500/5'}
                 ${isBuy && !compact ? 'shadow-[0_0_30px_-10px_rgba(0,255,163,0.1)]' : ''}
                 ${isSell && !compact ? 'shadow-[0_0_30px_-10px_rgba(255,77,77,0.1)]' : ''}
             `}
@@ -55,13 +55,12 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
                 <div className={`absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-${isBuy ? 'green' : isSell ? 'red' : 'gray'}-500/50 to-transparent opacity-50`}></div>
             )}
 
-            {/* Header */}
-            <div className={`${compact ? '' : 'p-5 flex justify-between items-start'}`}>
+            {/* Header / Main Info */}
+            <div className={`${compact ? 'flex justify-between items-center' : 'p-5 flex justify-between items-start'}`}>
                 <div className="flex items-center gap-3">
-                    {/* Coin Icon / Placeholder */}
                     <div className={`
                         flex items-center justify-center rounded-full font-bold text-black
-                        ${compact ? 'w-8 h-8 text-xs' : 'w-10 h-10 text-sm'}
+                        ${compact ? 'w-7 h-7 text-[10px]' : 'w-10 h-10 text-sm'}
                         ${isBuy ? 'bg-gradient-to-br from-[#00ffa3] to-[#00ce82]' : isSell ? 'bg-gradient-to-br from-[#ff4d4d] to-[#cc0000]' : 'bg-gray-700'}
                     `}>
                         {symbol.substring(0, 1)}
@@ -69,19 +68,16 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
 
                     <div>
                         <div className="flex items-center gap-2">
-                            <h3 className={`${compact ? 'text-sm' : 'text-lg'} font-bold font-sans text-white tracking-tight`}>{symbol}</h3>
-                            {!compact && <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-white/5 text-gray-400 border border-white/5">USDT</span>}
+                            <h3 className={`${compact ? 'text-xs' : 'text-lg'} font-bold font-sans text-white tracking-tight`}>{symbol}</h3>
                         </div>
                         <div className="flex items-center gap-2">
-                            <span className={`text-[10px] font-bold tracking-wider uppercase ${textColor}`}>
+                            <span className={`text-[9px] font-bold tracking-wider uppercase ${textColor}`}>
                                 {compact ? actionText : signal_type.replace(/_/g, ' ')}
                             </span>
-                            {!compact && <span className="text-[10px] text-gray-600">• {new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
                         </div>
                     </div>
                 </div>
 
-                {/* Price (Compact/Full) */}
                 <div className="text-right">
                     <p className={`${compact ? 'text-xs' : 'text-xl'} font-mono font-medium text-white`}>
                         {formatPrice(price)}
@@ -95,22 +91,18 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
                 </div>
             </div>
 
-            {/* Metrics Grid (Full Mode Only) */}
-            {!compact && !isNeutral && (
-                <div className="px-5 py-4 grid grid-cols-2 gap-4 border-t border-white/5 bg-black/20">
-                    <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                            <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
-                            <p className="text-[10px] uppercase tracking-widest text-gray-500">Stop Loss</p>
-                        </div>
-                        <p className="text-sm font-mono text-gray-300 pl-3.5">{formatPrice(stop_loss)}</p>
+            {/* Metrics Row (Now adapted for both modes) */}
+            {!isNeutral && (
+                <div className={`
+                    ${compact ? 'mt-2 pt-2 border-t border-white/5 grid grid-cols-2 gap-2' : 'px-5 py-4 grid grid-cols-2 gap-4 border-t border-white/5 bg-black/20'}
+                `}>
+                    <div className="space-y-0.5">
+                        <p className={`${compact ? 'text-[8px]' : 'text-[10px]'} uppercase tracking-widest text-gray-500`}>Stop Loss</p>
+                        <p className={`${compact ? 'text-[10px]' : 'text-sm'} font-mono text-gray-400`}>{formatPrice(stop_loss)}</p>
                     </div>
-                    <div className="space-y-1 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                            <p className="text-[10px] uppercase tracking-widest text-[#00ffa3]">Take Profit</p>
-                            <div className="w-1.5 h-1.5 rounded-full bg-[#00ffa3] shadow-[0_0_10px_#00ffa3]"></div>
-                        </div>
-                        <p className="text-sm font-mono text-white pr-3.5">{formatPrice(take_profit)}</p>
+                    <div className="space-y-0.5 text-right">
+                        <p className={`${compact ? 'text-[8px]' : 'text-[10px]'} uppercase tracking-widest text-[#00ffa3]`}>Take Profit</p>
+                        <p className={`${compact ? 'text-[10px]' : 'text-sm'} font-mono text-white`}>{formatPrice(take_profit)}</p>
                     </div>
                 </div>
             )}
