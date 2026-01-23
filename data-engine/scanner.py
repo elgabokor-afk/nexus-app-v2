@@ -111,7 +111,12 @@ def main():
     print("-" * 50)
     
     # Kraken typically uses USD pairs for high volume
-    symbols = ['BTC/USD', 'ETH/USD', 'SOL/USD', 'USDT/USD']
+    symbols = [
+        'BTC/USD', 'ETH/USD', 'SOL/USD', 'USDT/USD',
+        'ADA/USD', 'XRP/USD', 'DOT/USD', 'DOGE/USD',
+        'LINK/USD', 'MATIC/USD', 'LTC/USD', 'BCH/USD',
+        'UNI/USD'
+    ]
     
     while True:
         try:
