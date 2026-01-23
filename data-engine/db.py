@@ -1,0 +1,53 @@
+import os
+import asyncio
+import requests
+from dotenv import load_dotenv
+
+# Load env from parent directory
+load_dotenv(dotenv_path='../.env.local')
+
+url: str = os.environ.get("NEXT_PUBLIC_SUPABASE_URL")
+key: str = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+
+client = None
+
+if url and key:
+    # Construct the REST endpoint directly for Postgrest
+    # Supabase URL format: https://xyz.supabase.co
+    # Postgrest endpoint: https://xyz.supabase.co/rest/v1
+    base_url = f"{url}/rest/v1"
+    headers = {
+        "apikey": key,
+        "Authorization": f"Bearer {key}",
+        "Content-Type": "application/json"
+    }
+    # We can use simple requests or the postgrest-py lib.
+    # Actually, requests is easiest and most robust without build tools.
+    import requests
+    client = requests.Session()
+    client.headers.update(headers)
+    client.base_url = base_url
+
+def insert_signal(symbol, price, rsi, signal_type, confidence):
+    if not client:
+        return
+    
+    data = {
+        "symbol": symbol,
+        "price": price,
+        "rsi": rsi,
+        "signal_type": signal_type,
+        "confidence": confidence
+    }
+    
+    try:
+        # POST to /market_signals
+        url = f"{client.base_url}/market_signals"
+        resp = client.post(url, json=data)
+        if resp.status_code in [200, 201]:
+            print(f"   >>> DB Insert: {symbol} Signal Saved.")
+        else:
+             print(f"   !!! DB Error: {resp.status_code} - {resp.text}")
+
+    except Exception as e:
+        print(f"   !!! DB Error: {e}")

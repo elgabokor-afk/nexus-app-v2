@@ -1,0 +1,6 @@
+ccxt
+pandas
+fastapi
+uvicorn
+python-dotenv
+requests
