@@ -73,17 +73,6 @@ export const SmartChart: React.FC<SmartChartProps> = ({ symbol, signalData }) =>
 
     return (
         <div className="relative w-full h-full border border-[#222] rounded-2xl overflow-hidden bg-[#050505] shadow-2xl">
-            {/* Confidence Overlay (Retained) */}
-            {signalData && (
-                <div className="absolute top-4 left-4 z-20 bg-[#0a0a0c]/90 backdrop-blur border border-white/10 px-4 py-2 rounded-lg shadow-xl pointer-events-none">
-                    <p className="text-[10px] text-gray-400 font-mono tracking-widest uppercase mb-1">AI Confidence</p>
-                    <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${signalData.confidence > 80 ? 'bg-[#00ffa3] shadow-[0_0_10px_#00ffa3]' : 'bg-yellow-500'}`}></div>
-                        <span className="text-2xl font-bold text-white tracking-tighter">{signalData.confidence}%</span>
-                    </div>
-                </div>
-            )}
-
             <div id={`tv_chart_container_${symbol.replace('/', '_')}`} ref={containerRef} className="w-full h-full" />
         </div>
     );
