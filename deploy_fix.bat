@@ -8,7 +8,7 @@ echo "1. Adding files..."
 git add .
 echo.
 echo "2. Committing changes..."
-git commit -m "feat: switch to tradingview widget (remove lightweight-charts)"
+git commit -m "fix: optimization for mobile ui"
 echo.
 echo "3. Pushing to GitHub (Vercel Deploy)..."
 git push origin main
