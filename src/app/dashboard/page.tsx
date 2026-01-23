@@ -119,8 +119,8 @@ export default function Dashboard() {
                     </button>
 
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#00ffa3] to-[#00ce82] flex items-center justify-center text-black shadow-[0_0_30px_rgba(0,255,163,0.3)] border border-[#00ffa3]/20">
-                            <Zap size={20} fill="currentColor" />
+                        <div className="w-10 h-10 rounded-xl overflow-hidden bg-black flex items-center justify-center shadow-[0_0_30px_rgba(0,255,163,0.3)] border border-[#00ffa3]/20">
+                            <img src="/logo.png" alt="Nexus Logo" className="w-full h-full object-cover" />
                         </div>
                         <div className="hidden sm:block">
                             <span className="font-black tracking-tighter text-xl">NEXUS<span className="text-[#00ffa3]">AI</span></span>
@@ -129,6 +129,7 @@ export default function Dashboard() {
                     </div>
 
                     <div className="h-10 w-px bg-white/5 mx-2 hidden md:block"></div>
+
 
                     {/* Selected Symbol Display */}
                     {selectedSignal && (
@@ -200,16 +201,22 @@ export default function Dashboard() {
                     <div className="p-6">
                         <div className="p-5 rounded-3xl bg-white/[0.03] border border-white/5 relative overflow-hidden group">
                             <div className="absolute top-0 right-0 w-24 h-24 bg-[#00ffa3]/5 rounded-full blur-3xl -mr-12 -mt-12 transition-all group-hover:bg-[#00ffa3]/10"></div>
-                            <p className="text-[10px] text-gray-500 uppercase tracking-widest font-black mb-2 flex items-center gap-2">
-                                <span className="w-1.5 h-1.5 rounded-full bg-[#00ffa3] animate-ping"></span>
-                                Node Status
-                            </p>
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="w-5 h-5 rounded-lg overflow-hidden flex items-center justify-center bg-black border border-white/10">
+                                    <img src="/logo.png" alt="Node" className="w-full h-full object-cover" />
+                                </div>
+                                <p className="text-[10px] text-gray-500 uppercase tracking-widest font-black flex items-center gap-2">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[#00ffa3] animate-ping"></span>
+                                    Node Status
+                                </p>
+                            </div>
                             <div className="flex items-end justify-between">
                                 <span className="text-sm font-black text-white">OPTIMIZED (v2.2)</span>
                                 <span className="text-[9px] font-mono text-gray-600 uppercase">99.9% Uptime</span>
                             </div>
                         </div>
                     </div>
+
                 </aside>
 
                 {/* Backdrop for sidebar */}
