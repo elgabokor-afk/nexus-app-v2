@@ -134,6 +134,11 @@ def check_new_entries():
                 user_risk = float(params.get('account_risk_pct', 0.02))
                 account_risk = min(user_risk, 0.05) # Hard cap at 5%
                 
+                # SOLVENCY CHECK: Cannot trade if broke
+                if float(wallet['equity']) <= 10: # Minimum $10 equity to trade
+                    print(f"       [SKIPPED] Insufficient Equity (${wallet['equity']}). Trading Halted.")
+                    continue
+
                 initial_margin = float(wallet['equity']) * account_risk
                 
                 # Leveraged Position Size (Notional Value)
