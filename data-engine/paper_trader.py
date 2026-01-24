@@ -159,7 +159,6 @@ def reconcile_positions():
                 print("   [SUCCESS] Position Adopted.")
             except Exception as e:
                 print(f"   [ERROR] Failed to adopt {symbol}: {e}")
-                print(f"   [ERROR] Failed to adopt {symbol}: {e}")
         else:
             print(f"   [OK] {symbol} is tracked.")
 
@@ -221,6 +220,7 @@ def check_new_entries():
     """Checks for new signals to open positions."""
     try:
         params = get_bot_params()
+        top_assets = None # V170: Initialize to avoid NameError
         # V130: STANDARDIZED FEE (0.075%)
         # Covers 0.05% Exchange Fee + 0.025% Slippage Buffer
         params['trading_fee_pct'] = 0.00075 
@@ -245,21 +245,32 @@ def check_new_entries():
                     params['min_confidence'] = 92
                     params['max_open_positions'] = 2
                     params['default_leverage'] = 2 # V155: Hard cap at 2x
+
+                    # V170: ASSET PRUNING (Top 5 Only)
+                    top_assets = brain.get_top_performing_assets(limit=5)
+                    if top_assets:
+                        print(f"   [V170] PEFORMANCE PRUNING ACTIVE. Focus assets: {', '.join(top_assets)}")
+                    
             except Exception as e:
                 print(f"   [V135] Sync Error: {e}")
         
         # Get recent signals (last 1 hour)
         one_hour_ago = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
-        
-        response = supabase.table("market_signals") \
+        res = supabase.table("market_signals") \
             .select("*") \
-            .gt("timestamp", one_hour_ago) \
-            .order("timestamp", desc=True) \
+            .gte("created_at", one_hour_ago) \
             .execute()
-            
-        signals = response.data
         
+        signals = res.data
+        if not signals:
+            return
+
         for signal in signals:
+            # V170: PRUNING CHECK
+            if is_survival and top_assets:
+                if signal['symbol'] not in top_assets:
+                    # Skip assets that aren't top performers
+                    continue
             # 0. GLOBAL POSITION LIMIT (V12 Risk Guard)
             active_count_resp = supabase.table("paper_positions") \
                 .select("id", count="exact") \

@@ -353,6 +353,17 @@ class CosmosBrain:
             self.asset_biases[sym] = bias
             print(f"      [RECURSIVE AI] Logic adjusted for {sym}: Bias {bias:.2f} (WR: {win_rate*100:.1f}%)")
 
+    def get_top_performing_assets(self, limit=5):
+        """V170: Returns symbols with the best performance (PNL/Bias)."""
+        biases = getattr(self, 'asset_biases', {})
+        if not biases:
+            # Fallback: If no history, return top 20 list (or empty to allow all initially)
+            return []
+            
+        # Sort by bias descending
+        sorted_assets = sorted(biases.items(), key=lambda x: x[1], reverse=True)
+        return [sym for sym, bias in sorted_assets[:limit]]
+
     def rank_assets(self, asset_data_list):
         """
         V80/V90: Multi-Asset Ranking Engine.
