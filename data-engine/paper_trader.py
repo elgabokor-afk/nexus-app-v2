@@ -35,12 +35,13 @@ def get_current_price(symbol):
 def check_new_entries():
     """Checks for new signals to open positions."""
     try:
-        # Get recent signals (last 5 mins)
-        five_mins_ago = (datetime.utcnow() - timedelta(minutes=5)).isoformat()
+        # Get recent signals (last 1 hour to ensure we catch active market moves)
+        one_hour_ago = (datetime.utcnow() - timedelta(hours=1)).isoformat()
         
         response = supabase.table("market_signals") \
             .select("*") \
-            .gt("timestamp", five_mins_ago) \
+            .gt("timestamp", one_hour_ago) \
+            .order("timestamp", desc=True) \
             .execute()
             
         signals = response.data
@@ -54,7 +55,8 @@ def check_new_entries():
                 
             if not existing.data:
                 # OPEN POSITION
-                print(f"Opening Position: {signal['symbol']} @ {signal['price']}")
+                print(f"   >>> FOUND SIGNAL: {signal['symbol']} ({signal['signal_type']}) | Conf: {signal['confidence']}%")
+                print(f"       Opening Position at {signal['price']}...")
                 
                 # Simple allocation: $1000 per trade
                 quantity = 1000 / signal['price']
