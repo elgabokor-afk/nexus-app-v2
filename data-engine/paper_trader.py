@@ -289,11 +289,11 @@ def check_new_entries():
                 
                 if float(wallet['equity']) < 50:
                     is_survival = True
-                    print(f"   [SURVIVAL MODE] Equity ${wallet['equity']} < $50. ACTIVATING PROTOCOL V155.")
-                    # V155: ULTRA-STRICT OVERRIDES
-                    params['min_confidence'] = 40 # V195: Hyper-Aggressive Mode
-                    params['max_open_positions'] = 2
-                    params['default_leverage'] = 2 # V155: Hard cap at 2x
+                    print(f"   [SURVIVAL MODE] Equity ${wallet['equity']} < $50. ACTIVATING V420 AGGRESSIVE PIVOT.")
+                    # V420: AGGRESSIVE OVERRIDES
+                    params['min_confidence'] = 70 # Balanced Aggression
+                    params['max_open_positions'] = 5 # Increased from 2
+                    params['default_leverage'] = 5 # Increased from 2
 
                     # V170: ASSET PRUNING (Top 5 Only)
                     top_assets = brain.get_top_performing_assets(limit=5)
@@ -430,8 +430,8 @@ def check_new_entries():
                 
                 if is_live_execution:
                     margin_level = live_trader.get_margin_level()
-                    print(f"       [V215 MARGIN GUARD] Current Risk Ratio: {margin_level:.2f} (Safe Target: 1.7+)")
-                    if margin_level < 1.7:
+                    print(f"       [V215 MARGIN GUARD] Current Risk Ratio: {margin_level:.2f} (Safe Target: 1.5+)")
+                    if margin_level < 1.5:
                         print(f"       [SKIPPED] Margin Level {margin_level:.2f} too low. Trading Halted to prevent debt spiral.")
                         continue
 
