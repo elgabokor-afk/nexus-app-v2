@@ -132,38 +132,78 @@ export default function PaperBotWidget() {
                 </div>
 
                 {/* RECENT HISTORY */}
-                <div className="flex flex-col">
-                    <div className="flex items-center justify-between mb-4 px-1">
+                <div className="flex flex-col space-y-6">
+                    <div className="flex items-center justify-between px-1">
                         <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Execution Logs</h3>
                         <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Win Rate:</span>
+                            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Efficiency:</span>
                             <span className="text-[10px] font-black tracking-widest text-[#00ffa3]">{stats.winRate.toFixed(0)}%</span>
                         </div>
                     </div>
-                    <div className="space-y-2 pb-4">
-                        {positions.filter(p => p.status === 'CLOSED').length === 0 ? (
-                            <div className="py-4 px-4 border border-dashed border-white/5 rounded-2xl flex items-center justify-center bg-white/[0.01]">
-                                <span className="text-[9px] text-white/20 font-bold uppercase tracking-widest">Awaiting first settlement...</span>
-                            </div>
-                        ) : (
-                            positions.filter(p => p.status === 'CLOSED').map(pos => (
-                                <div key={pos.id} className="flex justify-between items-center p-3 bg-white/[0.02] hover:bg-white/[0.04] rounded-xl border border-white/5 transition-all group">
-                                    <div className="flex items-center gap-3">
-                                        <div className={`w-1.5 h-1.5 rounded-full ${(pos.pnl || 0) >= 0 ? 'bg-[#00ffa3] shadow-[0_0_8px_#00ffa3]' : 'bg-red-500 shadow-[0_0_8px_red]'}`}></div>
-                                        <div>
-                                            <span className="font-black text-sm tracking-tight">{pos.symbol}</span>
-                                            <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest leading-none mt-0.5">{pos.exit_reason}</p>
-                                        </div>
+
+                    {positions.filter(p => p.status === 'CLOSED').length === 0 ? (
+                        <div className="py-8 px-4 border border-dashed border-white/5 rounded-2xl flex items-center justify-center bg-white/[0.01]">
+                            <span className="text-[9px] text-white/20 font-bold uppercase tracking-widest">Awaiting first settlement...</span>
+                        </div>
+                    ) : (
+                        <div className="space-y-6">
+                            {/* WINS SECTION */}
+                            {positions.filter(p => p.status === 'CLOSED' && (p.pnl || 0) > 0).length > 0 && (
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-2 px-2">
+                                        <div className="w-1 h-1 rounded-full bg-[#00ffa3]"></div>
+                                        <span className="text-[9px] font-black text-[#00ffa3] uppercase tracking-widest">Settled Wins ({positions.filter(p => p.status === 'CLOSED' && (p.pnl || 0) > 0).length})</span>
                                     </div>
-                                    <div className="text-right">
-                                        <span className={`font-mono text-xs font-black ${(pos.pnl || 0) >= 0 ? 'text-[#00ffa3]' : 'text-red-500'}`}>
-                                            {(pos.pnl || 0) >= 0 ? '+' : ''}${(pos.pnl || 0).toFixed(2)}
-                                        </span>
+                                    <div className="space-y-2">
+                                        {positions.filter(p => p.status === 'CLOSED' && (p.pnl || 0) > 0).map(pos => (
+                                            <div key={pos.id} className="flex justify-between items-center p-3 bg-[#00ffa3]/[0.03] hover:bg-[#00ffa3]/[0.06] rounded-xl border border-[#00ffa3]/10 transition-all group">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-[#00ffa3] shadow-[0_0_8px_#00ffa3]"></div>
+                                                    <div>
+                                                        <span className="font-black text-sm tracking-tight">{pos.symbol}</span>
+                                                        <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest leading-none mt-0.5">{pos.exit_reason}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <span className="font-mono text-xs font-black text-[#00ffa3]">
+                                                        +${(pos.pnl || 0).toFixed(2)}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
-                            ))
-                        )}
-                    </div>
+                            )}
+
+                            {/* LOSSES SECTION */}
+                            {positions.filter(p => p.status === 'CLOSED' && (p.pnl || 0) <= 0).length > 0 && (
+                                <div className="space-y-3 pb-4">
+                                    <div className="flex items-center gap-2 px-2">
+                                        <div className="w-1 h-1 rounded-full bg-red-500"></div>
+                                        <span className="text-[9px] font-black text-red-500 uppercase tracking-widest">Settled Losses ({positions.filter(p => p.status === 'CLOSED' && (p.pnl || 0) <= 0).length})</span>
+                                    </div>
+                                    <div className="space-y-2">
+                                        {positions.filter(p => p.status === 'CLOSED' && (p.pnl || 0) <= 0).map(pos => (
+                                            <div key={pos.id} className="flex justify-between items-center p-3 bg-red-500/[0.03] hover:bg-red-500/[0.06] rounded-xl border border-red-500/10 transition-all group">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_8px_red]"></div>
+                                                    <div>
+                                                        <span className="font-black text-sm tracking-tight">{pos.symbol}</span>
+                                                        <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest leading-none mt-0.5">{pos.exit_reason}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <span className="font-mono text-xs font-black text-red-500">
+                                                        ${(pos.pnl || 0).toFixed(2)}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
