@@ -7,6 +7,7 @@ import SystemLogs from '@/components/SystemLogs';
 import { Zap, Activity, LogOut, User, TrendingUp } from 'lucide-react';
 import PaperBotWidget from '@/components/PaperBotWidget';
 import OracleMonitor from '@/components/OracleMonitor';
+import PortfolioHub from '@/components/PortfolioHub';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 
@@ -384,6 +385,9 @@ export default function Dashboard() {
 
                             {/* COL 3: OPERATIONS & ORACLE (3 Columns) */}
                             <div className="lg:col-span-3 flex flex-col gap-6 overflow-hidden min-h-[400px] lg:min-h-0">
+                                {/* V90: Portfolio Hub - AI Multi-Asset Leaderboard */}
+                                <PortfolioHub />
+
                                 {/* Oracle Insights - High Priority Realtime Feed */}
                                 <OracleMonitor />
 

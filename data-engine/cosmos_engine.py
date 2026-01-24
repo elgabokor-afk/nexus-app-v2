@@ -269,17 +269,41 @@ class CosmosBrain:
         should_trade = prob >= required_prob
         
         reasoning = self.generate_reasoning(features, prob)
-        final_reason = f"AI {'DECIDED TO TRADE' if should_trade else 'REJECTED'}: Confidence: {prob*100:.1f}%. Target: {required_prob*100:.1f}%. Context: {reasoning}"
+brain = CosmosBrain()
+
+    def update_asset_bias(self, trade_history):
+        """
+        V90 Recursive Intelligence.
+        Analyzes closed trades and calculates a 'Winning Bias' per symbol.
+        trade_history: list of closed trade dicts
+        """
+        self.asset_biases = {} # symbol -> multiplier
+        if not trade_history: return
         
-        return should_trade, prob, final_reason
+        # Calculate PnL per symbol
+        stats = {}
+        for trade in trade_history:
+            sym = trade['symbol']
+            pnl = float(trade.get('pnl', 0))
+            if sym not in stats: stats[sym] = []
+            stats[sym].append(1 if pnl > 0 else -1)
+            
+        for sym, results in stats.items():
+            # Win Rate based bias: Range 0.8 to 1.2
+            win_rate = results.count(1) / len(results)
+            bias = 1.0 + (win_rate - 0.5) * 0.4 # 50% WR = 1.0, 100% WR = 1.2, 0% WR = 0.8
+            self.asset_biases[sym] = bias
+            print(f"      [RECURSIVE AI] Logic adjusted for {sym}: Bias {bias:.2f} (WR: {win_rate*100:.1f}%)")
 
     def rank_assets(self, asset_data_list):
         """
-        V80: Multi-Asset Ranking Engine.
-        Prioritizes assets based on (Conf * Trend_Bonus) / Risk_Penalty.
-        asset_data_list: list of dicts {symbol, features, signal_type}
+        V80/V90: Multi-Asset Ranking Engine.
+        Prioritizes assets based on (Conf * Trend_Bonus * Recursive_Bias) / Risk_Penalty.
         """
         ranked = []
+        # Ensure biases exist
+        if not hasattr(self, 'asset_biases'): self.asset_biases = {}
+        
         for asset in asset_data_list:
             symbol = asset['symbol']
             features = asset['features']
@@ -288,22 +312,25 @@ class CosmosBrain:
             prob = self.predict_success(features)
             trend = self.get_trend_status(features)
             
-            # 1. Scoring Logic
+            # 1. Base Score
             score = prob * 100
+            
+            # 2. Recursive Bias (V90)
+            bias = self.asset_biases.get(symbol, 1.0)
+            score *= bias
             
             # Trend Bonus
             trend_aligned = (sig_type == "BUY" and trend == "BULLISH") or (sig_type == "SELL" and trend == "BEARISH")
             if trend_aligned:
-                score += 15 # +15 point bonus for trend confluence
+                score += 15 
             else:
-                score -= 30 # -30 penalty for counter-trend trades
+                score -= 30 
                 
-            # Volatility Penalty (Risk)
-            # High ATR relative to price increases risk
+            # Volatility Penalty
             atr = features.get('atr_value', 0)
             price = features.get('price', 1)
             vol_ratio = (atr / price) * 100
-            if vol_ratio > 3.0: # Vol higher than 3%
+            if vol_ratio > 3.0: 
                 score -= 10
                 
             ranked.append({
@@ -314,11 +341,11 @@ class CosmosBrain:
                 "reasoning": self.generate_reasoning(features, prob)
             })
             
-        # Sort by score descending
         return sorted(ranked, key=lambda x: x['score'], reverse=True)
 
 # Singleton Instance for easy import
 brain = CosmosBrain()
+
 
 if __name__ == "__main__":
     # Manual Training Trigger

@@ -4,7 +4,7 @@ import pandas as pd
 import ccxt
 from dotenv import load_dotenv
 from cosmos_engine import brain
-from db import insert_oracle_insight, log_error, insert_signal, insert_analytics, get_active_assets
+from db import insert_oracle_insight, log_error, insert_signal, insert_analytics, get_active_assets, upsert_asset_ranking, fetch_trade_history
 
 load_dotenv(dotenv_path="../.env.local")
 
@@ -44,7 +44,7 @@ def calculate_atr(df, period=14):
 
 def run_oracle_step(symbol='BTC/USD'):
     """
-    V80 Multi-Asset Oracle Step
+    V80/V90 Multi-Asset Oracle Step
     """
     try:
         # 1. FETCH 1m DATA
@@ -69,19 +69,28 @@ def run_oracle_step(symbol='BTC/USD'):
             'imbalance_ratio': 0 
         }
         
-        # 3. BLM ANALYSIS
+        # 3. BLM ANALYSIS & RANKING (V90)
         prob = brain.predict_success(features)
         trend = brain.get_trend_status(features)
         reasoning = brain.generate_reasoning(features, prob)
+        
+        # Calculate Recursive Ranking Score
+        # Matches logic in cosmos_engine.rank_assets
+        score = prob * 100
+        if (trend == "BULLISH" and prob > 0.5): score += 15
+        elif (trend == "BEARISH" and prob < 0.5): score += 15
+        
+        # 4. SYNC RANKING TO SUPABASE (The Neural Link)
+        upsert_asset_ranking(symbol, score, prob, trend, reasoning)
         
         # Decide if we should scalp
         signal_type = "STRONG BUY" if prob >= 0.90 and trend == "BULLISH" else \
                       "STRONG SELL" if prob >= 0.90 and trend == "BEARISH" else "NEUTRAL"
 
-        # 4. LOGGING
-        print(f"[{time.strftime('%H:%M:%S')}] ORACLE | {symbol.ljust(8)} | {trend.ljust(7)} | Prob: {prob*100:4.1f}%")
+        # 5. LOGGING
+        print(f"[{time.strftime('%H:%M:%S')}] ORACLE | {symbol.ljust(8)} | {trend.ljust(7)} | Prob: {prob*100:4.1f}% | Rank: {score:.1f}")
         
-        # 5. EMIT SCALP SIGNAL (V60/V61)
+        # 6. EMIT SCALP SIGNAL
         if signal_type != "NEUTRAL":
             print(f"      !!! SCALP OPPORTUNITY: {symbol} {signal_type} !!!")
             atr = latest['ATR']
@@ -124,7 +133,7 @@ def run_oracle_step(symbol='BTC/USD'):
                 "price": latest['close'],
                 "rsi": latest['RSI'],
                 "ema_200": latest['EMA_200'],
-                "type": "MULTI_SCALP_SCAN"
+                "type": "RECURSIVE_RANK_SCAN"
             }
         )
         
@@ -133,12 +142,26 @@ def run_oracle_step(symbol='BTC/USD'):
         log_error(f"ORACLE_{symbol}", e, "ERROR")
 
 if __name__ == "__main__":
-    print("--- COSMOS MULTI-ASSET ORACLE V80 STARTED ---")
-    print("Monitoring Top 20 Pairs... Syncing to Vercel via Supabase.")
+    print("--- COSMOS RECURSIVE ORACLE V90 STARTED ---")
+    print("Broadcasting Live Rankings & AI Insights for Top 20 Portfolio.")
+    
+    # V90: Initial Recursive Sync
+    print(">>> Performing Initial Recursive Analysis...")
+    history = fetch_trade_history(limit=100)
+    brain.update_asset_bias(history)
+    
+    last_recursive_sync = time.time()
     
     while True:
+        # V90: Refresh recursive logic every hour
+        if time.time() - last_recursive_sync > 3600:
+            print(">>> Hourly Recursive Sync: Analyzing latest results...")
+            history = fetch_trade_history(limit=100)
+            brain.update_asset_bias(history)
+            last_recursive_sync = time.time()
+
         target_assets = get_active_assets()
-        print(f"\n>>> Starting Pulse for {len(target_assets)} assets...")
+        print(f"\n>>> Starting Recursive Pulse for {len(target_assets)} assets...")
         
         for symbol in target_assets:
             run_oracle_step(symbol)
@@ -146,4 +169,5 @@ if __name__ == "__main__":
             
         print(f">>> Pulse Complete. Sleeping 30s...")
         time.sleep(30) 
+ 
 

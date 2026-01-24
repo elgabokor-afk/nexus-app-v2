@@ -142,6 +142,40 @@ def get_active_assets():
         print(f"   !!! DB Error (Assets): {e}")
         return ["BTC/USD"]
 
+def fetch_trade_history(limit=100):
+    """V90: Fetches recently closed trades to help the AI learn from results."""
+    if not client: return []
+    try:
+        url = f"{client.base_url}/paper_positions?status=eq.CLOSED&order=closed_at.desc&limit={limit}"
+        resp = client.get(url)
+        if resp.status_code == 200:
+            return resp.json()
+        return []
+    except Exception as e:
+        print(f"   !!! History Fetch Error: {e}")
+        return []
+
+def upsert_asset_ranking(symbol, score, confidence, trend, reasoning):
+    """V90: Syncs the current AI score for an asset (Upsert)."""
+    if not client: return
+    data = {
+        "symbol": symbol,
+        "score": float(score),
+        "confidence": float(confidence),
+        "trend_status": trend,
+        "reasoning": reasoning,
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    try:
+        # Postgrest upsert works by sending ON CONFLICT in the header or just using a specific endpoint
+        # For simplicity with the existing client wrapper, we use a custom POST with upsert parameter
+        url = f"{client.base_url}/ai_asset_rankings"
+        headers = client.headers.copy()
+        headers["Prefer"] = "resolution=merge-duplicates"
+        client.post(url, json=data, headers=headers)
+    except Exception as e:
+        print(f"   !!! Ranking Sync Error: {e}")
+
 def insert_oracle_insight(symbol, timeframe, trend, prob, reasoning, technical):
     if not client: return
     data = {
