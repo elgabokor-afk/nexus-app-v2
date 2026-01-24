@@ -27,6 +27,8 @@ MODEL_PATH = "cosmos_model.joblib"
 if not SUPABASE_URL or not SUPABASE_KEY:
     print("Cosmos Engine: Supabase credentials missing (Check .env.local)") 
 
+from deep_brain import deep_brain # V490
+
 class CosmosBrain:
     def __init__(self):
         self.supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -40,6 +42,9 @@ class CosmosBrain:
         self.feature_cols = ['rsi_value', 'imbalance_ratio', 'spread_pct', 'atr_value', 'macd_line', 'histogram']
         self.is_trained = False
         self.load_model()
+        
+        # V490: Link Deep Brain
+        self.deep_brain = deep_brain
 
     def load_model(self):
         if not ML_AVAILABLE: return
