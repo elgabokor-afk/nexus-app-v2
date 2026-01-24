@@ -83,9 +83,9 @@ def run_oracle_step(symbol='BTC/USD'):
         if signal_type != "NEUTRAL":
             print(f"      !!! SCALP OPPORTUNITY DETECTED: {signal_type} !!!")
             
-            # Use tight ATR targets for scalp
+            # V61: Use wider ATR targets to allow for corrections
             atr = latest['ATR']
-            sl = latest['close'] - (atr * 1.5) if "BUY" in signal_type else latest['close'] + (atr * 1.5)
+            sl = latest['close'] - (atr * 2.5) if "BUY" in signal_type else latest['close'] + (atr * 2.5)
             tp = latest['close'] + (atr * 2.1) if "BUY" in signal_type else latest['close'] - (atr * 2.1)
             
             sig_id = insert_signal(
@@ -134,7 +134,7 @@ def run_oracle_step(symbol='BTC/USD'):
 
 if __name__ == "__main__":
     print("--- COSMOS ORACLE V40 (BLM) STARTED ---")
-    print("Monitoring 1m Candles... Syncing to Vercel via Supabase.")
+    print("Monitoring 1m Candles... Syncing to Vercel via Supabase (30s Pulse).")
     while True:
         run_oracle_step()
-        time.sleep(60) # High-frequency 1m pulse
+        time.sleep(30) # Increased frequency for better real-time feel (V62)

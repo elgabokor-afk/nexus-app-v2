@@ -264,8 +264,8 @@ def check_new_entries():
                 
                 if is_scalp:
                     tp_mult = 1.8 # Tight scalp TP
-                    sl_mult = 1.0 # Tight scalp SL
-                    print(f"       [SCALP MODE] Applying tighter targets: TP({tp_mult}x) SL({sl_mult}x)")
+                    sl_mult = 2.0 # Wider scalp SL (V61) for correction tolerance
+                    print(f"       [SCALP MODE] Applying correction-tolerant targets: TP({tp_mult}x) SL({sl_mult}x)")
 
                 target_net_profit = (atr_val * tp_mult) * abs(quantity)
                 target_net_loss = (atr_val * sl_mult) * abs(quantity)
