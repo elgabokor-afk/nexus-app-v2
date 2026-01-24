@@ -49,8 +49,11 @@ TRADING_MODE = os.getenv("TRADING_MODE", "PAPER")
 print(f"--- NEXUS TRADING ENGINE INITIALIZED [MODE: {TRADING_MODE}] ---")
 
 def get_current_price(symbol):
-    """V310: Use Binance for price data."""
+    """V310: Use Binance for price data. V404: Early exit for blacklist."""
     try:
+        if any(b in symbol.upper() for b in ASSET_BLACKLIST):
+            return None
+            
         ticker = live_trader.fetch_ticker(symbol)
         if ticker:
             return ticker['last']
@@ -341,7 +344,7 @@ def check_new_entries():
                 active_count_resp = supabase.table("paper_positions") \
                     .select("id", count="exact") \
                     .eq("status", "OPEN") \
-                    .gte("created_at", yesterday) \
+                    .gte("opened_at", yesterday) \
                     .execute()
                 active_count = active_count_resp.count or 0
             
