@@ -87,7 +87,9 @@ def get_bot_params():
             "take_profit_atr_mult": 2.5,
             "default_leverage": 10,
             "margin_mode": "ISOLATED",
-            "account_risk_pct": 0.02 # Safe default
+            "margin_mode": "ISOLATED",
+            "account_risk_pct": 0.02, # Safe default
+            "min_confidence": 75
         }
 
 def check_new_entries():
@@ -109,14 +111,30 @@ def check_new_entries():
         
         for signal in signals:
             # V3 LOGIC: Dynamic Filter based on 'bot_params'
-            # Only trade if the signal matches our CURRENT learning state
-            # (e.g. if we learned to be conservative, we might skip high RSI buys)
-            
-            # Simple check: If signal RSI is strictly below our Threshold
+            # 1. RSI Check
             if signal['rsi'] > params['rsi_buy_threshold'] and "BUY" in signal['signal_type']:
-                continue # Skip signal, too risky for current brain
+                continue 
+
+            # 2. CONFIDENCE Check (New V17)
+            min_conf = float(params.get('min_confidence', 75))
+            signal_conf = float(signal.get('confidence', 0))
+            if signal_conf < min_conf:
+                 print(f"       [SKIPPED] {signal['symbol']} Low Confidence: {signal_conf}% < {min_conf}%")
+                 continue
+
+            # 3. DIVERSIFICATION Check (One position per Symbol)
+            # Check for ANY open position with this symbol
+            active_on_symbol = supabase.table("paper_positions") \
+                .select("id") \
+                .eq("symbol", signal['symbol']) \
+                .eq("status", "OPEN") \
+                .execute()
                 
-            # Check if we already traded this signal
+            if active_on_symbol.data:
+                # Already have an open trade for this coin. Diversify!
+                continue
+                
+            # 4. DUPLICATE SIGNAL Check
             existing = supabase.table("paper_positions") \
                 .select("id") \
                 .eq("signal_id", signal['id']) \
@@ -124,7 +142,7 @@ def check_new_entries():
                 
             if not existing.data:
                 # OPEN POSITION
-                print(f"   >>> FOUND SIGNAL: {signal['symbol']} | RSI: {signal['rsi']} (Thresh: {params['rsi_buy_threshold']})")
+                print(f"   >>> FOUND SIGNAL: {signal['symbol']} | Conf: {signal_conf}% | RSI: {signal['rsi']}")
                 
                 # V5 LOGIC: LEVERAGE & MARGIN
                 leverage = int(params.get('default_leverage', 10))
@@ -135,7 +153,7 @@ def check_new_entries():
                 account_risk = min(user_risk, 0.05) # Hard cap at 5%
                 
                 # SOLVENCY CHECK: Cannot trade if broke
-                if float(wallet['equity']) <= 10: # Minimum $10 equity to trade
+                if float(wallet['equity']) <= 10: 
                     print(f"       [SKIPPED] Insufficient Equity (${wallet['equity']}). Trading Halted.")
                     continue
 

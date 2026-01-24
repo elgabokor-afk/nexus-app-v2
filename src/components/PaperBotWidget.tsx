@@ -397,7 +397,7 @@ export default function PaperBotWidget({ onSelectSymbol, viewMode = 'widget' }: 
                                                                 supabase.from('paper_positions').update({
                                                                     bot_take_profit: parseFloat(newTp),
                                                                     bot_stop_loss: parseFloat(newSl)
-                                                                }).eq('id', pos.id).then(({ error }) => {
+                                                                }).eq('id', pos.id).then(({ error }: { error: any }) => {
                                                                     if (error) alert("Update Failed");
                                                                     else fetchPositions();
                                                                 });
