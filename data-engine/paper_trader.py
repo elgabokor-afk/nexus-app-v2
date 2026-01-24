@@ -5,6 +5,7 @@ import ccxt
 import pandas as pd
 from supabase import create_client, Client
 from dotenv import load_dotenv
+from optimizer import run_optimization # V6 Engine
 from datetime import datetime, timedelta, timezone
 
 # Load environment variables
@@ -244,6 +245,10 @@ def monitor_positions():
                     
                 # V3: Update Wallet Balance
                 update_wallet(pnl)
+                
+                # V6: RUN SELF-OPTIMIZATION
+                print("   >>> Triggering AI Optimization...")
+                run_optimization()
 
     except Exception as e:
         print(f"Error monitoring positions: {e}")
