@@ -423,22 +423,23 @@ def check_new_entries():
                     
                     # V150: SAFE SCALPING (Survival Mode Override)
                     if is_survival:
-                        leverage = min(leverage, 3) # Cap at 3x
-                        tp_mult = 1.5 # Base Hits
-                        sl_mult = 1.1 # Tight Stop
-                        print(f"       [SURVIVAL SCALP] Leverage cut to {leverage}x. Targets tightened (TP 1.5x / SL 1.1x)")
+                        leverage = min(leverage, 2) # V155: Hard cap at 2x
+                        # V185: BREATHING ROOM
+                        tp_mult = 2.8 
+                        sl_mult = 2.2 
+                        print(f"       [V185 BREATHING ROOM] Leverage: {leverage}x | TP: {tp_mult}x | SL: {sl_mult}x")
                     else:
                         print(f"       [SCALP MODE] Applying correction-tolerant targets: TP({tp_mult}x) SL({sl_mult}x)")
 
                 target_net_profit = (atr_val * tp_mult) * abs(quantity)
                 target_net_loss = (atr_val * sl_mult) * abs(quantity)
                 
-                # V155: ULTRA-CONSERVATIVE LOSS LIMIT
+                # V155/V185: HARD LOSS CAP
                 if is_survival:
-                    max_allowed_loss = 0.15
+                    max_allowed_loss = 0.30 # V185: Increased for Breathing Room
                     if target_net_loss > max_allowed_loss:
                         target_net_loss = max_allowed_loss
-                        print(f"       [V155] HARD LOSS CAP: Tightening Stop Loss to limit risk to ${max_allowed_loss}")
+                        print(f"       [V185] HARD LOSS CAP: Protected risk at ${max_allowed_loss}")
                 
                 abs_qty = abs(quantity)
                 fee_r = float(params.get('trading_fee_pct', 0.0005))
