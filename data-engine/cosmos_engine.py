@@ -1,12 +1,19 @@
 import os
-import joblib
 import pandas as pd
 import numpy as np
 from supabase import create_client, Client
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
-from sklearn.impute import SimpleImputer
 from dotenv import load_dotenv
+
+# Safe Import for ML Libraries
+try:
+    import joblib
+    from sklearn.ensemble import RandomForestClassifier
+    from sklearn.model_selection import train_test_split
+    from sklearn.impute import SimpleImputer
+    ML_AVAILABLE = True
+except ImportError as e:
+    print(f"!!! Cosmos Engine Warning: ML libraries not found ({e}). Running in SAFE MODE.")
+    ML_AVAILABLE = False
 
 load_dotenv(dotenv_path="../.env.local")
 
@@ -15,18 +22,25 @@ SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 MODEL_PATH = "cosmos_model.joblib"
 
 if not SUPABASE_URL or not SUPABASE_KEY:
-    print("Cosmos Engine: Supabase credentials missing (Check .env.local)")
+    print("Cosmos Engine: Supabase credentials missing (Check .env.local)") 
 
 class CosmosBrain:
     def __init__(self):
         self.supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
         self.model = None
-        self.imputer = SimpleImputer(strategy='mean')
+        
+        if ML_AVAILABLE:
+            self.imputer = SimpleImputer(strategy='mean')
+        else:
+            self.imputer = None
+            
         self.feature_cols = ['rsi_value', 'imbalance_ratio', 'spread_pct', 'atr_value', 'macd_line', 'histogram']
         self.is_trained = False
         self.load_model()
 
     def load_model(self):
+        if not ML_AVAILABLE: return
+        
         if os.path.exists(MODEL_PATH):
             try:
                 data = joblib.load(MODEL_PATH)
@@ -38,9 +52,12 @@ class CosmosBrain:
                 print(f"   >>> Cosmos Brain: Load failed ({e}). Starting fresh.")
     
     def save_model(self):
-        if self.model:
+        if not ML_AVAILABLE or not self.model: return
+        try:
             joblib.dump({'model': self.model, 'imputer': self.imputer}, MODEL_PATH)
             print("   >>> Cosmos Brain: Knowledge saved to disk.")
+        except Exception as e:
+            print(f"   >>> Cosmos Brain: Save failed ({e})")
 
     def fetch_training_data(self):
         """Fetches Closed Trades + Analytics Signals for training."""
@@ -60,6 +77,8 @@ class CosmosBrain:
             sig_ids = [p['signal_id'] for p in positions]
             
             # 3. Get Analytics for these signals
+            # Note: In production with thousands of signals, this batch fetch needs pagination or join.
+            # optimized for V8 MVP (<500 items).
             res_analytics = self.supabase.table("analytics_signals") \
                 .select("*") \
                 .in_("signal_id", sig_ids) \
@@ -84,6 +103,10 @@ class CosmosBrain:
             return pd.DataFrame()
 
     def train(self):
+        if not ML_AVAILABLE:
+            print("   >>> Cosmos Brain: Training skipped (Safe Mode).")
+            return
+
         print("   >>> Cosmos Brain: Entering Deep Sleep Training Mode...")
         df = self.fetch_training_data()
         
@@ -113,6 +136,9 @@ class CosmosBrain:
         Predicts probability of WIN.
         features: dict with keys matching feature_cols
         """
+        if not ML_AVAILABLE:
+            return 0.5 # Neutral Safe Mode
+
         if not self.is_trained:
             return 0.5 # Neutral if untrained
             
