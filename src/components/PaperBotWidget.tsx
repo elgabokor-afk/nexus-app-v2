@@ -20,7 +20,11 @@ interface PaperPosition {
     bot_take_profit?: number;
 }
 
-export default function PaperBotWidget() {
+interface PaperBotWidgetProps {
+    onSelectSymbol?: (symbol: string) => void;
+}
+
+export default function PaperBotWidget({ onSelectSymbol }: PaperBotWidgetProps) {
     const [positions, setPositions] = useState<PaperPosition[]>([]);
     const [wallet, setWallet] = useState({ equity: 10000, balance: 10000 });
     const [stats, setStats] = useState({ totalPnl: 0, winRate: 0, activeCount: 0 });
@@ -181,7 +185,11 @@ export default function PaperBotWidget() {
                                 const isPosGreen = pnl >= 0;
 
                                 return (
-                                    <div key={pos.id} className={`group relative p-4 bg-gradient-to-br from-white/[0.05] to-transparent rounded-2xl border transition-all overflow-hidden shadow-xl ${isPosGreen ? 'border-[#00ffa3]/20 hover:border-[#00ffa3]/40' : 'border-red-500/20 hover:border-red-500/40'}`}>
+                                    <div
+                                        key={pos.id}
+                                        onClick={() => onSelectSymbol && onSelectSymbol(pos.symbol)}
+                                        className={`group relative p-4 bg-gradient-to-br from-white/[0.05] to-transparent rounded-2xl border transition-all overflow-hidden shadow-xl cursor-pointer active:scale-95 ${isPosGreen ? 'border-[#00ffa3]/20 hover:border-[#00ffa3]/40' : 'border-red-500/20 hover:border-red-500/40'}`}
+                                    >
                                         <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-30 transition-all">
                                             <TrendingUp size={32} className={isPosGreen ? "text-[#00ffa3]" : "text-red-500"} />
                                         </div>
@@ -247,7 +255,11 @@ export default function PaperBotWidget() {
                                     </div>
                                     <div className="space-y-2">
                                         {positions.filter(p => p.status === 'CLOSED' && (p.pnl || 0) > 0).map(pos => (
-                                            <div key={pos.id} className="flex justify-between items-center p-3 bg-[#00ffa3]/[0.03] hover:bg-[#00ffa3]/[0.06] rounded-xl border border-[#00ffa3]/10 transition-all group">
+                                            <div
+                                                key={pos.id}
+                                                onClick={() => onSelectSymbol && onSelectSymbol(pos.symbol)}
+                                                className="flex justify-between items-center p-3 bg-[#00ffa3]/[0.03] hover:bg-[#00ffa3]/[0.06] rounded-xl border border-[#00ffa3]/10 transition-all group cursor-pointer active:scale-95"
+                                            >
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-1.5 h-1.5 rounded-full bg-[#00ffa3] shadow-[0_0_8px_#00ffa3]"></div>
                                                     <div>
@@ -275,7 +287,11 @@ export default function PaperBotWidget() {
                                     </div>
                                     <div className="space-y-2">
                                         {positions.filter(p => p.status === 'CLOSED' && (p.pnl || 0) <= 0).map(pos => (
-                                            <div key={pos.id} className="flex justify-between items-center p-3 bg-red-500/[0.03] hover:bg-red-500/[0.06] rounded-xl border border-red-500/10 transition-all group">
+                                            <div
+                                                key={pos.id}
+                                                onClick={() => onSelectSymbol && onSelectSymbol(pos.symbol)}
+                                                className="flex justify-between items-center p-3 bg-red-500/[0.03] hover:bg-red-500/[0.06] rounded-xl border border-red-500/10 transition-all group cursor-pointer active:scale-95"
+                                            >
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_8px_red]"></div>
                                                     <div>

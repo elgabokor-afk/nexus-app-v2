@@ -41,6 +41,7 @@ export default function Dashboard() {
     const [signals, setSignals] = useState<Signal[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedSignal, setSelectedSignal] = useState<Signal | null>(null);
+    const [customSymbol, setCustomSymbol] = useState<string | null>(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true); // Default open on desktop
     const [mounted, setMounted] = useState(false);
     const [user, setUser] = useState<any>(null);
@@ -51,10 +52,15 @@ export default function Dashboard() {
         const sig = signals.find(s => s.symbol === symbol);
         if (sig) {
             setSelectedSignal(sig);
-            if (window.innerWidth < 1024) {
-                const chartElement = document.getElementById('main-chart-area');
-                chartElement?.scrollIntoView({ behavior: 'smooth' });
-            }
+            setCustomSymbol(null);
+        } else {
+            setSelectedSignal(null);
+            setCustomSymbol(symbol);
+        }
+
+        if (window.innerWidth < 1024) {
+            const chartElement = document.getElementById('main-chart-area');
+            chartElement?.scrollIntoView({ behavior: 'smooth' });
         }
     };
 
@@ -319,7 +325,7 @@ export default function Dashboard() {
                                 <div className="flex-1 w-full h-full relative">
                                     <div className="absolute inset-0 bg-gradient-to-b from-[#00ffa3]/5 to-transparent pointer-events-none"></div>
                                     <SmartChart
-                                        symbol={selectedSignal?.symbol || 'BTC/USD'}
+                                        symbol={selectedSignal?.symbol || customSymbol || 'BTC/USD'}
                                         signalData={selectedSignal ? {
                                             entry: selectedSignal.price,
                                             stop_loss: selectedSignal.stop_loss,
@@ -337,7 +343,7 @@ export default function Dashboard() {
                             <div className="flex-1 flex flex-col rounded-[2.5rem] border border-white/10 bg-[#0a0a0c]/60 backdrop-blur-2xl shadow-2xl relative overflow-hidden">
                                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#00ffa3]/20 to-transparent"></div>
                                 <div className="flex-1">
-                                    <PaperBotWidget />
+                                    <PaperBotWidget onSelectSymbol={handleViewChart} />
                                 </div>
                             </div>
                         </div>
