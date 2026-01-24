@@ -36,8 +36,8 @@ export default function SystemLogs({ onClose, embedded = false }: { onClose?: ()
             .on(
                 'postgres_changes',
                 { event: 'INSERT', schema: 'public', table: 'error_logs' },
-                (payload: { new: Log } | any) => {
-                    if (payload.new) {
+                (payload: any) => {
+                    if (payload && payload.new) {
                         const newLog = payload.new as Log;
                         setLogs(prev => [newLog, ...prev].slice(0, 100));
                     }
