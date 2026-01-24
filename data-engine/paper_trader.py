@@ -208,6 +208,7 @@ def check_new_entries():
 def monitor_positions():
     """Monitors open positions for SL/TP."""
     try:
+        params = get_bot_params()
         # Get all OPEN positions
         response = supabase.table("paper_positions") \
             .select("*, market_signals(stop_loss, take_profit)") \
@@ -257,6 +258,7 @@ def monitor_positions():
                 
             if exit_reason:
                 # CLOSE POSITION
+                total_fees = 0
                 if exit_reason == "LIQUIDATION":
                     # Total Loss of Initial Margin
                     pnl = -float(pos.get('initial_margin') or 0)
