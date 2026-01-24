@@ -35,6 +35,11 @@ export default function PaperBotWidget({ onSelectSymbol, viewMode = 'widget' }: 
     const [positions, setPositions] = useState<PaperPosition[]>([]);
     const [wallet, setWallet] = useState({ equity: 10000, balance: 10000 });
     const [stats, setStats] = useState({ totalPnl: 0, winRate: 0, activeCount: 0 });
+    const [extendedStats, setExtendedStats] = useState({
+        weekly: { wr: 0, count: 0 },
+        monthly: { wr: 0, count: 0 },
+        yearly: { wr: 0, count: 0 }
+    });
     const [prices, setPrices] = useState<Record<string, number>>({});
 
     const fetchPositions = async () => {
@@ -45,6 +50,16 @@ export default function PaperBotWidget({ onSelectSymbol, viewMode = 'widget' }: 
         if (data) {
             setPositions(data);
             calculateStats(data);
+        }
+
+        // Fetch Extended Stats (RPC)
+        const { data: rpcData, error } = await supabase.rpc('get_bot_stats');
+        if (rpcData && !error) {
+            setExtendedStats({
+                weekly: { wr: rpcData.weekly_winrate, count: rpcData.weekly_trades },
+                monthly: { wr: rpcData.monthly_winrate, count: rpcData.monthly_trades },
+                yearly: { wr: rpcData.yearly_winrate, count: rpcData.yearly_trades }
+            });
         }
     };
 
@@ -188,6 +203,21 @@ export default function PaperBotWidget({ onSelectSymbol, viewMode = 'widget' }: 
                             )}
                         </div>
                     </div>
+                </div>
+
+                {/* WINRATE STATS (V19) */}
+                <div className="grid grid-cols-3 gap-2 mb-8">
+                    {[
+                        { period: '7 DAYS', wr: extendedStats.weekly.wr, trades: extendedStats.weekly.count },
+                        { period: '30 DAYS', wr: extendedStats.monthly.wr, trades: extendedStats.monthly.count },
+                        { period: 'ALL TIME', wr: extendedStats.yearly.wr, trades: extendedStats.yearly.count }
+                    ].map((item, i) => (
+                        <div key={i} className="bg-white/5 border border-white/5 rounded-xl p-3 flex flex-col items-center">
+                            <span className="text-[9px] text-gray-500 font-black uppercase tracking-widest mb-1">{item.period}</span>
+                            <span className={`text-xl font-black ${item.wr >= 50 ? 'text-[#00ffa3]' : 'text-white'}`}>{item.wr}%</span>
+                            <span className="text-[9px] text-gray-600 font-mono">{item.trades} Trades</span>
+                        </div>
+                    ))}
                 </div>
 
             </div>
