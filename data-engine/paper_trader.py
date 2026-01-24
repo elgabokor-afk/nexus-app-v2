@@ -165,6 +165,31 @@ def reconcile_positions():
         else:
             print(f"   [OK] {symbol} is tracked.")
 
+def archive_zombies():
+    """V250: Automatically archive stale 'OPEN' records created > 24h ago."""
+    print("--- [V250] SEARCHING FOR ZOMBIE POSITIONS ---")
+    try:
+        yesterday = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
+        
+        # Mark as CLOSED with reason STALE
+        res = supabase.table("paper_positions") \
+            .update({
+                "status": "CLOSED", 
+                "exit_reason": "ZOMBIE_AUTO_ARCHIVE", 
+                "closed_at": datetime.now(timezone.utc).isoformat()
+            }) \
+            .eq("status", "OPEN") \
+            .lt("created_at", yesterday) \
+            .execute()
+            
+        count = len(res.data) if res.data else 0
+        if count > 0:
+            print(f"   [V250 SUCCESS] Archived {count} stale trades.")
+        else:
+            print("   [V250] No zombies found.")
+    except Exception as e:
+        print(f"   [V250 ERROR] Could not archive zombies: {e}")
+
 def sync_live_status():
     """V145: REAL-TIME SYNC & LEARNING (Detect External Closures/Liqs)"""
     if TRADING_MODE != "LIVE": return
@@ -269,10 +294,10 @@ def check_new_entries():
             return
 
         for signal in signals:
-            # V200: BTC-EXCLUSIVE FILTER
-            is_btc = "BTC" in signal['symbol'].upper()
-            if not is_btc:
-                # User requested to only operate BTC USDT
+            # V220: DOGE-EXCLUSIVE FILTER
+            is_doge = "DOGE" in signal['symbol'].upper()
+            if not is_doge:
+                # User requested to only operate DOGE USDT
                 continue
             
             # V170: PRUNING CHECK (Not strictly needed if BTC Only, but kept for logic safety)
@@ -280,19 +305,29 @@ def check_new_entries():
                 if signal['symbol'] not in top_assets:
                     # Skip assets that aren't top performers
                     continue
-            # 0. GLOBAL POSITION LIMIT (V12 Risk Guard)
-            active_count_resp = supabase.table("paper_positions") \
-                .select("id", count="exact") \
-                .eq("status", "OPEN") \
-                .execute()
+            # 0. GLOBAL POSITION LIMIT (V250 Reality Check)
+            if TRADING_MODE == "LIVE":
+                # LIVE Mode: The source of truth is THE EXCHANGE, not the DB zombies.
+                real_positions = live_trader.get_open_positions()
+                active_count = len(real_positions)
+                print(f"   [V250 REALITY CHECK] Binance has {active_count} active positions. (DB count ignored)")
+            else:
+                # PAPER Mode: Focus on recent trades to ignore historical artifacts
+                yesterday = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
+                active_count_resp = supabase.table("paper_positions") \
+                    .select("id", count="exact") \
+                    .eq("status", "OPEN") \
+                    .gte("created_at", yesterday) \
+                    .execute()
+                active_count = active_count_resp.count or 0
             
-            active_count = active_count_resp.count or 0
             max_pos = int(params.get('max_open_positions', 5))
             
             if active_count >= max_pos:
-                print(f"   [!!!] BLOCKED: You have {active_count} open trades in the DB, but your limit is {max_pos}.")
-                print(f"   [!!!] THE BOT WILL NOT SEND ORDERS TO BINANCE UNTIL THE DB IS CLEAN.")
-                print(f"   [!!!] Fix: Run 'python data-engine/cleanup_db.py' and restart.")
+                if TRADING_MODE == "LIVE":
+                    print(f"   [!!!] BLOCKED: You have {active_count} REAL positions in Binance. Limit reached.")
+                else:
+                    print(f"   [!!!] BLOCKED: You have {active_count} RECENT paper positions. Limit reached.")
                 break
 
             # V3 LOGIC: Dynamic Filter based on 'bot_params'
@@ -391,18 +426,22 @@ def check_new_entries():
                     continue
 
                 # Target Margin Calculation
-                target_margin = equity * base_account_risk * conf_multiplier
+                # V240: USER REQUESTED FIXED $15 MARGIN
+                target_margin = 15.0
+                scaling_reason = " (Fixed $15)"
                 
                 # V135: SURVIVAL OVERRIDE
                 if is_survival:
-                    target_margin = 6.0 # Fixed viable margin for Binance Min Notional (~$5.50)
-                    print(f"       [SURVIVAL] Forcing fixed margin ${target_margin} (Min Viable)")
+                    # Even in survival, we use $15 as requested
+                    target_margin = 15.0
+                    print(f"       [SURVIVAL] Using fixed margin ${target_margin}")
                 
                 # V80: MULTI-ASSET DIVERSIFICATION (15% Cap per Symbol)
-                max_asset_exposure = equity * 0.15
+                # V240: Disable this cap for fixed $15 margin mode on micro-accounts
+                max_asset_exposure = equity * 0.40 # Increase cap to 40% to allow $15 on $40 account
                 
-                # Free Balance Protection (Never use more than 25% of free balance)
-                max_safe_margin = balance * 0.25 
+                # Free Balance Protection (Never use more than 50% of free balance for $15 orders)
+                max_safe_margin = balance * 0.50 
                 
                 # Check current exposure for this symbol
                 existing_asset_pos = supabase.table("paper_positions") \
@@ -413,11 +452,15 @@ def check_new_entries():
                 
                 current_exposure = sum([float(p['initial_margin'] or 0) for p in existing_asset_pos.data])
                 if current_exposure + target_margin > max_asset_exposure:
-                    target_margin = max(0, max_asset_exposure - current_exposure)
-                    if target_margin < 2.0:
-                        print(f"       [SKIPPED] Max Asset Exposure reached for {signal['symbol']}")
-                        continue
-                    print(f"       [DIVERSIFICATION] Scaling down to ${target_margin:.2f} for cap safety.")
+                    # Allow one $15 position even if it hits the cap
+                    if current_exposure == 0:
+                        pass # Allow the first $15 trade
+                    else:
+                        target_margin = max(0, max_asset_exposure - current_exposure)
+                        if target_margin < 2.0:
+                            print(f"       [SKIPPED] Max Asset Exposure reached for {signal['symbol']}")
+                            continue
+                        print(f"       [DIVERSIFICATION] Scaling down to ${target_margin:.2f} for cap safety.")
 
                 initial_margin = min(target_margin, max_safe_margin)
                 
@@ -444,14 +487,14 @@ def check_new_entries():
                     
                     # V150: SAFE SCALPING (Survival Mode Override)
                     if is_survival:
-                        # V200: BTC AGGRESSIVE OVERRIDE
-                        if is_btc:
-                            leverage = min(leverage, 3) # Max 3x for BTC
-                            tp_mult = 2.2 # Aggressive Target
+                        # V220: DOGE HYPER-SCALP OVERRIDE
+                        if is_doge:
+                            leverage = min(leverage, 3) # Max 3x for DOGE
+                            tp_mult = 2.5 # Aggressive DOGE Target
                             sl_mult = 1.8 # Balanced Stop
-                            print(f"       [V200 BTC SCALP] Leverage: {leverage}x | TP: {tp_mult}x | SL: {sl_mult}x")
+                            print(f"       [V220 DOGE SCALP] Leverage: {leverage}x | TP: {tp_mult}x | SL: {sl_mult}x")
                         else:
-                            leverage = min(leverage, 2) # v155 hard cap for others (though pruned)
+                            leverage = min(leverage, 2) 
                             tp_mult = 2.8 
                             sl_mult = 2.2 
                             print(f"       [V185 BREATHING ROOM] Leverage: {leverage}x | TP: {tp_mult}x | SL: {sl_mult}x")
@@ -639,6 +682,9 @@ def main():
     
     # V121: Sync Orphaned Positions on Startup
     reconcile_positions()
+    
+    # V250: Clean up stale DB records to prevent memory/logic issues
+    archive_zombies()
     
     while True:
         # V145: Check for external closures first

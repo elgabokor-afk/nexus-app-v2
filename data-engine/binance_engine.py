@@ -22,7 +22,7 @@ class BinanceTrader:
             'options': {
                 'defaultType': 'margin', # SPOT MARGIN
                 'adjustForTimeDifference': True,
-                'recvWindow': 10000 
+                'recvWindow': 60000 # V230: Max tolerance for local lag
             }
         })
         
