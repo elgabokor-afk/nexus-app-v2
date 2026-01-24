@@ -5,7 +5,7 @@ import ccxt
 import pandas as pd
 from supabase import create_client, Client
 from dotenv import load_dotenv
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 # Load environment variables
 load_dotenv(dotenv_path="../.env.local")
@@ -36,7 +36,7 @@ def check_new_entries():
     """Checks for new signals to open positions."""
     try:
         # Get recent signals (last 1 hour to ensure we catch active market moves)
-        one_hour_ago = (datetime.utcnow() - timedelta(hours=1)).isoformat()
+        one_hour_ago = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
         
         response = supabase.table("market_signals") \
             .select("*") \
@@ -131,7 +131,7 @@ def monitor_positions():
                     "status": "CLOSED",
                     "exit_price": current_price,
                     "exit_reason": exit_reason,
-                    "closed_at": datetime.utcnow().isoformat(),
+                    "closed_at": datetime.now(timezone.utc).isoformat(),
                     "pnl": pnl
                 }
                 
