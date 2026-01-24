@@ -266,7 +266,13 @@ def check_new_entries():
             return
 
         for signal in signals:
-            # V170: PRUNING CHECK
+            # V200: BTC-EXCLUSIVE FILTER
+            is_btc = "BTC" in signal['symbol'].upper()
+            if not is_btc:
+                # User requested to only operate BTC USDT
+                continue
+            
+            # V170: PRUNING CHECK (Not strictly needed if BTC Only, but kept for logic safety)
             if is_survival and top_assets:
                 if signal['symbol'] not in top_assets:
                     # Skip assets that aren't top performers
@@ -426,11 +432,17 @@ def check_new_entries():
                     
                     # V150: SAFE SCALPING (Survival Mode Override)
                     if is_survival:
-                        leverage = min(leverage, 2) # V155: Hard cap at 2x
-                        # V185: BREATHING ROOM
-                        tp_mult = 2.8 
-                        sl_mult = 2.2 
-                        print(f"       [V185 BREATHING ROOM] Leverage: {leverage}x | TP: {tp_mult}x | SL: {sl_mult}x")
+                        # V200: BTC AGGRESSIVE OVERRIDE
+                        if is_btc:
+                            leverage = min(leverage, 3) # Max 3x for BTC
+                            tp_mult = 2.2 # Aggressive Target
+                            sl_mult = 1.8 # Balanced Stop
+                            print(f"       [V200 BTC SCALP] Leverage: {leverage}x | TP: {tp_mult}x | SL: {sl_mult}x")
+                        else:
+                            leverage = min(leverage, 2) # v155 hard cap for others (though pruned)
+                            tp_mult = 2.8 
+                            sl_mult = 2.2 
+                            print(f"       [V185 BREATHING ROOM] Leverage: {leverage}x | TP: {tp_mult}x | SL: {sl_mult}x")
                     else:
                         print(f"       [SCALP MODE] Applying correction-tolerant targets: TP({tp_mult}x) SL({sl_mult}x)")
 
