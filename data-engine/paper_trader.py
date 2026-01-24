@@ -89,7 +89,7 @@ def get_bot_params():
             "margin_mode": "ISOLATED",
             "account_risk_pct": 0.02, # Safe default
             "min_confidence": 78, # User requested 78%
-            "trading_fee_pct": 0.001 # 0.1% per trade (Taker)
+            "trading_fee_pct": 0.0005 # 0.05% per leg (0.1% Round-Trip)
         }
 
 def check_new_entries():
@@ -325,10 +325,9 @@ def monitor_positions():
                          raw_pnl = (pos['entry_price'] - current_price) * pos['quantity']
 
                     # V21 LOGIC: ROUND-TRIP FEES
-                    # Fee = Notional Value * Fee Rate (e.g. 0.001 or 0.1%)
-                    # We apply standard taker fee (0.05% usually) on both Entry and Exit notional.
-                    # Default: 0.1% roundtrip approximation if not specified.
-                    fee_rate = float(params.get('trading_fee_pct', 0.001))
+                    # Fee = Notional Value * Fee Rate (e.g. 0.0005 or 0.05% per side)
+                    # User requested 0.1% Total Round-Trip.
+                    fee_rate = float(params.get('trading_fee_pct', 0.0005))
                     
                     entry_notional = pos['entry_price'] * abs(pos['quantity'])
                     exit_notional = current_price * abs(pos['quantity'])
