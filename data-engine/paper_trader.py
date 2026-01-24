@@ -25,7 +25,8 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 # Initialize Kraken Client (Public data only needed for price checks)
 exchange = ccxt.kraken()
 
-# V45: AI Decision Authority
+# V50: Database & AI Oracle Integration
+from db import get_latest_oracle_insight
 from cosmos_engine import brain
 
 print("--- PAPER TRADING BOT INITIALIZED ---")
@@ -225,9 +226,10 @@ def check_new_entries():
                     # Liquidation: Entry + (Entry / Leverage) for Shorts
                     liq_price = entry + (entry / leverage)
 
-                # 5. V45 TOTAL AI AUTHORITY (BLM Decision Matrix)
-                # The AI now evaluates all factors (Trend, Book Imbalance, ML Confidence)
-                # and makes the final decision. This replaces several manual filters.
+                # 5. V45/V50 TOTAL AI AUTHORITY (BLM + Oracle Gatekeeper)
+                # We fetch the latest 1-minute Oracle analysis to confirm the long-term signal.
+                oracle_insight = get_latest_oracle_insight(signal['symbol'])
+                
                 features = {
                     "price": signal['price'],
                     "rsi_value": signal.get('rsi', 50),
@@ -238,7 +240,12 @@ def check_new_entries():
                     "imbalance_ratio": signal.get('imbalance', 0)
                 }
                 
-                should_trade, ai_conf, ai_reason = brain.decide_trade(signal['signal_type'], features)
+                # Pass the oracle insight to the AI Decision Matrix
+                should_trade, ai_conf, ai_reason = brain.decide_trade(
+                    signal['signal_type'], 
+                    features, 
+                    oracle_insight=oracle_insight
+                )
                 
                 if not should_trade:
                     print(f"       [SKIPPED] {ai_reason}")

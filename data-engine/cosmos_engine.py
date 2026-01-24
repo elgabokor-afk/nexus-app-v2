@@ -217,16 +217,15 @@ class CosmosBrain:
             print(f"Prediction Error: {e}")
             return 0.5
 
-    def decide_trade(self, signal_type, features):
+    def decide_trade(self, signal_type, features, oracle_insight=None):
         """
-        V45: The Master AI Decision Engine.
+        V45/V50: The Master AI Decision Engine.
         Returns (Bool: Should Trade, Float: Final Prob, String: Reason)
         """
         prob = self.predict_success(features)
         trend = self.get_trend_status(features)
         
         # 1. BASELINE: Apply user-requested 90% confidence from params
-        # But allow AI to override if Trend + Orderbook is PERFECT
         base_decision = prob >= 0.90
         
         # 2. ORDER BOOK SENSITIVITY (Strong changes)
@@ -242,14 +241,27 @@ class CosmosBrain:
                         (signal_type == "SELL" and trend == "BEARISH")
                         
         if not trend_aligned:
-            # Dangerous trade: only allow if AI is EXTREMELY sure (>95%)
             if prob < 0.95:
-                # Log rejection for trend mismatch
                 reason = f"Decision REJECTED: Trend ({trend}) does not align with {signal_type} signal. AI requires 95%+, got {prob*100:.1f}%."
                 return False, prob, reason
 
-        # 4. FINAL WEIGHTED DECISION
-        # We define a 90% target normally, but 85% is acceptable ONLY IF trend + book are aligned.
+        # 4. V50: ORACLE CONFLUENCE (The Gateway)
+        # Check if the 1m Oracle insight matches the 1h Signal direction
+        if oracle_insight:
+            o_trend = oracle_insight.get('trend_status')
+            o_reasoning = oracle_insight.get('reasoning', '')
+            
+            oracle_aligned = (signal_type == "BUY" and o_trend == "BULLISH") or \
+                             (signal_type == "SELL" and o_trend == "BEARISH")
+            
+            if not oracle_aligned:
+                # Oracle is screaming Mismatch (e.g. 1m chart is crashing while 1h signal says buy)
+                reason = f"Decision REJECTED: Oracle (1m) is {o_trend} while Signal is {signal_type}. Confluence Failed. Reasoning: {o_reasoning}"
+                return False, prob, reason
+            
+            print(f"       [ORACLE CONFIRMED] 1m Analysis aligns with {signal_type} signal.")
+
+        # 5. FINAL WEIGHTED DECISION
         required_prob = 0.90
         if trend_aligned and (abs(imb) > 0.4):
             required_prob = 0.85 # AI is more lenient if confluence is perfect

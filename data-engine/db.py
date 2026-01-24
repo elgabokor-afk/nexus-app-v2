@@ -145,6 +145,19 @@ def insert_oracle_insight(symbol, timeframe, trend, prob, reasoning, technical):
     except Exception as e:
         print(f"   !!! Oracle DB Error: {e}")
 
+def get_latest_oracle_insight(symbol):
+    """Fetches the most recent 1m analysis for a symbol."""
+    if not client: return None
+    try:
+        url = f"{client.base_url}/oracle_insights?symbol=eq.{symbol}&order=timestamp.desc&limit=1"
+        resp = client.get(url)
+        if resp.status_code == 200 and resp.json():
+            return resp.json()[0]
+        return None
+    except Exception as e:
+        print(f"   !!! Database Error (Oracle Fetch): {e}")
+        return None
+
 def get_last_trade_time():
     if not client: return None
     try:
