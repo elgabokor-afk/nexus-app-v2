@@ -129,6 +129,22 @@ def get_active_position_count():
     except:
         return 999
 
+def insert_oracle_insight(symbol, timeframe, trend, prob, reasoning, technical):
+    if not client: return
+    data = {
+        "symbol": symbol,
+        "timeframe": timeframe,
+        "trend_status": trend,
+        "ai_probability": prob,
+        "reasoning": reasoning,
+        "technical_context": technical
+    }
+    try:
+        url = f"{client.base_url}/oracle_insights"
+        client.post(url, json=data)
+    except Exception as e:
+        print(f"   !!! Oracle DB Error: {e}")
+
 def get_last_trade_time():
     if not client: return None
     try:

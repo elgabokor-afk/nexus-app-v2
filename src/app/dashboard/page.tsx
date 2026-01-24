@@ -6,6 +6,7 @@ import SignalCard from '@/components/SignalCard';
 import SystemLogs from '@/components/SystemLogs';
 import { Zap, Activity, LogOut, User, TrendingUp } from 'lucide-react';
 import PaperBotWidget from '@/components/PaperBotWidget';
+import OracleMonitor from '@/components/OracleMonitor';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 
@@ -381,8 +382,12 @@ export default function Dashboard() {
                                 </div>
                             </div>
 
-                            {/* COL 3: OPERATIONS & POSITIONS (3 Columns) */}
+                            {/* COL 3: OPERATIONS & ORACLE (3 Columns) */}
                             <div className="lg:col-span-3 flex flex-col gap-6 overflow-hidden min-h-[400px] lg:min-h-0">
+                                {/* Oracle Insights - High Priority Realtime Feed */}
+                                <OracleMonitor />
+
+                                {/* Positions & Wallet */}
                                 <div className="flex-1 flex flex-col rounded-[2.5rem] border border-white/10 bg-[#0a0a0c]/60 backdrop-blur-2xl shadow-2xl relative overflow-hidden">
                                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#00ffa3]/20 to-transparent"></div>
                                     <div className="flex-1">

@@ -131,6 +131,59 @@ class CosmosBrain:
         
         print(f"   >>> Cosmos Brain: Training Complete. Accuracy on Memory: {accuracy:.2%}")
 
+    def get_trend_status(self, features):
+        """Simple trend classifier based on EMA/Price."""
+        price = features.get('price', 0)
+        ema = features.get('ema_200', price)
+        if price > ema: return "BULLISH"
+        if price < ema: return "BEARISH"
+        return "NEUTRAL"
+
+    def generate_reasoning(self, features, prob):
+        """
+        V40: The BLM (Bot Language Model) reasoning layer.
+        Converts technical data into high-level strategic thoughts.
+        """
+        rsi = features.get('rsi_value', 50)
+        imb = features.get('imbalance_ratio', 0)
+        macd_h = features.get('histogram', 0)
+        trend = self.get_trend_status(features)
+        
+        insights = []
+        
+        # 1. Trend Awareness
+        if trend == "BULLISH":
+            insights.append("Price is holding above the EMA_200, confirming a primary bullish structure.")
+        elif trend == "BEARISH":
+            insights.append("Price is trading below the EMA_200; descending pressure is dominant.")
+            
+        # 2. RSI Exhaustion
+        if rsi < 30:
+            insights.append("RSI is oversold, indicating high potential for a mean-reversion bounce.")
+        elif rsi > 70:
+            insights.append("RSI is overbought; buy pressure may be exhausted.")
+            
+        # 3. Market Depth/Flow
+        if imb > 0.4:
+            insights.append(f"Heavy buy-side order book imbalance ({imb*100:.1f}%) detected.")
+        elif imb < -0.4:
+            insights.append(f"Strong sell-side pressure ({abs(imb)*100:.1f}%) in the local order book.")
+            
+        # 4. Momentum
+        if macd_h > 0:
+            insights.append("MACD histogram is positive, showing growing bullish momentum.")
+        elif macd_h < 0:
+            insights.append("Momentum is decelerating as indicated by the negative MACD histogram.")
+
+        # Final Synthesis
+        conviction = "Neutral"
+        if prob > 0.7: conviction = "High Conviction"
+        elif prob > 0.6: conviction = "Moderate Conviction"
+        elif prob < 0.4: conviction = "High Risk / Bearish Trap"
+        
+        summary = " ".join(insights)
+        return f"{conviction}: {summary}"
+
     def predict_success(self, features):
         """
         Predicts probability of WIN.
