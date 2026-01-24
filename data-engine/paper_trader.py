@@ -253,13 +253,20 @@ def check_new_entries():
                 
                 print(f"       [AI APPROVED] {ai_reason}")
 
-                # V30: NET-TARGETED TP/SL CALCULATION
+                # V30/V60: NET-TARGETED TP/SL CALCULATION
                 # Target Net Profit = (ATR * TakeProfitMult) * Qty
-                # Target Net Loss = (ATR * StopLossMult) * Qty
+                # V60: Tighter multipliers for Scalps
+                is_scalp = "(SCALP)" in signal.get('signal_type', '')
+                
                 atr_val = signal.get('atr_value', 0)
                 tp_mult = float(params.get('take_profit_atr_mult', 2.5))
                 sl_mult = float(params.get('stop_loss_atr_mult', 1.5))
                 
+                if is_scalp:
+                    tp_mult = 1.8 # Tight scalp TP
+                    sl_mult = 1.0 # Tight scalp SL
+                    print(f"       [SCALP MODE] Applying tighter targets: TP({tp_mult}x) SL({sl_mult}x)")
+
                 target_net_profit = (atr_val * tp_mult) * abs(quantity)
                 target_net_loss = (atr_val * sl_mult) * abs(quantity)
                 

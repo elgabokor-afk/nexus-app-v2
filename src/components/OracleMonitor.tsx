@@ -79,10 +79,15 @@ export default function OracleMonitor() {
                                 <div className="flex items-center gap-2">
                                     <span className="text-[10px] font-black text-white">{insight.symbol}</span>
                                     <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded uppercase ${insight.trend_status === 'BULLISH' ? 'bg-green-500/10 text-green-400' :
-                                            insight.trend_status === 'BEARISH' ? 'bg-red-500/10 text-red-400' : 'text-gray-400'
+                                        insight.trend_status === 'BEARISH' ? 'bg-red-500/10 text-red-400' : 'text-gray-400'
                                         }`}>
                                         {insight.trend_status}
                                     </span>
+                                    {insight.technical_context?.type === 'SCALP_SCAN' && (
+                                        <span className="text-[7px] font-black bg-purple-500 text-white px-1.5 py-0.5 rounded-full animate-pulse">
+                                            SCALP
+                                        </span>
+                                    )}
                                 </div>
                                 <span className="text-[9px] font-mono text-gray-600">
                                     {new Date(insight.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
@@ -110,7 +115,7 @@ export default function OracleMonitor() {
                                 <div className="w-16 h-1 bg-white/5 rounded-full overflow-hidden">
                                     <div
                                         className={`h-full transition-all duration-1000 ${insight.ai_probability > 0.6 ? 'bg-green-500' :
-                                                insight.ai_probability < 0.4 ? 'bg-red-500' : 'bg-purple-500'
+                                            insight.ai_probability < 0.4 ? 'bg-red-500' : 'bg-purple-500'
                                             }`}
                                         style={{ width: `${insight.ai_probability * 100}%` }}
                                     ></div>

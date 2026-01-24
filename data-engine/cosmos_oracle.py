@@ -4,7 +4,7 @@ import pandas as pd
 import ccxt
 from dotenv import load_dotenv
 from cosmos_engine import brain
-from db import insert_oracle_insight, log_error
+from db import insert_oracle_insight, log_error, insert_signal, insert_analytics
 
 load_dotenv(dotenv_path="../.env.local")
 
@@ -70,10 +70,50 @@ def run_oracle_step(symbol='BTC/USD'):
         trend = brain.get_trend_status(features)
         reasoning = brain.generate_reasoning(features, prob)
         
+        # Decide if we should scalp
+        # V60: We define 1m scalping as a STRONG BUY or STRONG SELL
+        signal_type = "STRONG BUY" if prob >= 0.90 and trend == "BULLISH" else \
+                      "STRONG SELL" if prob >= 0.90 and trend == "BEARISH" else "NEUTRAL"
+
         # 4. SYNC TO SUPABASE
         print(f"[{time.strftime('%H:%M:%S')}] ORACLE | {symbol} | {trend} | Prob: {prob*100:.1f}%")
-        print(f"      Insight: {reasoning}")
         
+        # 5. EMIT SCALP SIGNAL (V60)
+        # Only if confidence is 90% and it aligns with trend
+        if signal_type != "NEUTRAL":
+            print(f"      !!! SCALP OPPORTUNITY DETECTED: {signal_type} !!!")
+            
+            # Use tight ATR targets for scalp
+            atr = latest['ATR']
+            sl = latest['close'] - (atr * 1.5) if "BUY" in signal_type else latest['close'] + (atr * 1.5)
+            tp = latest['close'] + (atr * 2.1) if "BUY" in signal_type else latest['close'] - (atr * 2.1)
+            
+            sig_id = insert_signal(
+                symbol=symbol,
+                price=latest['close'],
+                rsi=latest['RSI'],
+                signal_type=f"{signal_type} (SCALP)",
+                confidence=int(prob * 100),
+                stop_loss=round(sl, 4),
+                take_profit=round(tp, 4),
+                atr_value=round(atr, 4)
+            )
+            
+            if sig_id:
+                insert_analytics(
+                    signal_id=sig_id,
+                    ema_200=latest['EMA_200'],
+                    rsi_value=latest['RSI'],
+                    atr_value=latest['ATR'],
+                    imbalance_ratio=0, # Simplified
+                    spread_pct=0,
+                    depth_score=0,
+                    macd_line=macd.iloc[-1],
+                    signal_line=0,
+                    histogram=hist.iloc[-1],
+                    ai_score=prob
+                )
+
         insert_oracle_insight(
             symbol=symbol,
             timeframe='1m',
@@ -83,7 +123,8 @@ def run_oracle_step(symbol='BTC/USD'):
             technical={
                 "price": latest['close'],
                 "rsi": latest['RSI'],
-                "ema_200": latest['EMA_200']
+                "ema_200": latest['EMA_200'],
+                "type": "SCALP_SCAN"
             }
         )
         
