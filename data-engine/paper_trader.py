@@ -197,14 +197,27 @@ def check_new_entries():
                 atr = signal.get('atr_value', 0)
                 entry = signal['price']
                 
+                # V23: FEE BREAK-EVEN CALCULATION
+                fee_rate = float(params.get('trading_fee_pct', 0.001))
+                # Min break-even price move is approx 2x fee_rate
+                min_tp_move = entry * (fee_rate * 2.1) # 2.1x for a small safety buffer
+                
                 if "BUY" in signal['signal_type']:
+                    # Standard ATR TP
+                    tp_atr = entry + (atr * float(params['take_profit_atr_mult']))
+                    # Ensure TP covers fees + at least a small profit
+                    bot_tp = max(tp_atr, entry + min_tp_move)
+                    
                     bot_sl = entry - (atr * float(params['stop_loss_atr_mult']))
-                    bot_tp = entry + (atr * float(params['take_profit_atr_mult']))
                     # Liquidation: Entry - (Entry / Leverage) for Longs
                     liq_price = entry - (entry / leverage)
                 else:
+                    # Standard ATR TP (Short)
+                    tp_atr = entry - (atr * float(params['take_profit_atr_mult']))
+                    # Ensure TP covers fees
+                    bot_tp = min(tp_atr, entry - min_tp_move)
+                    
                     bot_sl = entry + (atr * float(params['stop_loss_atr_mult']))
-                    bot_tp = entry - (atr * float(params['take_profit_atr_mult']))
                     # Liquidation: Entry + (Entry / Leverage) for Shorts
                     liq_price = entry + (entry / leverage)
 
@@ -271,7 +284,6 @@ def monitor_positions():
             exit_reason = None
             
             # CHECK EXITS
-            # CHECK EXITS
             if pos.get('closure_requested'):
                  exit_reason = "MANUAL_MARKET"
             elif pos.get('liquidation_price') and (
@@ -282,7 +294,22 @@ def monitor_positions():
             elif stop_loss and current_price <= stop_loss:
                 exit_reason = "STOP_LOSS"
             elif take_profit and current_price >= take_profit:
-                exit_reason = "TAKE_PROFIT"
+                # V23: NET PROFIT GUARD
+                # Check if closing now actually makes money after fees
+                raw_pnl = (current_price - pos['entry_price']) * pos['quantity']
+                if "SELL" in (pos.get('signal_type') or "BUY"): 
+                     raw_pnl = (pos['entry_price'] - current_price) * pos['quantity']
+                
+                fee_rate = float(params.get('trading_fee_pct', 0.001))
+                entry_notion = pos['entry_price'] * abs(pos['quantity'])
+                exit_notion = current_price * abs(pos['quantity'])
+                total_f = (entry_notion + exit_notion) * fee_rate
+                
+                if raw_pnl > total_f:
+                    exit_reason = "TAKE_PROFIT"
+                else:
+                    # Not enough profit to cover fees yet. Wait longer!
+                    pass
                 
             if exit_reason:
                 # CLOSE POSITION
