@@ -42,7 +42,15 @@ def get_current_price(symbol):
         return None
 
 def get_wallet():
-    """Fetch current virtual wallet state."""
+    """Fetch active wallet state (Simulated or Real)."""
+    if TRADING_MODE == "LIVE":
+        try:
+            real_balance = live_trader.get_live_balance()
+            # In LIVE mode, Equity = Balance (simplified for Futures margin)
+            return {"id": 999, "balance": real_balance, "equity": real_balance}
+        except:
+             return {"id": 999, "balance": 0, "equity": 0}
+
     try:
         res = supabase.table("bot_wallet").select("*").limit(1).execute()
         if res.data:

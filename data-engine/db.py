@@ -1,6 +1,7 @@
 import os
 import asyncio
 import requests
+from datetime import datetime, timezone
 from dotenv import load_dotenv
 
 # Load env from parent directory

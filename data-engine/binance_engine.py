@@ -20,13 +20,20 @@ class BinanceTrader:
             'secret': self.secret,
             'enableRateLimit': True,
             'options': {
-                'defaultType': 'future' 
+                'defaultType': 'future',
+                'adjustForTimeDifference': True,
+                'recvWindow': 10000 
             }
         })
+        
         
         self.is_connected = False
         if self.api_key and self.secret:
             try:
+                # Explicitly sync time to prevent timestamp errors
+                time_offset = self.exchange.load_time_difference()
+                print(f"   [BINANCE] Time Sync Active (Offset: {time_offset}ms)")
+                
                 # Test connectivity by fetching balance
                 self.exchange.fetch_balance()
                 self.is_connected = True
@@ -59,13 +66,22 @@ class BinanceTrader:
             return None
 
         try:
-            # 1. Set Leverage
-            # Binance requires setting leverage before opening a position
-            self.exchange.set_leverage(leverage, symbol)
+            # 1. Load Markets (if not loaded)
+            if not self.exchange.markets:
+                self.exchange.load_markets()
+
+            # 2. Precision Handling
+            clean_amount = self.exchange.amount_to_precision(symbol, amount)
             
-            # 2. Create Order
-            order = self.exchange.create_market_order(symbol, side, amount)
-            print(f"   [BINANCE] LIVE ORDER EXECUTED: {side} {amount} {symbol}")
+            # 3. Set Leverage & Execute
+            # Binance requires setting leverage before opening a position
+            try:
+                self.exchange.set_leverage(leverage, symbol)
+            except Exception as lev_err:
+                print(f"   [BINANCE] Leverage warning: {lev_err}")
+
+            order = self.exchange.create_market_order(symbol, side, clean_amount)
+            print(f"   [BINANCE] LIVE ORDER EXECUTED: {side} {clean_amount} {symbol}")
             return order
         except Exception as e:
             print(f"   [BINANCE] Execution Error: {e}")
