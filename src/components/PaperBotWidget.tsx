@@ -102,12 +102,18 @@ export default function PaperBotWidget({
                     let pair = data[3];
 
                     if (pair) {
-                        pair = pair.replace('XBT', 'BTC').replace('XDG', 'DOGE');
+                        pair = pair.toUpperCase().replace('XBT', 'BTC').replace('XDG', 'DOGE');
                     }
 
                     if (ticker && ticker.c && pair) {
                         const currentPrice = parseFloat(ticker.c[0]);
-                        setPrices(prev => ({ ...prev, [pair]: currentPrice }));
+                        // Normalize the pair for matching (e.g., BTC/USD -> BTC/USDT)
+                        const usdtPair = pair.includes('/USD') ? pair.replace('/USD', '/USDT') : pair;
+                        setPrices(prev => ({
+                            ...prev,
+                            [pair]: currentPrice,
+                            [usdtPair]: currentPrice
+                        }));
                     }
                 }
             } catch (e) { }
@@ -176,7 +182,7 @@ export default function PaperBotWidget({
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-white/5">
-                            {positions.filter(p => p.status === 'OPEN').map(pos => {
+                            {positions.filter(p => p.status === 'OPEN').slice(0, 20).map(pos => {
                                 const livePrice = prices[pos.symbol.toUpperCase()] || pos.entry_price;
                                 let pnl = (livePrice - pos.entry_price) * pos.quantity;
                                 if (pos.quantity < 0 || (pos.bot_take_profit && pos.bot_take_profit < pos.entry_price)) {
@@ -263,13 +269,14 @@ export default function PaperBotWidget({
                                     </span>
                                 </div>
                             ) : (
-                                positions.filter(p => p.status === 'OPEN').map(pos => {
-                                    const livePrice = prices[pos.symbol.toUpperCase()] || pos.entry_price;
+                                positions.filter(p => p.status === 'OPEN').slice(0, 20).map(pos => {
+                                    const livePrice = prices[pos.symbol.toUpperCase()] || prices[pos.symbol.toUpperCase().replace('/USDT', '/USD')] || pos.entry_price;
                                     let pnl = (livePrice - pos.entry_price) * pos.quantity;
                                     if (pos.quantity < 0 || (pos.bot_take_profit && pos.bot_take_profit < pos.entry_price)) {
                                         pnl = (pos.entry_price - livePrice) * Math.abs(pos.quantity);
                                     }
-                                    const margin = pos.initial_margin || (pos.entry_price * Math.abs(pos.quantity));
+                                    const margin = pos.initial_margin || (pos.entry_price * Math.abs(pos.quantity) / (pos.leverage || 10));
+                                    const notionalSize = pos.entry_price * Math.abs(pos.quantity);
                                     const roePercent = margin > 0 ? (pnl / margin) * 100 : 0;
                                     const isPosGreen = pnl >= 0;
                                     const liqPrice = pos.liquidation_price;
@@ -294,14 +301,18 @@ export default function PaperBotWidget({
                                                         </span>
                                                     </div>
 
-                                                    <div className="grid grid-cols-2 gap-2">
+                                                    <div className="grid grid-cols-3 gap-2">
                                                         <div className="bg-black/20 p-2 rounded-xl border border-white/5">
-                                                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-none mb-1">Entry</p>
+                                                            <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest leading-none mb-1">Entry</p>
                                                             <p className="text-xs font-mono text-white font-black">${pos.entry_price.toLocaleString()}</p>
                                                         </div>
                                                         <div className="bg-black/20 p-2 rounded-xl border border-white/5">
-                                                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-none mb-1">Mark</p>
+                                                            <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest leading-none mb-1">Mark</p>
                                                             <p className={`text-xs font-mono font-black ${isPosGreen ? 'text-[#00ffa3]' : 'text-red-500'}`}>${livePrice.toLocaleString()}</p>
+                                                        </div>
+                                                        <div className="bg-black/20 p-2 rounded-xl border border-white/5">
+                                                            <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest leading-none mb-1">Size</p>
+                                                            <p className="text-xs font-mono text-gray-300 font-black">${notionalSize.toLocaleString()}</p>
                                                         </div>
                                                     </div>
                                                 </div>
