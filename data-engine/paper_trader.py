@@ -315,23 +315,7 @@ def check_new_entries():
             return
 
         for signal in signals:
-            # V300: DYNAMIC ASSET ROTATION (Pivot to trend leaders)
-            # Fetch the current #1 asset every run (cached by engine logic)
-            top_winner = brain.get_top_performing_assets(limit=1)
-            active_asset = top_winner[0] if top_winner else "DOGE"
-            
-            is_active = active_asset in signal['symbol'].upper()
-            if not is_active:
-                # V300: Automatically pivot to the current market leader
-                continue
-            
-            print(f"       [V300 PIVOT CHECK] Focused on {active_asset}. Ignoring others.")
-            
-            # V170: PRUNING CHECK (Not strictly needed if BTC Only, but kept for logic safety)
-            if is_survival and top_assets:
-                if signal['symbol'] not in top_assets:
-                    # Skip assets that aren't top performers
-                    continue
+            # V414: Global Asset Freedom - Removed old V300/V170 restrictive gating
             # 0. GLOBAL POSITION LIMIT (V250 Reality Check)
             if TRADING_MODE == "LIVE":
                 # LIVE Mode: The source of truth is THE EXCHANGE, not the DB zombies.
