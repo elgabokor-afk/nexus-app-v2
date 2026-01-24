@@ -202,6 +202,26 @@ def analyze_quant_signal(symbol, tech_analysis):
         (macd_score * weights['macd'])
     )
     
+    # V8 COSMOS AI PREDICTION
+    # Ask the Brain: "What are the odds?"
+    features = {
+        'rsi_value': rsi,
+        'imbalance_ratio': imbalance,
+        'spread_pct': spread_pct,
+        'atr_value': tech_analysis['atr'],
+        'macd_line': tech_analysis['macd'],
+        'histogram': tech_analysis['histogram']
+    }
+    ai_prob = brain.predict_success(features) # Returns 0.0 to 1.0 (e.g., 0.65)
+    
+    # Hybrid Score Adjustment
+    # If AI is confident (>60%), boost score. If doubtful (<40%), penalize.
+    ai_boost = 0
+    if ai_prob > 0.60: ai_boost = 0.10 # +10% Confidence
+    elif ai_prob < 40: ai_boost = -0.20 # -20% Penalty (Safety Net)
+    
+    final_score = min(1.0, final_score + ai_boost)
+    
     final_confidence = int(final_score * 100)
     
     # DETERMINE SIGNAL
@@ -236,11 +256,13 @@ def analyze_quant_signal(symbol, tech_analysis):
         'depth_score': int(weights['imbalance'] * 100), # Proxy showing how much we trust depth
         'macd': round(tech_analysis['macd'], 4),
         'signal_line': round(tech_analysis['signal_line'], 4),
-        'histogram': round(tech_analysis['histogram'], 4)
+        'histogram': round(tech_analysis['histogram'], 4),
+        'ai_prob': round(ai_prob * 100, 1)
     }
 
 from db import insert_signal, insert_analytics, log_error
 from telegram_utils import TelegramAlerts
+from cosmos_engine import brain # V8 AI Core
 
 # Initialize Telegram Broadcaster
 tg = TelegramAlerts()
@@ -273,7 +295,7 @@ def main():
                     
                     if quant_signal:
                         print(f"[{symbol}] Price: {quant_signal['price']} | RSI: {quant_signal['rsi']} | Imb: {quant_signal['imbalance']}")
-                        print(f"   >>> V4 SIGNAL: {quant_signal['signal']} ({quant_signal['confidence']}%)")
+                        print(f"   >>> V4 SIGNAL: {quant_signal['signal']} ({quant_signal['confidence']}%) | Cosmos AI: {quant_signal['ai_prob']}%")
                         
                         # ... (DB Insert Logic) ...
                         # 1. Insert Base Signal
