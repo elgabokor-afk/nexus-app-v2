@@ -184,7 +184,7 @@ def archive_zombies():
                 "closed_at": datetime.now(timezone.utc).isoformat()
             }) \
             .eq("status", "OPEN") \
-            .lt("created_at", yesterday) \
+            .lt("opened_at", yesterday) \
             .execute()
             
         count = len(res.data) if res.data else 0
@@ -639,7 +639,7 @@ def monitor_positions():
             # V300: STAGNATION PRUNING
             # If trade > 4 hours and at a loss, close it to free margin.
             try:
-                created_at = datetime.fromisoformat(pos['created_at'].replace('Z', '+00:00'))
+                created_at = datetime.fromisoformat(pos['opened_at'].replace('Z', '+00:00'))
                 age = (datetime.now(timezone.utc) - created_at).total_seconds() / 3600
                 raw_pnl = (current_price - pos['entry_price']) * pos['quantity']
                 if "SELL" in (pos.get('signal_type') or "BUY"): 
