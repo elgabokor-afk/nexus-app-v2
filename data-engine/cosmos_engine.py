@@ -237,6 +237,10 @@ class CosmosBrain:
         prob = self.predict_success(features)
         trend = self.get_trend_status(features)
         
+        # 0. LIQUIDATION OVERRIDE (V110)
+        if "LIQ" in signal_type:
+            return True, 0.96, "Liquidation Cascade Detected (Ultra High Confidence)"
+
         # 1. BASELINE: Apply user-requested 90% confidence from params
         base_decision = prob >= 0.90
         
