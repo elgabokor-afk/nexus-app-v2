@@ -6,3 +6,6 @@ python-dotenv
 requests
 supabase
 postgrest
+scikit-learn
+joblib
+numpy
