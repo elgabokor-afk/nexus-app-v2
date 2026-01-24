@@ -242,7 +242,7 @@ def check_new_entries():
                     is_survival = True
                     print(f"   [SURVIVAL MODE] Equity ${wallet['equity']} < $50. ACTIVATING PROTOCOL V155.")
                     # V155: ULTRA-STRICT OVERRIDES
-                    params['min_confidence'] = 92
+                    params['min_confidence'] = 90 # Relaxed to 90 for more opportunities
                     params['max_open_positions'] = 2
                     params['default_leverage'] = 2 # V155: Hard cap at 2x
 
@@ -258,7 +258,7 @@ def check_new_entries():
         one_hour_ago = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
         res = supabase.table("market_signals") \
             .select("*") \
-            .gte("created_at", one_hour_ago) \
+            .gte("timestamp", one_hour_ago) \
             .execute()
         
         signals = res.data
@@ -459,8 +459,9 @@ def check_new_entries():
                     print(f"   [V100] ROUTING ORDER TO BINANCE: {binance_side.upper()} {abs_qty} {signal['symbol']}")
                     # Note: Symbol mapping might be needed if Supabase uses different format than Binance
                     # Binance usually expects BTCUSDT (futures)
-                    binance_pair = signal['symbol'].replace('/', '')
-                    if 'USDT' not in binance_pair: binance_pair += 'USDT'
+                    # V180: Strict Binance Futures Symbol Mapping (e.g. BTC/USD -> BTCUSDT)
+                    raw_base = signal['symbol'].split('/')[0]
+                    binance_pair = f"{raw_base}USDT"
                     
                     live_trader.execute_market_order(binance_pair, binance_side, abs_qty, leverage=leverage)
 
