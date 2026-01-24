@@ -105,11 +105,18 @@ export default function PaperBotWidget({ onSelectSymbol, viewMode = 'widget' }: 
 
     useEffect(() => {
         fetchPositions();
+        // Fallback polling for high-speed updates
+        const interval = setInterval(fetchPositions, 2000);
+
         const channel = supabase.channel('paper_trading_updates')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'paper_positions' }, fetchPositions)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'bot_wallet' }, fetchPositions)
             .subscribe();
-        return () => { supabase.removeChannel(channel); };
+
+        return () => {
+            clearInterval(interval);
+            supabase.removeChannel(channel);
+        };
     }, []);
 
     // CALCULATE UNREALIZED PnL

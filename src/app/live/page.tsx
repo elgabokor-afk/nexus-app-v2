@@ -41,7 +41,7 @@ export default function LiveTradesPage() {
 
     useEffect(() => {
         fetchPositions();
-        const interval = setInterval(fetchPositions, 10000); // 10s Poll
+        const interval = setInterval(fetchPositions, 2000); // 2s Turbo Poll
 
         // Subscription for real-time updates
         const channel = supabase.channel('public_trades')
