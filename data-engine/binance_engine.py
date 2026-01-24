@@ -73,9 +73,20 @@ class BinanceTrader:
                 print("   [BINANCE] Loading market data...")
                 self.exchange.load_markets()
 
+            # V180: Flexible Symbol Resolution
+            # If 'BTCUSDT' passed, check if CCXT wants 'BTC/USDT'
             if symbol not in self.exchange.markets:
-                print(f"   [BINANCE] ERROR: Symbol {symbol} not found in Binance Futures markets.")
-                return None
+                # Try to find a market that ends with the ID
+                found = False
+                for m_id, m_data in self.exchange.markets.items():
+                    if m_data.get('id') == symbol:
+                        symbol = m_id
+                        found = True
+                        break
+                
+                if not found:
+                    print(f"   [BINANCE] ERROR: Symbol {symbol} not found in Binance Futures markets.")
+                    return None
 
             # 2. Precision Handling
             clean_amount = self.exchange.amount_to_precision(symbol, amount)
