@@ -112,7 +112,7 @@ def get_bot_params():
             return res.data[0]
         # Fallback defaults with V5 support
         return {
-            "rsi_buy_threshold": 30, 
+            "rsi_buy_threshold": 70, # V470: Aggressive (Was 30)
             "stop_loss_atr_mult": 1.5, 
             "take_profit_atr_mult": 2.5,
             "default_leverage": 10,
@@ -122,13 +122,13 @@ def get_bot_params():
     except Exception as e:
         print(f"Error fetching params: {e}")
         return {
-            "rsi_buy_threshold": 30, 
+            "rsi_buy_threshold": 70, # V470: Aggressive (Was 30)
             "stop_loss_atr_mult": 1.5, 
             "take_profit_atr_mult": 2.5,
             "default_leverage": 4, # User requested max x4
             "margin_mode": "CROSSED",
             "account_risk_pct": 0.02, # Safe default
-            "min_confidence": 90, # User requested 90% strictness
+            "min_confidence": 60, # V470: Aggressive (Was 90)
             "trading_fee_pct": 0.0005, # 0.05% per leg (0.1% Round-Trip)
             "strategy_version": 1 # Initial version
         }
