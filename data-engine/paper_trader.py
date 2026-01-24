@@ -151,10 +151,10 @@ def reconcile_positions():
                 # Safe Defaults for Adopted Trades
                 "bot_stop_loss": entry_price * 0.95 if side == 'long' else entry_price * 1.05,
                 "bot_take_profit": entry_price * 1.05 if side == 'long' else entry_price * 0.95,
-                "leverage": int(pos['leverage']),
+                "leverage": int(pos.get('leverage', 1)),
                 "margin_mode": "CROSSED",
-                "initial_margin": float(pos['initialMargin']),
-                "liquidation_price": float(pos['liquidationPrice'] or 0),
+                "initial_margin": float(pos.get('initialMargin', contracts * entry_price)),
+                "liquidation_price": float(pos.get('liquidationPrice', 0)),
                 "strategy_version": 121
             }
             try:
@@ -377,6 +377,15 @@ def check_new_entries():
                 # Solvency Check
                 equity = float(wallet['equity'])
                 balance = float(wallet['balance'])
+                
+                # V215: MARGIN LEVEL GUARD (Risk Ratio Health Check)
+                if TRADING_MODE == "LIVE":
+                    margin_level = live_trader.get_margin_level()
+                    print(f"       [V215 MARGIN GUARD] Current Risk Ratio: {margin_level:.2f} (Safe Target: 1.7+)")
+                    if margin_level < 1.7:
+                        print(f"       [SKIPPED] Margin Level {margin_level:.2f} too low. Trading Halted to prevent debt spiral.")
+                        continue
+
                 if equity <= 10: 
                     print(f"       [SKIPPED] Insufficient Equity (${equity}). Trading Halted.")
                     continue

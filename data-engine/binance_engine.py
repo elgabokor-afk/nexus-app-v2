@@ -53,6 +53,18 @@ class BinanceTrader:
             print(f"   [BINANCE] Error fetching margin balance: {e}")
             return 0
 
+    def get_margin_level(self):
+        """Fetch current margin level (Risk Ratio) for Spot Margin."""
+        if not self.is_connected: return 999.0
+        try:
+            # V215: Check health ratio (Total Assets / Total Debt)
+            balance = self.exchange.fetch_balance({'type': 'margin'})
+            level = float(balance['info'].get('marginLevel', 999.0))
+            return level
+        except Exception as e:
+            print(f"   [BINANCE] Error fetching margin level: {e}")
+            return 999.0
+
     def execute_market_order(self, symbol, side, amount, leverage=1):
         """
         Executes a real MARKET order on Binance Margin.
@@ -95,9 +107,9 @@ class BinanceTrader:
                 print(f"   [BINANCE] ERROR: Amount {clean_amount} is too small.")
                 return None
 
-            # 4. Final Execution (V210: Simple Margin Buy/Sell)
-            print(f"   [BINANCE] EXECUTING MARGIN ORDER: {side.upper()} {clean_amount} {symbol}")
-            order = self.exchange.create_market_order(symbol, side, clean_amount)
+            # 4. Final Execution (V215: Use MARGIN_BUY for auto-borrowing)
+            print(f"   [BINANCE] EXECUTING MARGIN ORDER (AUTO-BORROW): {side.upper()} {clean_amount} {symbol}")
+            order = self.exchange.create_market_order(symbol, side, clean_amount, {'sideEffect': 'MARGIN_BUY'})
             print(f"   [BINANCE] SUCCESS: Order ID {order.get('id')} executed on Margin.")
             return order
         except Exception as e:
