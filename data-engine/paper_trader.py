@@ -88,7 +88,7 @@ def get_bot_params():
             "default_leverage": 4, # User requested max x4
             "margin_mode": "ISOLATED",
             "account_risk_pct": 0.02, # Safe default
-            "min_confidence": 78, # User requested 78%
+            "min_confidence": 90, # User requested 90% strictness
             "trading_fee_pct": 0.0005, # 0.05% per leg (0.1% Round-Trip)
             "strategy_version": 1 # Initial version
         }
