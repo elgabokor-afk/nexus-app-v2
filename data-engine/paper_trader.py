@@ -344,6 +344,7 @@ def check_new_entries():
             # V3 LOGIC: Dynamic Filter based on 'bot_params'
             # 1. RSI Check
             if signal['rsi'] > params['rsi_buy_threshold'] and "BUY" in signal['signal_type']:
+                print(f"       [SKIPPED] {signal['symbol']} High RSI: {signal['rsi']} > {params['rsi_buy_threshold']}")
                 continue 
 
             # 2. CONFIDENCE Check (New V17)
@@ -362,8 +363,11 @@ def check_new_entries():
                 .execute()
                 
             if active_on_symbol.data:
-                # Already have an open trade for this coin. Diversify!
-                continue
+                # V421: AGGRESSIVE STACKING UNLOCK
+                # We allow stacking if max positions haven't been reached
+                # Just warn, but DO NOT CONTINUE (do not skip)
+                print(f"       [V421 STACKING] Adding another {signal['symbol']} position (Aggressive Mode).")
+                # continue (REMOVED to allow stacking)
                 
             # 4. DUPLICATE SIGNAL Check
             existing = supabase.table("paper_positions") \
