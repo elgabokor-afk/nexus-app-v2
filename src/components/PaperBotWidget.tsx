@@ -41,6 +41,7 @@ export default function PaperBotWidget({
     const [wallet, setWallet] = useState<Wallet>({ balance: 0, equity: 0 });
     const [prices, setPrices] = useState<Record<string, number>>({});
     const [loading, setLoading] = useState(true);
+    const [expandedId, setExpandedId] = useState<number | null>(null); // V530: Accordion State
 
     const fetchPositions = useCallback(async () => {
         const { data: posData } = await supabase
@@ -296,33 +297,60 @@ export default function PaperBotWidget({
                                     const liqPrice = pos.liquidation_price;
                                     const isLiqRisk = liqPrice ? Math.abs((livePrice - liqPrice) / livePrice) * 100 < 1.5 : false;
 
+                                    // V530: Accordion State
+                                    const isExpanded = expandedId === pos.id;
+
                                     return (
                                         <div
                                             key={pos.id}
-                                            onClick={() => onSelectSymbol && onSelectSymbol(pos.symbol)}
-                                            className={`group relative p-4 bg-gradient-to-br from-white/[0.05] to-transparent rounded-2xl border transition-all overflow-hidden shadow-xl cursor-pointer active:scale-95 ${isPosGreen ? 'border-[#00ffa3]/20 hover:border-[#00ffa3]/40' : 'border-red-500/20 hover:border-red-500/40'}`}
+                                            onClick={() => setExpandedId(isExpanded ? null : pos.id)}
+                                            className={`group relative bg-gradient-to-br from-white/[0.05] to-transparent rounded-2xl border transition-all overflow-hidden shadow-xl cursor-pointer active:scale-[0.99] ${isPosGreen ? 'border-[#00ffa3]/20 hover:border-[#00ffa3]/40' : 'border-red-500/20 hover:border-red-500/40'}`}
                                         >
-                                            <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-30 transition-all">
-                                                <TrendingUp size={32} className={isPosGreen ? "text-[#00ffa3]" : "text-red-500"} />
-                                            </div>
+                                            {/* COMPACT ROW (Always Visible) */}
+                                            <div className="p-4 flex justify-between items-center">
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`p-2 rounded-xl ${isPosGreen ? 'bg-[#00ffa3]/10' : 'bg-red-500/10'}`}>
+                                                        <TrendingUp size={16} className={isPosGreen ? "text-[#00ffa3]" : "text-red-500"} />
+                                                    </div>
+                                                    <div>
+                                                        <div className="flex items-center gap-2">
+                                                            <h4 className="text-sm font-black tracking-tight text-white">{pos.symbol}</h4>
+                                                            <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${pos.quantity >= 0 ? 'bg-[#00ffa3]/10 text-[#00ffa3]' : 'bg-red-500/10 text-red-500'}`}>
+                                                                {pos.quantity >= 0 ? 'LONG' : 'SHORT'}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex gap-2 mt-1">
+                                                            <span className="text-[9px] font-bold text-gray-500">{pos.leverage || 10}x</span>
+                                                            <span className="text-[9px] font-mono text-gray-400">${notionalSize.toLocaleString()}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
 
-                                            <div className="flex justify-between items-start mb-3">
-                                                <div className="flex-1">
-                                                    <div className="flex items-center gap-2 mb-2">
-                                                        <h4 className="text-lg font-black tracking-tighter leading-none">{pos.symbol}</h4>
-                                                        <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${pos.quantity >= 0 ? 'bg-[#00ffa3]/10 text-[#00ffa3]' : 'bg-red-500/10 text-red-500'}`}>
-                                                            {pos.quantity >= 0 ? 'LONG' : 'SHORT'}
+                                                <div className="flex items-center gap-4">
+                                                    <div className="flex flex-col items-end">
+                                                        <span className={`text-sm font-black tracking-tight ${isPosGreen ? 'text-[#00ffa3]' : 'text-red-500'}`}>
+                                                            {isPosGreen ? '+' : ''}{roePercent.toFixed(2)}%
                                                         </span>
-                                                        {/* V520: Widget View Context Tags */}
-                                                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/10">
-                                                            {Math.round(pos.confidence_score || 0)}% Conf
-                                                        </span>
-                                                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-500 border border-yellow-500/10">
-                                                            RSI {Math.round(pos.rsi_entry || 0)}
+                                                        <span className={`text-[9px] font-mono font-bold ${isPosGreen ? 'text-[#00ffa3]/60' : 'text-red-500/60'}`}>
+                                                            ${pnl.toFixed(2)}
                                                         </span>
                                                     </div>
+                                                </div>
+                                            </div>
 
-                                                    <div className="grid grid-cols-3 gap-2">
+                                            {/* EXPANDED DETAILS (Accordion) */}
+                                            {isExpanded && (
+                                                <div className="px-4 pb-4 pt-0 animate-in fade-in slide-in-from-top-2 duration-200">
+                                                    <div className="h-px w-full bg-white/5 mb-3" />
+
+                                                    {isLiqRisk && (
+                                                        <div className="mb-3 p-2 bg-red-500/10 rounded-lg border border-red-500/20 flex items-center gap-2">
+                                                            <AlertCircle size={12} className="text-red-500 animate-pulse" />
+                                                            <span className="text-[10px] font-black text-red-500">LIQUIDATION RISK: ${liqPrice?.toLocaleString()}</span>
+                                                        </div>
+                                                    )}
+
+                                                    <div className="grid grid-cols-3 gap-2 mb-3">
                                                         <div className="bg-black/20 p-2 rounded-xl border border-white/5">
                                                             <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest leading-none mb-1">Entry</p>
                                                             <p className="text-xs font-mono text-white font-black">${pos.entry_price.toLocaleString()}</p>
@@ -331,57 +359,41 @@ export default function PaperBotWidget({
                                                             <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest leading-none mb-1">Mark</p>
                                                             <p className={`text-xs font-mono font-black ${isPosGreen ? 'text-[#00ffa3]' : 'text-red-500'}`}>${livePrice.toLocaleString()}</p>
                                                         </div>
-                                                        <div className="bg-black/20 p-2 rounded-xl border border-white/5">
-                                                            <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest leading-none mb-1">Size</p>
-                                                            <p className="text-xs font-mono text-gray-300 font-black">${notionalSize.toLocaleString()}</p>
+                                                        <div className="bg-black/20 p-2 rounded-xl border border-white/5 flex flex-col justify-center items-center">
+                                                            <div className="flex gap-1 mb-1">
+                                                                <span className="text-[9px] font-bold text-blue-400">{Math.round(pos.confidence_score || 0)}%</span>
+                                                                <span className="text-[9px] font-bold text-yellow-500">RSI{Math.round(pos.rsi_entry || 0)}</span>
+                                                            </div>
+                                                            <span className="text-[8px] font-black uppercase text-gray-500">{pos.signal_type?.replace('ADOPTED_', '') || 'MANUAL'}</span>
                                                         </div>
                                                     </div>
-                                                </div>
 
-                                                <div className="flex flex-col items-end">
-                                                    <div className={`p-3 rounded-2xl border flex flex-col items-end min-w-[100px] transition-all duration-300 ${isPosGreen ? 'bg-[#00ffa3]/5 border-[#00ffa3]/20 shadow-[0_0_15px_rgba(0,255,163,0.1)]' : 'bg-red-500/5 border-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.1)]'}`}>
-                                                        <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1">ROE %</span>
-                                                        <span className={`text-2xl font-black tracking-tighter leading-none ${isPosGreen ? 'text-[#00ffa3]' : 'text-red-500'}`}>
-                                                            {isPosGreen ? '+' : ''}{roePercent.toFixed(2)}%
-                                                        </span>
-                                                        <span className={`text-[10px] font-mono font-bold mt-1 ${isPosGreen ? 'text-[#00ffa3]/60' : 'text-red-500/60'}`}>
-                                                            {isPosGreen ? '+' : ''}${pnl.toFixed(2)}
-                                                        </span>
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                const newTp = prompt("New TP Price:", pos.bot_take_profit?.toString());
+                                                                const newSl = prompt("New SL Price:", pos.bot_stop_loss?.toString());
+                                                                if (newTp && newSl) {
+                                                                    supabase.from('paper_positions').update({
+                                                                        bot_take_profit: parseFloat(newTp),
+                                                                        bot_stop_loss: parseFloat(newSl)
+                                                                    }).eq('id', pos.id).then(() => fetchPositions());
+                                                                }
+                                                            }}
+                                                            className="flex-1 py-2 bg-white/5 hover:bg-white/10 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border border-white/5 text-gray-400 hover:text-white"
+                                                        >
+                                                            Manage
+                                                        </button>
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); handleClosePosition(pos.id); }}
+                                                            className="flex-1 py-2 bg-red-500/10 hover:bg-red-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border border-red-500/10 text-red-500"
+                                                        >
+                                                            Close
+                                                        </button>
                                                     </div>
                                                 </div>
-                                            </div>
-
-                                            {isLiqRisk && (
-                                                <div className="mt-2 p-2 bg-red-500/10 rounded-lg border border-red-500/20 flex items-center gap-2">
-                                                    <AlertCircle size={12} className="text-red-500 animate-pulse" />
-                                                    <span className="text-[10px] font-black text-red-500">LIQUIDATION RISK: ${liqPrice?.toLocaleString()}</span>
-                                                </div>
                                             )}
-
-                                            <div className="mt-4 flex gap-2">
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        const newTp = prompt("New TP Price:", pos.bot_take_profit?.toString());
-                                                        const newSl = prompt("New SL Price:", pos.bot_stop_loss?.toString());
-                                                        if (newTp && newSl) {
-                                                            supabase.from('paper_positions').update({
-                                                                bot_take_profit: parseFloat(newTp),
-                                                                bot_stop_loss: parseFloat(newSl)
-                                                            }).eq('id', pos.id).then(() => fetchPositions());
-                                                        }
-                                                    }}
-                                                    className="flex-1 py-2 bg-white/5 hover:bg-white/10 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border border-white/5 text-gray-400 hover:text-white"
-                                                >
-                                                    Manage
-                                                </button>
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); handleClosePosition(pos.id); }}
-                                                    className="flex-1 py-2 bg-red-500/10 hover:bg-red-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border border-red-500/10 text-red-500"
-                                                >
-                                                    Market Close
-                                                </button>
-                                            </div>
                                         </div>
                                     );
                                 })
