@@ -65,6 +65,32 @@ class BinanceTrader:
             print(f"   [BINANCE] Error fetching margin level: {e}")
             return 999.0
 
+    # V310: MARKET DATA CAPABILITIES
+    def fetch_ohlcv(self, symbol, timeframe='1h', limit=100):
+        """Fetch historical candle data from Binance Spot."""
+        try:
+            # Note: CCXT handles symbol conversion (DOGE/USDT -> DOGEUSDT) automatically
+            return self.exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
+        except Exception as e:
+            print(f"   [BINANCE] Error fetching OHLCV for {symbol}: {e}")
+            return []
+
+    def fetch_ticker(self, symbol):
+        """Fetch real-time price info from Binance Spot."""
+        try:
+            return self.exchange.fetch_ticker(symbol)
+        except Exception as e:
+            print(f"   [BINANCE] Error fetching ticker for {symbol}: {e}")
+            return None
+
+    def fetch_order_book(self, symbol, limit=50):
+        """Fetch L2 Order Book from Binance Spot."""
+        try:
+            return self.exchange.fetch_order_book(symbol, limit=limit)
+        except Exception as e:
+            print(f"   [BINANCE] Error fetching order book for {symbol}: {e}")
+            return None
+
     def execute_market_order(self, symbol, side, amount, leverage=1):
         """
         Executes a real MARKET order on Binance Margin.

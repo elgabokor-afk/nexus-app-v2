@@ -13,6 +13,9 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
 load_dotenv(dotenv_path=os.path.join(parent_dir, '.env.local'))
 
+# V301: GLOBAL ASSET BLACKLIST
+ASSET_BLACKLIST = ['PEPE', 'PEPE/USDT', 'PEPE/USD']
+
 SUPABASE_URL = os.getenv("NEXT_PUBLIC_SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
@@ -22,21 +25,23 @@ if not SUPABASE_URL or not SUPABASE_KEY:
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# Initialize Kraken Client (Public data only needed for price checks)
-exchange = ccxt.kraken()
-
 # V100: Database & AI Oracle Integration
 from db import get_latest_oracle_insight
 from cosmos_engine import brain
 from binance_engine import live_trader
 
+print("--- BINANCE EXECUTION & DATA ENGINE ACTIVE (V310) ---")
+
 TRADING_MODE = os.getenv("TRADING_MODE", "PAPER")
 print(f"--- NEXUS TRADING ENGINE INITIALIZED [MODE: {TRADING_MODE}] ---")
 
 def get_current_price(symbol):
+    """V310: Use Binance for price data."""
     try:
-        ticker = exchange.fetch_ticker(symbol)
-        return ticker['last']
+        ticker = live_trader.fetch_ticker(symbol)
+        if ticker:
+            return ticker['last']
+        return None
     except Exception as e:
         print(f"Error fetching price for {symbol}: {e}")
         return None

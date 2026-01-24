@@ -12,8 +12,10 @@ from db import sync_model_metadata
 # Path Fixing for imports
 load_dotenv(dotenv_path="../.env.local")
 
-# KRAKEN CONFIG
-exchange = ccxt.kraken({
+# V310: BINANCE CONFIG (Replaces Kraken)
+exchange = ccxt.binance({
+    'apiKey': os.getenv('BINANCE_API_KEY'),
+    'secret': os.getenv('BINANCE_SECRET'),
     'enableRateLimit': True,
 })
 
@@ -43,9 +45,12 @@ def calculate_atr(df, period=14):
     true_range = np.max(ranges, axis=1)
     return true_range.rolling(14).mean()
 
-def fetch_historical_data(symbol='BTC/USD', timeframe='15m', limit=2000):
+def fetch_historical_data(symbol='BTC/USDT', timeframe='15m', limit=2000):
+    """V310: Fetch historical data from Binance."""
     print(f"   >>> Fetching {limit} historical candles for {symbol} ({timeframe})...")
-    bars = exchange.fetch_ohlcv(symbol, timeframe=timeframe, limit=limit)
+    # Ensure symbol is Binance compatible (e.g. BTC/USDT)
+    binance_symbol = symbol.replace('/USD', '/USDT')
+    bars = exchange.fetch_ohlcv(binance_symbol, timeframe=timeframe, limit=limit)
     df = pd.DataFrame(bars, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
     return df
 

@@ -8,13 +8,8 @@ from db import insert_oracle_insight, log_error, insert_signal, insert_analytics
 
 load_dotenv(dotenv_path="../.env.local")
 
-# KRAKEN CONFIG
-exchange_config = {
-    'apiKey': os.getenv('KRAKEN_API_KEY'),
-    'secret': os.getenv('KRAKEN_SECRET_KEY'),
-    'enableRateLimit': True,
-}
-exchange = ccxt.kraken(exchange_config)
+# V310: Import Binance Engine for unified data/execution
+from binance_engine import live_trader
 
 def calculate_rsi(series, period=14):
     delta = series.diff()
@@ -47,8 +42,8 @@ def run_oracle_step(symbol='BTC/USD'):
     V80/V90 Multi-Asset Oracle Step
     """
     try:
-        # 1. FETCH 1m DATA
-        bars = exchange.fetch_ohlcv(symbol, timeframe='1m', limit=100)
+        # 1. FETCH 1m DATA (V310: Use Binance)
+        bars = live_trader.fetch_ohlcv(symbol, timeframe='1m', limit=100)
         df = pd.DataFrame(bars, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
         
         # 2. COMPUTE TECHS

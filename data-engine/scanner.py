@@ -12,14 +12,16 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
 load_dotenv(dotenv_path=os.path.join(parent_dir, '.env.local'))
 
-# 1. Setup Exchange Connection (Kraken - US Friendly)
-exchange_config = {
-    'enableRateLimit': True,
-}
+# V301: GLOBAL ASSET BLACKLIST
+ASSET_BLACKLIST = ['PEPE', 'PEPE/USDT', 'PEPE/USD']
 
-# Use Kraken instead of Binance to avoid 451 Errors in US (Railway)
-exchange = ccxt.kraken(exchange_config)
-print("Connected to Kraken Exchange")
+# V301: GLOBAL ASSET BLACKLIST
+ASSET_BLACKLIST = ['PEPE', 'PEPE/USDT', 'PEPE/USD']
+
+# V310: Import Binance Engine for unified data/execution
+from binance_engine import live_trader
+
+print("--- BINANCE DATA ENGINE ACTIVE (V310 Migration) ---")
 
 def calculate_rsi(series, period=14):
     delta = series.diff()
@@ -41,18 +43,19 @@ def calculate_ema(series, period=200):
     return series.ewm(span=period, adjust=False).mean()
 
 def fetch_order_book(symbol='BTC/USD', limit=50):
+    """V310: Use Binance for Order Book."""
     try:
-        # Fetch Level 2 Order Book
-        book = exchange.fetch_order_book(symbol, limit=limit)
-        return book
+        # Map symbol if needed, but Binance/CCXT handles /USDT well
+        return live_trader.fetch_order_book(symbol, limit=limit)
     except Exception as e:
         print(f"Error fetching order book for {symbol}: {e}")
         return None
 
 def fetch_data(symbol='BTC/USD', timeframe='1h', limit=100):
+    """V310: Use Binance for OHLCV."""
     try:
-        # Fetch OHLCV (Open, High, Low, Close, Volume)
-        bars = exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
+        bars = live_trader.fetch_ohlcv(symbol, timeframe, limit=limit)
+        if not bars: return pd.DataFrame()
         df = pd.DataFrame(bars, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
         df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
         return df
@@ -367,6 +370,10 @@ def main():
 
             print(f"\n--- Scan at {datetime.now().strftime('%H:%M:%S')} | Fear & Greed: {fng_index} | Open: {active_positions} ---")
             for symbol in symbols:
+                # V301: Prevent PEPE or other blacklisted assets from being analyzed
+                if any(b in symbol.upper() for b in ASSET_BLACKLIST):
+                    continue
+                    
                 df = fetch_data(symbol)
                 techs = analyze_market(df) # Returns basic tech metrics
                 
