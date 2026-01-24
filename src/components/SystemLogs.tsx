@@ -33,7 +33,7 @@ export default function SystemLogs({ onClose, embedded = false }: { onClose?: ()
 
         // REALTIME SUBSCRIPTION
         const channel = supabase.channel('system_logs_stream')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'error_logs' }, (payload) => {
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'error_logs' }, (payload: any) => {
                 const newLog = payload.new as Log;
                 setLogs(prev => [newLog, ...prev].slice(0, 100));
             })

@@ -1,7 +1,8 @@
--- Function to calculate Win Rate for different timeframes
 CREATE OR REPLACE FUNCTION get_bot_stats()
 RETURNS json
 LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
 AS $$
 DECLARE
     weekly_wins INT;
