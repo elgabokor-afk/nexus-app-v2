@@ -16,6 +16,8 @@ interface PaperPosition {
     exit_reason: string | null;
     opened_at: string;
     closed_at: string | null;
+    bot_stop_loss?: number;
+    bot_take_profit?: number;
 }
 
 export default function PaperBotWidget() {
@@ -122,8 +124,12 @@ export default function PaperBotWidget() {
                                             <p className="text-xs font-mono font-black text-white">${pos.entry_price.toLocaleString()}</p>
                                         </div>
                                     </div>
-                                    <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                                    <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden mb-2">
                                         <div className="h-full bg-[#00ffa3] w-1/3 animate-progress-fast"></div>
+                                    </div>
+                                    <div className="flex justify-between text-[9px] font-mono font-bold text-gray-500">
+                                        <span>SL: ${pos.bot_stop_loss?.toFixed(2) || '---'}</span>
+                                        <span className="text-[#00ffa3]">TP: ${pos.bot_take_profit?.toFixed(2) || '---'}</span>
                                     </div>
                                 </div>
                             ))

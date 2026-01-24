@@ -61,6 +61,11 @@ def check_new_entries():
                 # Simple allocation: $1000 per trade
                 quantity = 1000 / signal['price']
                 
+                # Calculate Bot's SL/TP (Currently simply adopting Signal's, but ready for V3 optimization)
+                # In V3, we will modify these based on 'bot_params' history
+                bot_sl = signal.get('stop_loss')
+                bot_tp = signal.get('take_profit')
+
                 trade_data = {
                     "signal_id": signal['id'],
                     "symbol": signal['symbol'],
@@ -70,11 +75,14 @@ def check_new_entries():
                     "confidence_score": signal.get('confidence'),
                     "signal_type": signal.get('signal_type'),
                     "rsi_entry": signal.get('rsi'),
-                    "atr_entry": signal.get('atr_value')
+                    "atr_entry": signal.get('atr_value'),
+                    # NEW: Track Bot's specific decision
+                    "bot_stop_loss": bot_sl,
+                    "bot_take_profit": bot_tp
                 }
                 
                 supabase.table("paper_positions").insert(trade_data).execute()
-                print(f"--- TRADE OPENED: {signal['symbol']} ---")
+                print(f"--- TRADE OPENED: {signal['symbol']} | SL: {bot_sl} | TP: {bot_tp} ---")
                 
     except Exception as e:
         print(f"Error checking entries: {e}")
