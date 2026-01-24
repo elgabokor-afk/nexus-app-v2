@@ -107,9 +107,6 @@ def get_bot_params():
             "strategy_version": 1 # Initial version
         }
 
-            "strategy_version": 1 # Initial version
-        }
-
 def reconcile_positions():
     """ADOPT ORPHANED TRADES (V121): Sync DB with Real Binance Positions."""
     if TRADING_MODE != "LIVE": return
