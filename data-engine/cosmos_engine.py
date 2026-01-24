@@ -249,7 +249,7 @@ class CosmosBrain:
             print(f"Prediction Error: {e}")
             return 0.5
 
-    def decide_trade(self, signal_type, features, oracle_insight=None):
+    def decide_trade(self, signal_type, features, oracle_insight=None, min_conf=0.90):
         """
         V45/V50: The Master AI Decision Engine.
         Returns (Bool: Should Trade, Float: Final Prob, String: Reason)
@@ -281,8 +281,8 @@ class CosmosBrain:
                     return False, 0.0, "Refused to short strong pump (Trend Bullish + RSI < 75)"
                 print("       [CRISIS] Counter-Trend Sell Approved (Extreme Overbought Condition met)")
                 
-        # 1. BASELINE: Apply user-requested 90% confidence from params
-        base_decision = prob >= 0.90
+        # 1. BASELINE: Apply user-requested confidence from params
+        base_decision = prob >= min_conf
         
         # 2. ORDER BOOK SENSITIVITY (Strong changes)
         imb = features.get('imbalance_ratio', 0)
@@ -318,9 +318,10 @@ class CosmosBrain:
             print(f"       [ORACLE CONFIRMED] 1m Analysis aligns with {signal_type} signal.")
 
         # 5. FINAL WEIGHTED DECISION
-        required_prob = 0.90
+        required_prob = min_conf
         if trend_aligned and (abs(imb) > 0.4):
-            required_prob = 0.85 # AI is more lenient if confluence is perfect
+            # Only go lower if it's naturally stricter than the user's floor
+            required_prob = min(required_prob, 0.85)
             
         should_trade = prob >= required_prob
         

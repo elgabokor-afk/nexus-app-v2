@@ -242,7 +242,7 @@ def check_new_entries():
                     is_survival = True
                     print(f"   [SURVIVAL MODE] Equity ${wallet['equity']} < $50. ACTIVATING PROTOCOL V155.")
                     # V155: ULTRA-STRICT OVERRIDES
-                    params['min_confidence'] = 90 # Relaxed to 90 for more opportunities
+                    params['min_confidence'] = 50 # V190: Extreme Aggressive Mode
                     params['max_open_positions'] = 2
                     params['default_leverage'] = 2 # V155: Hard cap at 2x
 
@@ -281,7 +281,9 @@ def check_new_entries():
             max_pos = int(params.get('max_open_positions', 5))
             
             if active_count >= max_pos:
-                print(f"       [GUARD] Max Positions Reached ({active_count}/{max_pos}). Skipping remaining signals.")
+                print(f"   [!!!] BLOCKED: You have {active_count} open trades in the DB, but your limit is {max_pos}.")
+                print(f"   [!!!] THE BOT WILL NOT SEND ORDERS TO BINANCE UNTIL THE DB IS CLEAN.")
+                print(f"   [!!!] Fix: Run 'python data-engine/cleanup_db.py' and restart.")
                 break
 
             # V3 LOGIC: Dynamic Filter based on 'bot_params'
@@ -290,7 +292,7 @@ def check_new_entries():
                 continue 
 
             # 2. CONFIDENCE Check (New V17)
-            min_conf = float(params.get('min_confidence', 75))
+            min_conf = float(params.get('min_confidence', 50))
             signal_conf = float(signal.get('confidence', 0))
             if signal_conf < min_conf:
                  print(f"       [SKIPPED] {signal['symbol']} Low Confidence: {signal_conf}% < {min_conf}%")
@@ -338,7 +340,8 @@ def check_new_entries():
                 should_trade, ai_conf, ai_reason = brain.decide_trade(
                     signal['signal_type'], 
                     features, 
-                    oracle_insight=oracle_insight
+                    oracle_insight=oracle_insight,
+                    min_conf=(min_conf / 100.0)
                 )
                 
                 if not should_trade:
