@@ -254,6 +254,46 @@ def check_new_entries():
                     print(f"       [SKIPPED] AI Probability too low: {ai_score*100:.1f}%.")
                     continue
 
+                # 4. V30: TREND ALIGNMENT (Bullish/Bearish Consensus)
+                price_val = signal['price']
+                ema_val = signal.get('ema_200', price_val)
+                is_bullish = price_val > ema_val
+                
+                if "BUY" in signal['signal_type'] and not is_bullish:
+                    print(f"       [SKIPPED] Trend Mismatch: BUY signal but price below EMA_200.")
+                    continue
+                if "SELL" in signal['signal_type'] and is_bullish:
+                    print(f"       [SKIPPED] Trend Mismatch: SELL signal but price above EMA_200.")
+                    continue
+
+                # V30: NET-TARGETED TP/SL CALCULATION
+                # Target Net Profit = (ATR * TakeProfitMult) * Qty
+                # Target Net Loss = (ATR * StopLossMult) * Qty
+                atr_val = signal.get('atr_value', 0)
+                tp_mult = float(params.get('take_profit_atr_mult', 2.5))
+                sl_mult = float(params.get('stop_loss_atr_mult', 1.5))
+                
+                target_net_profit = (atr_val * tp_mult) * abs(quantity)
+                target_net_loss = (atr_val * sl_mult) * abs(quantity)
+                
+                abs_qty = abs(quantity)
+                fee_r = float(params.get('trading_fee_pct', 0.0005))
+                
+                if "BUY" in signal['signal_type']:
+                    # Net-Targeted TP (Solve for Price)
+                    # Price = (NetTarget + Entry*Qty*(1+Fee)) / (Qty*(1-Fee))
+                    bot_tp = (target_net_profit + price_val * abs_qty * (1 + fee_r)) / (abs_qty * (1 - fee_r))
+                    # Net-Targeted SL (Solve for Price where NetPnL = -target_net_loss)
+                    bot_sl = (-target_net_loss + price_val * abs_qty * (1 + fee_r)) / (abs_qty * (1 - fee_r))
+                    liq_price = price_val - (price_val / leverage)
+                else:
+                    # Net-Targeted TP (Short)
+                    # Price = (Entry*Qty*(1-Fee) - NetTarget) / (Qty*(1+Fee))
+                    bot_tp = (price_val * abs_qty * (1 - fee_r) - target_net_profit) / (abs_qty * (1 + fee_r))
+                    # Net-Targeted SL (Short)
+                    bot_sl = (price_val * abs_qty * (1 - fee_r) + target_net_loss) / (abs_qty * (1 + fee_r))
+                    liq_price = price_val + (price_val / leverage)
+
                 trade_data = {
                     "signal_id": signal['id'],
                     "symbol": signal['symbol'],
