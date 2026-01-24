@@ -36,6 +36,7 @@ export default function PaperBotWidget({ onSelectSymbol, viewMode = 'widget' }: 
     const [wallet, setWallet] = useState({ equity: 10000, balance: 10000 });
     const [stats, setStats] = useState({ totalPnl: 0, winRate: 0, activeCount: 0 });
     const [extendedStats, setExtendedStats] = useState({
+        strategy_version: 1,
         weekly: { wr: 0, count: 0 },
         monthly: { wr: 0, count: 0 },
         yearly: { wr: 0, count: 0 }
@@ -56,6 +57,7 @@ export default function PaperBotWidget({ onSelectSymbol, viewMode = 'widget' }: 
         const { data: rpcData, error } = await supabase.rpc('get_bot_stats');
         if (rpcData && !error) {
             setExtendedStats({
+                strategy_version: rpcData.strategy_version || 1,
                 weekly: { wr: rpcData.weekly_winrate, count: rpcData.weekly_trades },
                 monthly: { wr: rpcData.monthly_winrate, count: rpcData.monthly_trades },
                 yearly: { wr: rpcData.yearly_winrate, count: rpcData.yearly_trades }
@@ -211,7 +213,13 @@ export default function PaperBotWidget({ onSelectSymbol, viewMode = 'widget' }: 
                     </div>
                 </div>
 
-                {/* WINRATE STATS (V19) */}
+                {/* WINRATE STATS (V19/V26) */}
+                <div className="flex justify-between items-center mb-2 px-1">
+                    <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Performance Metrics</h3>
+                    <span className="text-[10px] font-mono text-white/40 bg-white/5 px-2 py-0.5 rounded border border-white/5">
+                        VERSION: v{extendedStats.strategy_version}
+                    </span>
+                </div>
                 <div className="grid grid-cols-3 gap-2 mb-8">
                     {[
                         { period: '7 DAYS', wr: extendedStats.weekly.wr, trades: extendedStats.weekly.count },

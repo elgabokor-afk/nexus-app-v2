@@ -89,7 +89,8 @@ def get_bot_params():
             "margin_mode": "ISOLATED",
             "account_risk_pct": 0.02, # Safe default
             "min_confidence": 78, # User requested 78%
-            "trading_fee_pct": 0.0005 # 0.05% per leg (0.1% Round-Trip)
+            "trading_fee_pct": 0.0005, # 0.05% per leg (0.1% Round-Trip)
+            "strategy_version": 1 # Initial version
         }
 
 def check_new_entries():
@@ -269,7 +270,8 @@ def check_new_entries():
                     "leverage": leverage,
                     "margin_mode": margin_mode,
                     "initial_margin": round(initial_margin, 2),
-                    "liquidation_price": round(liq_price, 4)
+                    "liquidation_price": round(liq_price, 4),
+                    "strategy_version": params.get('strategy_version', 1)
                 }
                 
                 supabase.table("paper_positions").insert(trade_data).execute()
