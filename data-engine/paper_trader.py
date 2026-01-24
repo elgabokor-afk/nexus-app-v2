@@ -437,9 +437,9 @@ def check_new_entries():
                     continue
 
                 # Target Margin Calculation
-                # V300: SMART MARGIN SIZING (40% of Equity for scalable growth)
-                target_margin = equity * 0.40
-                scaling_reason = " (Smart 40%)"
+                # V400: SAFETY LAUNCH SIZE ($11 Minimum per Binance requirements)
+                target_margin = 11.0
+                scaling_reason = " (V400 Launch $11)"
                 
                 # V135: SURVIVAL OVERRIDE
                 if is_survival:

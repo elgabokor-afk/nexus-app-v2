@@ -13,18 +13,29 @@ class BinanceTrader:
         self.secret = os.getenv("BINANCE_SECRET")
         self.mode = os.getenv("TRADING_MODE", "PAPER")
         
+        # V311: PROXY SUPPORT
+        self.proxy = os.getenv("BINANCE_PROXY")
+        
         # Initialize CCXT Binance
-        # V210: Switched from 'futures' to 'margin' per user request
-        self.exchange = ccxt.binance({
+        binance_config = {
             'apiKey': self.api_key,
             'secret': self.secret,
             'enableRateLimit': True,
             'options': {
                 'defaultType': 'margin', # SPOT MARGIN
                 'adjustForTimeDifference': True,
-                'recvWindow': 60000 # V230: Max tolerance for local lag
+                'recvWindow': 60000 
             }
-        })
+        }
+        
+        if self.proxy:
+            binance_config['proxies'] = {'https': self.proxy, 'http': self.proxy}
+            print(f"   [BINANCE] Proxy Enabled: {self.proxy}")
+
+        self.exchange = ccxt.binance(binance_config)
+        
+        # V311: RESILIENT DATA LAYER (Kraken Fallback for 451 Errors)
+        self.fallback_exchange = ccxt.kraken({'enableRateLimit': True})
         
         
         self.is_connected = False
@@ -67,27 +78,36 @@ class BinanceTrader:
 
     # V310: MARKET DATA CAPABILITIES
     def fetch_ohlcv(self, symbol, timeframe='1h', limit=100):
-        """Fetch historical candle data from Binance Spot."""
+        """Fetch historical candle data (V311: with Kraken Fallback)."""
         try:
-            # Note: CCXT handles symbol conversion (DOGE/USDT -> DOGEUSDT) automatically
             return self.exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
         except Exception as e:
+            if "451" in str(e):
+                print(f"   [V311 FALLBACK] Binance Blocked (451). Trying Kraken for {symbol}...")
+                # Kraken uses /USD instead of /USDT for some pairs, but CCXT handles it well
+                return self.fallback_exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
             print(f"   [BINANCE] Error fetching OHLCV for {symbol}: {e}")
             return []
 
     def fetch_ticker(self, symbol):
-        """Fetch real-time price info from Binance Spot."""
+        """Fetch real-time price info (V311: with Kraken Fallback)."""
         try:
             return self.exchange.fetch_ticker(symbol)
         except Exception as e:
+            if "451" in str(e):
+                print(f"   [V311 FALLBACK] Binance Blocked (451). Trying Kraken price for {symbol}...")
+                return self.fallback_exchange.fetch_ticker(symbol)
             print(f"   [BINANCE] Error fetching ticker for {symbol}: {e}")
             return None
 
     def fetch_order_book(self, symbol, limit=50):
-        """Fetch L2 Order Book from Binance Spot."""
+        """Fetch L2 Order Book (V311: with Kraken Fallback)."""
         try:
             return self.exchange.fetch_order_book(symbol, limit=limit)
         except Exception as e:
+            if "451" in str(e):
+                print(f"   [V311 FALLBACK] Binance Blocked (451). Trying Kraken books for {symbol}...")
+                return self.fallback_exchange.fetch_order_book(symbol, limit=limit)
             print(f"   [BINANCE] Error fetching order book for {symbol}: {e}")
             return None
 
