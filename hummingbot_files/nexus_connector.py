@@ -16,8 +16,8 @@ class NexusConnector(ScriptStrategyBase):
     Runs a simple market making strategy and pushes updates to Supabase.
     """
     
-    # Define markets to trade
-    markets = {"kraken_paper_trade": {"BTC-USDT", "ETH-USDT"}}
+    # V411: Lock to Binance Margin Connector
+    markets = {"binance_margin": {"BTC-USDT", "SOL-USDT", "ETH-USDT", "DOGE-USDT"}}
     
     def __init__(self, connectors):
         super().__init__(connectors)

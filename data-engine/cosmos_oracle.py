@@ -1,5 +1,6 @@
-import os
 import time
+import json # V405
+import os
 import pandas as pd
 import ccxt
 from dotenv import load_dotenv
@@ -8,8 +9,19 @@ from db import insert_oracle_insight, log_error, insert_signal, insert_analytics
 
 load_dotenv(dotenv_path="../.env.local")
 
-# V310: Import Binance Engine for unified data/execution
 from binance_engine import live_trader
+
+# V410: Global Config Loading
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+config_path = os.path.join(parent_dir, "config", "conf_global.json")
+GLOBAL_CONFIG = {}
+if os.path.exists(config_path):
+    with open(config_path, 'r') as f:
+        GLOBAL_CONFIG = json.load(f) or {}
+
+PRIORITY_ASSETS = GLOBAL_CONFIG.get("priority_assets", ["BTC/USDT", "SOL/USDT"])
+SYMBOLS = GLOBAL_CONFIG.get("trading_pairs", ["BTC/USDT", "SOL/USDT", "ETH/USDT", "DOGE/USDT"])
 
 def calculate_rsi(series, period=14):
     delta = series.diff()
@@ -37,13 +49,13 @@ def calculate_atr(df, period=14):
     true_range = ranges.max(axis=1)
     return true_range.rolling(period).mean()
 
-def run_oracle_step(symbol='BTC/USD'):
+def run_oracle_step(symbol='BTC/USDT'):
     """
-    V80/V90 Multi-Asset Oracle Step
+    V410 Multi-Asset Oracle Step (5m Focus)
     """
     try:
-        # 1. FETCH 1m DATA (V310: Use Binance)
-        bars = live_trader.fetch_ohlcv(symbol, timeframe='1m', limit=100)
+        # 1. FETCH 5m DATA (V410: Shifted from 1m for better signal quality)
+        bars = live_trader.fetch_ohlcv(symbol, timeframe='5m', limit=100)
         df = pd.DataFrame(bars, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
         
         # 2. COMPUTE TECHS
@@ -164,8 +176,13 @@ if __name__ == "__main__":
             brain.update_asset_bias(history)
             last_recursive_sync = time.time()
 
-        target_assets = get_active_assets()
-        print(f"\n>>> Starting Recursive Pulse for {len(target_assets)} assets...")
+        # V410: Priority Pulse (BTC/SOL first)
+        active_assets = get_active_assets()
+        # Merge DB assets with Config symbols and prioritize
+        all_unique_assets = list(set(active_assets + SYMBOLS))
+        target_assets = PRIORITY_ASSETS + [a for a in all_unique_assets if a not in PRIORITY_ASSETS]
+        
+        print(f"\n>>> Starting Recursive Pulse for {len(target_assets)} assets (Priority: {PRIORITY_ASSETS})")
         
         for symbol in target_assets:
             run_oracle_step(symbol)

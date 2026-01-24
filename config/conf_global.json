@@ -1,9 +1,18 @@
 {
     "paper_trade_enabled": false,
+    "analysis_timeframes": [
+        "5m",
+        "15m"
+    ],
+    "priority_assets": [
+        "BTC/USDT",
+        "SOL/USDT"
+    ],
     "trading_pairs": [
         "BTC/USDT",
-        "DOGE/USDT",
-        "SOL/USDT"
+        "SOL/USDT",
+        "ETH/USDT",
+        "DOGE/USDT"
     ],
     "connector_type": "binance_margin",
     "margin_mode": "CROSSED",

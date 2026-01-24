@@ -2,6 +2,7 @@ import ccxt
 import pandas as pd
 import requests
 import time
+import json # V405
 from datetime import datetime
 
 import os
@@ -20,6 +21,17 @@ ASSET_BLACKLIST = ['PEPE', 'PEPE/USDT', 'PEPE/USD']
 
 # V310: Import Binance Engine for unified data/execution
 from binance_engine import live_trader
+
+# V410: Global Config Loading
+config_path = os.path.join(parent_dir, "config", "conf_global.json")
+GLOBAL_CONFIG = {}
+if os.path.exists(config_path):
+    with open(config_path, 'r') as f:
+        GLOBAL_CONFIG = json.load(f) or {}
+
+PRIORITY_ASSETS = GLOBAL_CONFIG.get("priority_assets", ["BTC/USDT", "SOL/USDT"])
+ANALYSIS_TIMEFRAMES = GLOBAL_CONFIG.get("analysis_timeframes", ["5m", "15m"])
+SYMBOLS = GLOBAL_CONFIG.get("trading_pairs", ["BTC/USDT", "SOL/USDT", "ETH/USDT", "DOGE/USDT"])
 
 print("--- BINANCE DATA ENGINE ACTIVE (V310 Migration) ---")
 
@@ -306,16 +318,9 @@ tg = TelegramAlerts()
 
 def main():
     print("/// N E X U S  D A T A  E N G I N E  (v1.0) ///")
-    print("Scanning Kraken Spot Markets...")
+    print(f"Scanning Binance Spot Margin: {SYMBOLS}")
+    print(f"Priority Focus: {PRIORITY_ASSETS}")
     print("-" * 50)
-    
-    # Kraken typically uses USD pairs for high volume
-    symbols = [
-        'BTC/USD', 'ETH/USD', 'SOL/USD',
-        'ADA/USD', 'XRP/USD', 'DOT/USD', 'DOGE/USD',
-        'LINK/USD', 'POL/USD', 'LTC/USD', 'BCH/USD',
-        'UNI/USD'
-    ]
     
     # V10.0: Initial AI Training (Startup)
     print("--- [SVC] Initializing Cosmos AI Brain ---")
@@ -368,22 +373,45 @@ def main():
                 except Exception as e:
                     print(f"Date Parse Warning: {e}")
 
-            print(f"\n--- Scan at {datetime.now().strftime('%H:%M:%S')} | Fear & Greed: {fng_index} | Open: {active_positions} ---")
-            for symbol in symbols:
-                # V301: Prevent PEPE or other blacklisted assets from being analyzed
+            print(f"\n--- Scan at {now.strftime('%H:%M:%S')} | Fear & Greed: {fng_index} | Open: {active_positions} ---")
+            
+            # V410: Reorder symbols to ensure priority assets are scanned first
+            symbols_to_scan = PRIORITY_ASSETS + [s for s in SYMBOLS if s not in PRIORITY_ASSETS]
+            
+            for symbol in symbols_to_scan:
                 if any(b in symbol.upper() for b in ASSET_BLACKLIST):
                     continue
-                    
-                df = fetch_data(symbol)
-                techs = analyze_market(df) # Returns basic tech metrics
                 
-                if techs:
-                    # Upgrade to V4 Analysis + V8 AI + V9 Sentiment
-                    quant_signal = analyze_quant_signal(symbol, techs, sentiment_score=fng_index)
+                # V410: Multi-Timeframe Confluence (5m & 15m)
+                # We analyze the faster timeframe (5m) for entries, confirmed by 15m trend.
+                df_5m = fetch_data(symbol, timeframe='5m', limit=100)
+                df_15m = fetch_data(symbol, timeframe='15m', limit=100)
+                
+                techs_5m = analyze_market(df_5m)
+                techs_15m = analyze_market(df_15m)
+                
+                if techs_5m and techs_15m:
+                    # Logic: 5m signal MUST align with 15m EMA_200 trend
+                    ma_15m = techs_15m['ema_200']
+                    p_5m = techs_5m['price']
+                    trend_15m = "BULLISH" if p_5m > ma_15m else "BEARISH"
+                    
+                    # Upgrade to V4 Analysis with Confluence
+                    quant_signal = analyze_quant_signal(symbol, techs_5m, sentiment_score=fng_index)
                     
                     if quant_signal:
+                        # V410: STRENGTHEN FILTER - Confluence check
+                        # If 5m signal is BUY, 15m MUST be BULLISH
+                        if "BUY" in quant_signal['signal'] and trend_15m != "BULLISH":
+                            print(f"   [V410 FILTER] {symbol} 5m BUY rejected: 15m Trend is BEARISH.")
+                            quant_signal = None
+                        elif "SELL" in quant_signal['signal'] and trend_15m != "BEARISH":
+                            print(f"   [V410 FILTER] {symbol} 5m SELL rejected: 15m Trend is BULLISH.")
+                            quant_signal = None
+
+                    if quant_signal:
                         print(f"[{symbol}] Price: {quant_signal['price']} | RSI: {quant_signal['rsi']} | Imb: {quant_signal['imbalance']}")
-                        print(f"   >>> V4 SIGNAL: {quant_signal['signal']} ({quant_signal['confidence']}%) | Cosmos AI: {quant_signal['ai_prob']}% | F&G: {quant_signal['sentiment']}")
+                        print(f"   >>> V410 CONFLUENCE SIGNAL: {quant_signal['signal']} ({quant_signal['confidence']}%) | Trend(15m): {trend_15m}")
                         
                         # ... (DB Insert Logic) ...
                         # 1. Insert Base Signal
