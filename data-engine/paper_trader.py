@@ -85,11 +85,10 @@ def get_bot_params():
             "rsi_buy_threshold": 30, 
             "stop_loss_atr_mult": 1.5, 
             "take_profit_atr_mult": 2.5,
-            "default_leverage": 10,
-            "margin_mode": "ISOLATED",
+            "default_leverage": 4, # User requested max x4
             "margin_mode": "ISOLATED",
             "account_risk_pct": 0.02, # Safe default
-            "min_confidence": 75
+            "min_confidence": 78 # User requested 78%
         }
 
 def check_new_entries():
