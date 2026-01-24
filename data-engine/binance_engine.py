@@ -155,7 +155,13 @@ class BinanceTrader:
 
             # 4. Final Execution (V215: Use MARGIN_BUY for auto-borrowing)
             print(f"   [BINANCE] EXECUTING MARGIN ORDER (AUTO-BORROW): {side.upper()} {clean_amount} {symbol}")
-            order = self.exchange.create_market_order(symbol, side, clean_amount, {'sideEffect': 'MARGIN_BUY'})
+            # V440: Explicit Auto-Borrow for Cross Margin
+            params = {'sideEffectType': 'MARGIN_BUY'} 
+            if side.upper() == 'SELL':
+                 # For closing, we AUTO_REPAY
+                 params = {'sideEffectType': 'AUTO_REPAY'}
+            
+            order = self.exchange.create_market_order(symbol, side, clean_amount, params)
             print(f"   [BINANCE] SUCCESS: Order ID {order.get('id')} executed on Margin.")
             return order
         except Exception as e:

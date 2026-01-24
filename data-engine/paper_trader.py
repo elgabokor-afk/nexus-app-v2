@@ -45,7 +45,12 @@ from binance_engine import live_trader
 
 print("--- BINANCE EXECUTION & DATA ENGINE ACTIVE (V310) ---")
 
-TRADING_MODE = os.getenv("TRADING_MODE", "PAPER")
+TRADING_MODE = os.getenv("TRADING_MODE", "PAPER").upper()
+# V460: Force LIVE mode if specified in Env, ignoring JSON conflicts
+if TRADING_MODE == "LIVE":
+    PAPER_TRADE_ENABLED = False 
+    print("--- [V402 OVERRIDE] TRADING_MODE is LIVE. Disabling Paper Trade safely. ---")
+
 print(f"--- NEXUS TRADING ENGINE INITIALIZED [MODE: {TRADING_MODE}] ---")
 
 def get_current_price(symbol):
