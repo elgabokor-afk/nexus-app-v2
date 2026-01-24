@@ -129,6 +129,19 @@ def get_active_position_count():
     except:
         return 999
 
+def get_active_assets():
+    """V80: Fetches the list of active symbols to monitor."""
+    if not client: return ["BTC/USD"] # Fallback
+    try:
+        url = f"{client.base_url}/market_assets?is_active=eq.true&select=symbol"
+        resp = client.get(url)
+        if resp.status_code == 200:
+            return [a['symbol'] for a in resp.json()]
+        return ["BTC/USD"]
+    except Exception as e:
+        print(f"   !!! DB Error (Assets): {e}")
+        return ["BTC/USD"]
+
 def insert_oracle_insight(symbol, timeframe, trend, prob, reasoning, technical):
     if not client: return
     data = {
@@ -157,6 +170,26 @@ def get_latest_oracle_insight(symbol):
     except Exception as e:
         print(f"   !!! Database Error (Oracle Fetch): {e}")
         return None
+
+def sync_model_metadata(version, accuracy, samples, features):
+    """V71: Syncs local model performance to the hosted DB for Vercel/Railway awareness."""
+    if not client: return
+    data = {
+        "version_tag": version,
+        "accuracy": float(accuracy),
+        "samples_trained": int(samples),
+        "features_used": features,
+        "last_bootstrap_at": datetime.now(timezone.utc).isoformat(),
+        "active": True
+    }
+    try:
+        url = f"{client.base_url}/ai_model_registry"
+        # Since we only want one active row usually, we can either append or upsert.
+        # For simplicity and history, we append.
+        client.post(url, json=data)
+        print(f"   >>> Neural Link: Accuracy ({accuracy*100:.1f}%) synced to Railway/Vercel.")
+    except Exception as e:
+        print(f"   !!! Neural Link Error: {e}")
 
 def get_last_trade_time():
     if not client: return None

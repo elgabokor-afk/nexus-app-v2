@@ -273,6 +273,50 @@ class CosmosBrain:
         
         return should_trade, prob, final_reason
 
+    def rank_assets(self, asset_data_list):
+        """
+        V80: Multi-Asset Ranking Engine.
+        Prioritizes assets based on (Conf * Trend_Bonus) / Risk_Penalty.
+        asset_data_list: list of dicts {symbol, features, signal_type}
+        """
+        ranked = []
+        for asset in asset_data_list:
+            symbol = asset['symbol']
+            features = asset['features']
+            sig_type = asset['signal_type']
+            
+            prob = self.predict_success(features)
+            trend = self.get_trend_status(features)
+            
+            # 1. Scoring Logic
+            score = prob * 100
+            
+            # Trend Bonus
+            trend_aligned = (sig_type == "BUY" and trend == "BULLISH") or (sig_type == "SELL" and trend == "BEARISH")
+            if trend_aligned:
+                score += 15 # +15 point bonus for trend confluence
+            else:
+                score -= 30 # -30 penalty for counter-trend trades
+                
+            # Volatility Penalty (Risk)
+            # High ATR relative to price increases risk
+            atr = features.get('atr_value', 0)
+            price = features.get('price', 1)
+            vol_ratio = (atr / price) * 100
+            if vol_ratio > 3.0: # Vol higher than 3%
+                score -= 10
+                
+            ranked.append({
+                "symbol": symbol,
+                "score": round(score, 2),
+                "prob": prob,
+                "trend": trend,
+                "reasoning": self.generate_reasoning(features, prob)
+            })
+            
+        # Sort by score descending
+        return sorted(ranked, key=lambda x: x['score'], reverse=True)
+
 # Singleton Instance for easy import
 brain = CosmosBrain()
 

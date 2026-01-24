@@ -179,11 +179,31 @@ def check_new_entries():
                 # Use Total Equity for the risk calculation (Fixed Fractional Sizing)
                 target_margin = float(wallet['equity']) * account_risk
                 
+                # V80: MULTI-ASSET DIVERSIFICATION (15% Cap per Symbol)
+                # Ensure we don't put too much into one coin
+                max_asset_exposure = float(wallet['equity']) * 0.15
+                
                 # But CAP it based on Free Balance (Cash) to avoid over-exposure
                 free_balance = float(wallet['balance'])
                 # Never use more than 25% of REMAINING cash on a single trade for safety
                 max_safe_margin = free_balance * 0.25 
                 
+                # V80: Check current exposure for this symbol
+                existing_asset_pos = supabase.table("paper_positions") \
+                    .select("margin") \
+                    .eq("symbol", signal['symbol']) \
+                    .eq("status", "OPEN") \
+                    .execute()
+                
+                current_exposure = sum([p['margin'] for p in existing_asset_pos.data])
+                if current_exposure + target_margin > max_asset_exposure:
+                    # Scale down the margin if it exceeds the 15% cap
+                    target_margin = max(0, max_asset_exposure - current_exposure)
+                    if target_margin < 2.0:
+                        print(f"       [SKIPPED] Max Asset Exposure reached for {signal['symbol']} (${current_exposure:.2f}/$ {max_asset_exposure:.2f})")
+                        continue
+                    print(f"       [DIVERSIFICATION] Scaling down margin to ${target_margin:.2f} to stay under 15% cap.")
+
                 initial_margin = min(target_margin, max_safe_margin)
                 
                 # Minimum margin check (don't open dust trades)
@@ -195,7 +215,7 @@ def check_new_entries():
                 trade_value = initial_margin * leverage
                 quantity = trade_value / signal['price']
                 
-                print(f"       Opening Position: ${trade_value:.2f} ({leverage}x) | Margin: ${initial_margin:.2f} (from ${free_balance:.2f} free)")
+                print(f"       Opening Position: {signal['symbol']} ${trade_value:.2f} ({leverage}x) | Margin: ${initial_margin:.2f} (from ${free_balance:.2f} free)")
                 
                 
                 # V3 LOGIC: ATR Stops

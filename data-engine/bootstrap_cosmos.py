@@ -7,6 +7,7 @@ import joblib
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.impute import SimpleImputer
 from dotenv import load_dotenv
+from db import sync_model_metadata
 
 # Path Fixing for imports
 load_dotenv(dotenv_path="../.env.local")
@@ -50,51 +51,72 @@ def fetch_historical_data(symbol='BTC/USD', timeframe='15m', limit=2000):
 
 def bootstrap_brain():
     """
-    V70 Local Bootstrapper:
-    1. Downloads history
-    2. Labels successes (Price +1.5% before -1%)
-    3. Trains Local Brain
+    V70/V80 Local Bootstrapper:
+    1. Downloads history for ALL active assets
+    2. Labels successes
+    3. Trains Local Brain on Multi-Asset data
     """
-    print("--- COSMOS AI LOCAL BOOTSTRAPPER (V70) ---")
+    print("--- COSMOS AI MULTI-ASSET BOOTSTRAPPER (V80) ---")
     
-    # 1. Fetch Data
-    df = fetch_historical_data()
+    from db import get_active_assets
+    target_assets = get_active_assets()
     
-    # 2. Compute Features
-    print("   >>> Computing technical indicators...")
-    df['rsi_value'] = calculate_rsi(df['close'])
-    df['atr_value'] = calculate_atr(df)
-    macd_line, histogram = calculate_macd(df['close'])
-    df['macd_line'] = macd_line
-    df['histogram'] = histogram
-    df['imbalance_ratio'] = 0 # Synthetic placeholder
-    df['spread_pct'] = 0.0002 # Average Kraken spread
+    all_dfs = []
     
-    # 3. AUTO-LABELLING (Look Ahead)
-    print("   >>> Labelling winning patterns (15m window)...")
-    df['target'] = 0
-    window = 20 # Look 20 bars ahead
-    
-    for i in range(len(df) - window):
-        current_price = df.iloc[i]['close']
-        future_prices = df.iloc[i+1 : i+window]['high']
-        future_lows = df.iloc[i+1 : i+window]['low']
+    for symbol in target_assets:
+        # 1. Fetch Data
+        df = fetch_historical_data(symbol)
+        if df.empty: continue
         
-        # Win Condition: Price goes up 1.5% before dropping 1%
-        target_profit = current_price * 1.015
-        stop_loss = current_price * 0.99
+        # 2. Compute Features
+        print(f"   >>> Computing indicators for {symbol}...")
+        df['symbol'] = symbol
+        df['rsi_value'] = calculate_rsi(df['close'])
+        df['atr_value'] = calculate_atr(df)
+        macd_line, histogram = calculate_macd(df['close'])
+        df['macd_line'] = macd_line
+        df['histogram'] = histogram
+        df['imbalance_ratio'] = 0 
+        df['spread_pct'] = 0.0002
         
-        hit_tp = (future_prices >= target_profit).any()
-        hit_sl = (future_lows <= stop_loss).any()
+        # 3. AUTO-LABELLING (Look Ahead)
+        df['target'] = 0
+        window = 20 
         
-        if hit_tp and not (hit_sl and future_lows[future_lows <= stop_loss].index[0] < future_prices[future_prices >= target_profit].index[0]):
-            df.at[i, 'target'] = 1
+        for i in range(len(df) - window):
+            current_price = df.iloc[i]['close']
+            future_prices = df.iloc[i+1 : i+window]['high']
+            future_lows = df.iloc[i+1 : i+window]['low']
+            
+            target_profit = current_price * 1.015
+            stop_loss = current_price * 0.99
+            
+            hit_tp = (future_prices >= target_profit).any()
+            hit_sl = (future_lows <= stop_loss).any()
+            
+            if hit_tp:
+                # Basic check: did we hit TP before SL?
+                tp_idx = future_prices[future_prices >= target_profit].index[0]
+                sl_idx = future_lows[future_lows <= stop_loss].index[0] if hit_sl else 999999
+                
+                if tp_idx < sl_idx:
+                    df.at[i, 'target'] = 1
 
-    # 4. TRAIN MODEL
-    X = df[FEATURE_COLS].dropna()
-    y = df.loc[X.index, 'target']
+        all_dfs.append(df)
+        time.sleep(1) # Delay for rate limits
     
-    print(f"   >>> Training on {len(X)} samples... (Wins: {y.sum()})")
+    if not all_dfs:
+        print("!!! Error: No data collected. Bootstrap failed.")
+        return
+
+    combined_df = pd.concat(all_dfs)
+    
+    # 4. TRAIN MODEL
+    X = combined_df[FEATURE_COLS].dropna()
+    y = combined_df.loc[X.index, 'target']
+    
+    print(f"   >>> Combined Training on {len(X)} samples across {len(target_assets)} assets...")
+    print(f"   >>> Global Wins: {y.sum()} ({y.mean()*100:.1f}%)")
     
     imputer = SimpleImputer(strategy='mean')
     X_imputed = imputer.fit_transform(X)
@@ -106,9 +128,16 @@ def bootstrap_brain():
     joblib.dump({'model': model, 'imputer': imputer}, MODEL_PATH)
     
     accuracy = model.score(X_imputed, y)
-    print(f"--- BOOTSTRAP COMPLETE ---")
-    print(f"Local AI Brain created with {accuracy:.2%} historical accuracy.")
-    print(f"Knowledge saved to: {MODEL_PATH}")
+    print(f"--- MULTI-ASSET BOOTSTRAP COMPLETE ---")
+    print(f"Combined Brain created with {accuracy:.2%} accuracy.")
+    
+    # 6. SYNC TO CLOUD (V71)
+    sync_model_metadata(
+        version="v1.2-multi-asset",
+        accuracy=accuracy,
+        samples=len(X),
+        features=FEATURE_COLS
+    )
 
 if __name__ == "__main__":
     bootstrap_brain()

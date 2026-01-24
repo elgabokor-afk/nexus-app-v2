@@ -4,7 +4,7 @@ import pandas as pd
 import ccxt
 from dotenv import load_dotenv
 from cosmos_engine import brain
-from db import insert_oracle_insight, log_error, insert_signal, insert_analytics
+from db import insert_oracle_insight, log_error, insert_signal, insert_analytics, get_active_assets
 
 load_dotenv(dotenv_path="../.env.local")
 
@@ -34,13 +34,17 @@ def calculate_macd(series, fast=12, slow=26, signal=9):
 def calculate_ema(series, period=200):
     return series.ewm(span=period, adjust=False).mean()
 
+def calculate_atr(df, period=14):
+    high_low = df['high'] - df['low']
+    high_close = (df['high'] - df['close'].shift()).abs()
+    low_close = (df['low'] - df['close'].shift()).abs()
+    ranges = pd.concat([high_low, high_close, low_close], axis=1)
+    true_range = ranges.max(axis=1)
+    return true_range.rolling(period).mean()
+
 def run_oracle_step(symbol='BTC/USD'):
     """
-    V40 Oracle Loop:
-    1. Fetch 1m Candles
-    2. Compute Indicators
-    3. Generate BLM Reasoning
-    4. Sync to Vercel/Supabase
+    V80 Multi-Asset Oracle Step
     """
     try:
         # 1. FETCH 1m DATA
@@ -50,19 +54,19 @@ def run_oracle_step(symbol='BTC/USD'):
         # 2. COMPUTE TECHS
         df['RSI'] = calculate_rsi(df['close'])
         df['EMA_200'] = calculate_ema(df['close'])
+        df['ATR'] = calculate_atr(df)
         macd, sig, hist = calculate_macd(df['close'])
         
-        # Calculate Imbalance (requires fetch_order_book)
-        # For the Oracle Pulse we will simplify to Price/EMA/RSI/MACD
         latest = df.iloc[-1]
         
         features = {
             'price': latest['close'],
             'rsi_value': latest['RSI'],
             'ema_200': latest['EMA_200'],
+            'atr_value': latest['ATR'], 
             'histogram': hist.iloc[-1],
             'macd_line': macd.iloc[-1],
-            'imbalance_ratio': 0 # Placeholder for this 1m pulse
+            'imbalance_ratio': 0 
         }
         
         # 3. BLM ANALYSIS
@@ -71,19 +75,15 @@ def run_oracle_step(symbol='BTC/USD'):
         reasoning = brain.generate_reasoning(features, prob)
         
         # Decide if we should scalp
-        # V60: We define 1m scalping as a STRONG BUY or STRONG SELL
         signal_type = "STRONG BUY" if prob >= 0.90 and trend == "BULLISH" else \
                       "STRONG SELL" if prob >= 0.90 and trend == "BEARISH" else "NEUTRAL"
 
-        # 4. SYNC TO SUPABASE
-        print(f"[{time.strftime('%H:%M:%S')}] ORACLE | {symbol} | {trend} | Prob: {prob*100:.1f}%")
+        # 4. LOGGING
+        print(f"[{time.strftime('%H:%M:%S')}] ORACLE | {symbol.ljust(8)} | {trend.ljust(7)} | Prob: {prob*100:4.1f}%")
         
-        # 5. EMIT SCALP SIGNAL (V60)
-        # Only if confidence is 90% and it aligns with trend
+        # 5. EMIT SCALP SIGNAL (V60/V61)
         if signal_type != "NEUTRAL":
-            print(f"      !!! SCALP OPPORTUNITY DETECTED: {signal_type} !!!")
-            
-            # V61: Use wider ATR targets to allow for corrections
+            print(f"      !!! SCALP OPPORTUNITY: {symbol} {signal_type} !!!")
             atr = latest['ATR']
             sl = latest['close'] - (atr * 2.5) if "BUY" in signal_type else latest['close'] + (atr * 2.5)
             tp = latest['close'] + (atr * 2.1) if "BUY" in signal_type else latest['close'] - (atr * 2.1)
@@ -105,7 +105,7 @@ def run_oracle_step(symbol='BTC/USD'):
                     ema_200=latest['EMA_200'],
                     rsi_value=latest['RSI'],
                     atr_value=latest['ATR'],
-                    imbalance_ratio=0, # Simplified
+                    imbalance_ratio=0,
                     spread_pct=0,
                     depth_score=0,
                     macd_line=macd.iloc[-1],
@@ -124,17 +124,26 @@ def run_oracle_step(symbol='BTC/USD'):
                 "price": latest['close'],
                 "rsi": latest['RSI'],
                 "ema_200": latest['EMA_200'],
-                "type": "SCALP_SCAN"
+                "type": "MULTI_SCALP_SCAN"
             }
         )
         
     except Exception as e:
-        print(f"Oracle Error: {e}")
-        log_error("COSMOS_ORACLE", e, "ERROR")
+        print(f"!!! Oracle Error ({symbol}): {e}")
+        log_error(f"ORACLE_{symbol}", e, "ERROR")
 
 if __name__ == "__main__":
-    print("--- COSMOS ORACLE V40 (BLM) STARTED ---")
-    print("Monitoring 1m Candles... Syncing to Vercel via Supabase (30s Pulse).")
+    print("--- COSMOS MULTI-ASSET ORACLE V80 STARTED ---")
+    print("Monitoring Top 20 Pairs... Syncing to Vercel via Supabase.")
+    
     while True:
-        run_oracle_step()
-        time.sleep(30) # Increased frequency for better real-time feel (V62)
+        target_assets = get_active_assets()
+        print(f"\n>>> Starting Pulse for {len(target_assets)} assets...")
+        
+        for symbol in target_assets:
+            run_oracle_step(symbol)
+            time.sleep(1) # Small delay to avoid rate limits
+            
+        print(f">>> Pulse Complete. Sleeping 30s...")
+        time.sleep(30) 
+

@@ -16,22 +16,34 @@ interface OracleInsight {
 
 export default function OracleMonitor() {
     const [insights, setInsights] = useState<OracleInsight[]>([]);
+    const [brainState, setBrainState] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
     const fetchInsights = async () => {
-        const { data } = await supabase
+        const { data: insightData } = await supabase
             .from('oracle_insights')
             .select('*')
             .order('timestamp', { ascending: false })
             .limit(10);
-        if (data) setInsights(data);
+        if (insightData) setInsights(insightData);
+
+        // V71: Fetch active brain metadata
+        const { data: brainData } = await supabase
+            .from('ai_model_registry')
+            .select('*')
+            .eq('active', true)
+            .order('updated_at', { ascending: false })
+            .limit(1)
+            .single();
+        if (brainData) setBrainState(brainData);
+
         setLoading(false);
     };
 
     useEffect(() => {
         fetchInsights();
 
-        const channel = supabase.channel('oracle_feed')
+        const insightChannel = supabase.channel('oracle_feed')
             .on(
                 'postgres_changes',
                 { event: 'INSERT', schema: 'public', table: 'oracle_insights' },
@@ -43,8 +55,17 @@ export default function OracleMonitor() {
             )
             .subscribe();
 
+        const brainChannel = supabase.channel('brain_sync')
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'ai_model_registry' },
+                () => { fetchInsights(); }
+            )
+            .subscribe();
+
         return () => {
-            supabase.removeChannel(channel);
+            supabase.removeChannel(insightChannel);
+            supabase.removeChannel(brainChannel);
         };
     }, []);
 
@@ -60,9 +81,16 @@ export default function OracleMonitor() {
                         <p className="text-[9px] text-gray-500 font-bold uppercase tracking-tighter">1m Real-Time AI Thoughts</p>
                     </div>
                 </div>
-                <div className="flex items-center gap-1.5 bg-white/5 px-2 py-0.5 rounded-full border border-white/10">
-                    <div className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse"></div>
-                    <span className="text-[9px] font-mono text-purple-400 uppercase font-black">Online</span>
+                <div className="flex flex-col items-end gap-1">
+                    <div className="flex items-center gap-1.5 bg-white/5 px-2 py-0.5 rounded-full border border-white/10">
+                        <div className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse"></div>
+                        <span className="text-[9px] font-mono text-purple-400 uppercase font-black tracking-tighter">Neural Link</span>
+                    </div>
+                    {brainState && (
+                        <span className="text-[7px] font-mono text-white/40 uppercase font-bold pr-1">
+                            {brainState.version_tag} | Accuracy: {(brainState.accuracy * 100).toFixed(1)}%
+                        </span>
+                    )}
                 </div>
             </div>
 
