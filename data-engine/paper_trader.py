@@ -25,6 +25,9 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 # Initialize Kraken Client (Public data only needed for price checks)
 exchange = ccxt.kraken()
 
+# V45: AI Decision Authority
+from cosmos_engine import brain
+
 print("--- PAPER TRADING BOT INITIALIZED ---")
 
 def get_current_price(symbol):
@@ -222,49 +225,26 @@ def check_new_entries():
                     # Liquidation: Entry + (Entry / Leverage) for Shorts
                     liq_price = entry + (entry / leverage)
 
-                # V25: STRATEGIC VALIDATION
-                # 1. RISK/REWARD RATIO (RRR)
-                potential_risk = abs(entry - bot_sl)
-                potential_reward = abs(bot_tp - entry)
-                rrr = potential_reward / potential_risk if potential_risk > 0 else 0
-                min_rrr = float(params.get('min_rrr', 1.5))
-
-                if rrr < min_rrr:
-                    print(f"       [SKIPPED] Low RRR: {rrr:.2f} < {min_rrr}. Quality check failed.")
-                    continue
-
-                # 2. NET PROFIT FEASIBILITY
-                # ATR vs Fees
-                raw_profit_per_share = potential_reward
-                total_qty = abs(quantity)
-                round_trip_fees = (entry * total_qty + bot_tp * total_qty) * fee_rate
-                net_profit = (raw_profit_per_share * total_qty) - round_trip_fees
+                # 5. V45 TOTAL AI AUTHORITY (BLM Decision Matrix)
+                # The AI now evaluates all factors (Trend, Book Imbalance, ML Confidence)
+                # and makes the final decision. This replaces several manual filters.
+                features = {
+                    "price": signal['price'],
+                    "rsi_value": signal.get('rsi', 50),
+                    "ema_200": signal.get('ema_200', signal['price']),
+                    "atr_value": signal.get('atr_value', 0),
+                    "macd_line": signal.get('macd', 0),
+                    "histogram": signal.get('histogram', 0),
+                    "imbalance_ratio": signal.get('imbalance', 0)
+                }
                 
-                # Require Net Profit to be at least X% of the used margin
-                min_net_pct = float(params.get('min_net_profit_pct', 1.0)) / 100.0
-                required_net = initial_margin * min_net_pct
-
-                if net_profit < required_net:
-                    print(f"       [SKIPPED] Poor Net Profit Potental: ${net_profit:.2f} < ${required_net:.2f} (Required {min_net_pct*100}% of margin).")
-                    continue
-
-                # 3. AI SCORE HARDENING (If cosmos_engine is active)
-                ai_score = signal.get('ai_score', 0)
-                if ai_score > 0 and ai_score < 0.55: # Require 55% win prob
-                    print(f"       [SKIPPED] AI Probability too low: {ai_score*100:.1f}%.")
-                    continue
-
-                # 4. V30: TREND ALIGNMENT (Bullish/Bearish Consensus)
-                price_val = signal['price']
-                ema_val = signal.get('ema_200', price_val)
-                is_bullish = price_val > ema_val
+                should_trade, ai_conf, ai_reason = brain.decide_trade(signal['signal_type'], features)
                 
-                if "BUY" in signal['signal_type'] and not is_bullish:
-                    print(f"       [SKIPPED] Trend Mismatch: BUY signal but price below EMA_200.")
+                if not should_trade:
+                    print(f"       [SKIPPED] {ai_reason}")
                     continue
-                if "SELL" in signal['signal_type'] and is_bullish:
-                    print(f"       [SKIPPED] Trend Mismatch: SELL signal but price above EMA_200.")
-                    continue
+                
+                print(f"       [AI APPROVED] {ai_reason}")
 
                 # V30: NET-TARGETED TP/SL CALCULATION
                 # Target Net Profit = (ATR * TakeProfitMult) * Qty

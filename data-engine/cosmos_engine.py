@@ -217,6 +217,50 @@ class CosmosBrain:
             print(f"Prediction Error: {e}")
             return 0.5
 
+    def decide_trade(self, signal_type, features):
+        """
+        V45: The Master AI Decision Engine.
+        Returns (Bool: Should Trade, Float: Final Prob, String: Reason)
+        """
+        prob = self.predict_success(features)
+        trend = self.get_trend_status(features)
+        
+        # 1. BASELINE: Apply user-requested 90% confidence from params
+        # But allow AI to override if Trend + Orderbook is PERFECT
+        base_decision = prob >= 0.90
+        
+        # 2. ORDER BOOK SENSITIVITY (Strong changes)
+        imb = features.get('imbalance_ratio', 0)
+        strong_imbalance_buy = (signal_type == "BUY" and imb > 0.65)
+        strong_imbalance_sell = (signal_type == "SELL" and imb < -0.65)
+        
+        if strong_imbalance_buy or strong_imbalance_sell:
+            prob += 0.05 # +5% boost for strong book support
+            
+        # 3. TREND ALIGNMENT (Strict)
+        trend_aligned = (signal_type == "BUY" and trend == "BULLISH") or \
+                        (signal_type == "SELL" and trend == "BEARISH")
+                        
+        if not trend_aligned:
+            # Dangerous trade: only allow if AI is EXTREMELY sure (>95%)
+            if prob < 0.95:
+                # Log rejection for trend mismatch
+                reason = f"Decision REJECTED: Trend ({trend}) does not align with {signal_type} signal. AI requires 95%+, got {prob*100:.1f}%."
+                return False, prob, reason
+
+        # 4. FINAL WEIGHTED DECISION
+        # We define a 90% target normally, but 85% is acceptable ONLY IF trend + book are aligned.
+        required_prob = 0.90
+        if trend_aligned and (abs(imb) > 0.4):
+            required_prob = 0.85 # AI is more lenient if confluence is perfect
+            
+        should_trade = prob >= required_prob
+        
+        reasoning = self.generate_reasoning(features, prob)
+        final_reason = f"AI {'DECIDED TO TRADE' if should_trade else 'REJECTED'}: Confidence: {prob*100:.1f}%. Target: {required_prob*100:.1f}%. Context: {reasoning}"
+        
+        return should_trade, prob, final_reason
+
 # Singleton Instance for easy import
 brain = CosmosBrain()
 
