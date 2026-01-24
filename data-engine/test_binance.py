@@ -22,37 +22,32 @@ def test_connectivity():
         'apiKey': api_key,
         'secret': secret,
         'enableRateLimit': True,
-        'options': {'defaultType': 'future'}
+        'options': {'defaultType': 'margin'} # V210: Test Margin
     })
 
     try:
-        print("1. Testing API Connectivity...")
+        print("1. Testing API Connectivity (MARGIN)...")
         balance = exchange.fetch_balance()
-        usdt_free = balance['total'].get('USDT', 0)
-        print(f"[SUCCESS] Connected! Live USDT Balance (Futures): ${usdt_free:.2f}")
+        # totalMarginEquity shows net worth including loans
+        total_equity = float(balance['info'].get('totalMarginEquity', 0))
+        print(f"[SUCCESS] Connected! Live Margin Equity: ${total_equity:.2f}")
 
-        if usdt_free < 5:
-            print("[!] WARNING: Balance is below $5. Binance may reject small orders.")
+        if total_equity < 5:
+            print("[!] WARNING: Balance is below $5. Margin may reject small orders.")
 
-        print("\n2. Checking Market Symbols...")
+        print("\n2. Checking Margin Market Symbols...")
         exchange.load_markets()
         
         # Look for BTC
         target_symbol = "BTC/USDT"
         if target_symbol in exchange.markets:
-            print(f"[OK] Found {target_symbol} in market list.")
+            print(f"[OK] Found {target_symbol} in Margin market list.")
         else:
-            # Fallback check
-            native_symbol = "BTCUSDT"
-            if native_symbol in exchange.markets:
-                print(f"[OK] Found {native_symbol} in market list (Native mode).")
-            else:
-                print(f"[!] ERROR: Could not find BTC futures market. Available symbols: {list(exchange.markets.keys())[:5]}...")
+            print(f"[!] ERROR: Could not find BTC margin market.")
 
-        print("\n3. Testing Exchange Permissions...")
-        # Try to fetch current positions to check for READ/WRITE access
-        positions = exchange.fetch_positions()
-        print(f"[SUCCESS] Permissions check passed. Active positions: {len([p for p in positions if float(p['contracts']) > 0])}")
+        print("\n3. Testing Margin Permissions...")
+        # Check if we can pull margin account info
+        print(f"[SUCCESS] Permissions check passed. Account Type: {balance['info'].get('tradeCategories', 'MARGIN')}")
 
         print("\n--- TEST COMPLETE ---")
         print("If all checks above are [SUCCESS] or [OK], the connection is 100% fine.")

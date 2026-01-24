@@ -118,7 +118,10 @@ def reconcile_positions():
         symbol = pos['symbol']
         contracts = float(pos['contracts'])
         side = pos['side'] # 'long' or 'short'
-        entry_price = float(pos['entryPrice'])
+        entry_price = float(pos.get('entryPrice', 0))
+        if entry_price == 0:
+            # Fallback for Margin: Use current market price as proxy for entry
+            entry_price = get_current_price(symbol) or 0
         unrealized_pnl = float(pos['unrealizedPnl'])
         
         # Check if DB knows about this position
