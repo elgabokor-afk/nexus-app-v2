@@ -33,7 +33,9 @@ async def process_liquidation(data):
         
         # Simple Logic: Insert Signal immediately for huge single orders (> $100k)
         if amount_usd > 100000:
-            confidence = 95 # High confidence for massive nukes
+            # V115: Send 50% neutral confidence. 
+            # CosmosBrain execution layer will apply the +20% boost and Trend checks.
+            confidence = 50 
             
             insert_signal(
                 symbol=symbol,

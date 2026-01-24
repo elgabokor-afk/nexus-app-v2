@@ -237,10 +237,30 @@ class CosmosBrain:
         prob = self.predict_success(features)
         trend = self.get_trend_status(features)
         
-        # 0. LIQUIDATION OVERRIDE (V110)
+        # V115: CRISIS MANAGEMENT & STRATEGY REPAIR
+        # Replaced blind "Liquidation Override" with "Confluence Boost" logic.
+        
+        # 0. LIQUIDATION CONFLUENCE (Smart Boost)
+        features_rsi = features.get('rsi_value', 50)
+        
         if "LIQ" in signal_type:
-            return True, 0.96, "Liquidation Cascade Detected (Ultra High Confidence)"
+            # Boost the AI's probability instead of replacing it
+            prob += 0.20 
+            print(f"       [STRATEGY] Liquidation Signal detected. Boosted Prob to {prob:.2f}")
 
+            # SAFETY CHECK: Counter-Trend Protection
+            if "BUY" in signal_type and trend == "BEARISH":
+                # Only catch falling knife if RSI is EXTREMELY OVERSOLD
+                 if features_rsi > 25:
+                     return False, 0.0, "Refused to catch falling knife (Trend Bearish + RSI > 25)"
+                 print("       [CRISIS] Counter-Trend Buy Approved (Extreme Oversold Condition met)")
+
+            if "SELL" in signal_type and trend == "BULLISH":
+                # Only short a pump if RSI is EXTREMELY OVERBOUGHT
+                if features_rsi < 75:
+                    return False, 0.0, "Refused to short strong pump (Trend Bullish + RSI < 75)"
+                print("       [CRISIS] Counter-Trend Sell Approved (Extreme Overbought Condition met)")
+                
         # 1. BASELINE: Apply user-requested 90% confidence from params
         base_decision = prob >= 0.90
         
