@@ -143,10 +143,16 @@ export default function PaperBotWidget({ onSelectSymbol, viewMode = 'widget' }: 
             const currentPrice = prices[pos.symbol.toUpperCase()] || pos.entry_price;
             let tradePnl = (currentPrice - pos.entry_price) * pos.quantity;
             // Invert for Shorts (Sell)
-            if (pos.quantity < 0 || (pos.bot_take_profit && pos.bot_take_profit < pos.entry_price)) { // Simple heuristic since signal_type isn't always present in type
+            if (pos.quantity < 0 || (pos.bot_take_profit && pos.bot_take_profit < pos.entry_price)) {
                 tradePnl = (pos.entry_price - currentPrice) * Math.abs(pos.quantity);
             }
-            return acc + tradePnl;
+
+            // V21: Deduct estimated fees (Round-trip 0.1%)
+            const entryNotional = pos.entry_price * Math.abs(pos.quantity);
+            const exitNotional = currentPrice * Math.abs(pos.quantity);
+            const estimatedFees = (entryNotional + exitNotional) * 0.0005; // 0.05% entry + 0.05% exit estimation
+
+            return acc + (tradePnl - estimatedFees);
         }, 0);
 
     const totalEquity = wallet.balance + unrealizedPnl; // Balance is Cash. Equity is Cash + Unrealized.
@@ -248,6 +254,12 @@ export default function PaperBotWidget({ onSelectSymbol, viewMode = 'widget' }: 
                                 if (pos.quantity < 0 || (pos.bot_take_profit && pos.bot_take_profit < pos.entry_price)) {
                                     pnl = (pos.entry_price - livePrice) * Math.abs(pos.quantity);
                                 }
+
+                                // V21: Individual Fee Deduction
+                                const entryNotional = pos.entry_price * Math.abs(pos.quantity);
+                                const exitNotional = livePrice * Math.abs(pos.quantity);
+                                const estimatedFees = (entryNotional + exitNotional) * 0.0005;
+                                pnl = pnl - estimatedFees;
 
                                 const margin = pos.initial_margin || (pos.entry_price * Math.abs(pos.quantity));
                                 const roePercent = margin > 0 ? (pnl / margin) * 100 : 0;

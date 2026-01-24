@@ -88,7 +88,8 @@ def get_bot_params():
             "default_leverage": 4, # User requested max x4
             "margin_mode": "ISOLATED",
             "account_risk_pct": 0.02, # Safe default
-            "min_confidence": 78 # User requested 78%
+            "min_confidence": 78, # User requested 78%
+            "trading_fee_pct": 0.001 # 0.1% per trade (Taker)
         }
 
 def check_new_entries():
@@ -261,12 +262,24 @@ def monitor_positions():
                     pnl = -float(pos.get('initial_margin') or 0)
                 else:
                     # Standard PnL Calculation
-                    pnl = (current_price - pos['entry_price']) * pos['quantity']
+                    raw_pnl = (current_price - pos['entry_price']) * pos['quantity']
                     # If SHORT, PnL is inverted (Entry - Exit)
                     if "SELL" in (pos.get('signal_type') or "BUY"): 
-                         pnl = (pos['entry_price'] - current_price) * pos['quantity']
+                         raw_pnl = (pos['entry_price'] - current_price) * pos['quantity']
 
-                print(f"Closing {pos['symbol']} | Reason: {exit_reason} | PnL: ${pnl:.2f}")
+                    # V21 LOGIC: ROUND-TRIP FEES
+                    # Fee = Notional Value * Fee Rate (e.g. 0.001 or 0.1%)
+                    # We apply standard taker fee (0.05% usually) on both Entry and Exit notional.
+                    # Default: 0.1% roundtrip approximation if not specified.
+                    fee_rate = float(params.get('trading_fee_pct', 0.001))
+                    
+                    entry_notional = pos['entry_price'] * abs(pos['quantity'])
+                    exit_notional = current_price * abs(pos['quantity'])
+                    
+                    total_fees = (entry_notional + exit_notional) * fee_rate
+                    pnl = raw_pnl - total_fees
+
+                print(f"Closing {pos['symbol']} | Reason: {exit_reason} | PnL: ${pnl:.2f} (Fees: ${total_fees:.2f})")
                 
                 update_data = {
                     "status": "CLOSED",
