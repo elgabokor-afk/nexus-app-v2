@@ -25,6 +25,14 @@ def calculate_rsi(series, period=14):
     rs = gain / loss
     return 100 - (100 / (1 + rs))
 
+def calculate_macd(series, fast=12, slow=26, signal=9):
+    exp1 = series.ewm(span=fast, adjust=False).mean()
+    exp2 = series.ewm(span=slow, adjust=False).mean()
+    macd_line = exp1 - exp2
+    signal_line = macd_line.ewm(span=signal, adjust=False).mean()
+    histogram = macd_line - signal_line
+    return macd_line, signal_line, histogram
+
 def calculate_ema(series, period=200):
     return series.ewm(span=period, adjust=False).mean()
 
@@ -81,36 +89,70 @@ def calculate_atr(df, period=14):
     atr = tr.ewm(alpha=1/period, adjust=False).mean()
     return atr
 
-    # V4 UPGRADE: QUANTITATIVE SCORING
-    # Fetch Order Book for Deep Analysis
-    order_book = fetch_order_book(latest['symbol'] if 'symbol' in latest else df.attrs.get('symbol')) 
-    # Note: df doesn't store symbol by default, we need to pass it or assume main loop handles it.
-    # We will fetch book inside main loop to avoid passing too many args, or fetch here if we refactor.
-    # Refactoring: Let's fetch OB inside here to keep logic encapsulated, but we need symbol.
-    # Quick fix: Pass symbol to analyze_market or rely on main. 
-    # Let's adjust main loop to pass symbol to verify. For now, we return partial analysis and let main finish it?
-    # No, cleaner to pass symbol. Changing signature.
+def analyze_market(df):
+    if df.empty or len(df) < 50:
+        return None
     
-    # ... Wait, changing signature might break tests. 
-    # Let's assume 'analyze_market' is called with symbol context. 
-    # Actually, let's keep it simple: We do the technicals here, and add Quant metrics in the Main loop or 
-    # improve this function to accept symbol. I'll update the main call to pass symbol.
+    # Calculate Indicators
+    df['RSI'] = calculate_rsi(df['close'], 14)
+    df['EMA_200'] = calculate_ema(df['close'], 200)
+    df['ATR'] = calculate_atr(df, 14)
     
+    # MACD
+    macd, sig, hist = calculate_macd(df['close'])
+    df['MACD'] = macd
+    df['Signal_Line'] = sig
+    df['Histogram'] = hist
+    
+    # Volume MA
+    df['Vol_MA'] = df['volume'].rolling(window=20).mean()
+    
+    latest = df.iloc[-1]
+    
+    # Validation
+    if pd.isna(latest['RSI']) or pd.isna(latest['EMA_200']):
+        return None
+
     return {
         'timestamp': latest['timestamp'],
-        'price': price,
-        'rsi': round(rsi, 2),
-        'ema_200': ema_200,
-        'atr': atr,
-        'volume': volume,
-        'vol_ma': vol_ma,
-        # Techncial Signal (Base)
-        'tech_score': score 
+        'symbol': df.attrs.get('symbol', 'BTC/USD'), # Fallback
+        'price': latest['close'],
+        'rsi': latest['RSI'],
+        'ema_200': latest['EMA_200'],
+        'atr': latest['ATR'],
+        'volume': latest['volume'],
+        'vol_ma': latest['Vol_MA'],
+        'macd': latest['MACD'],
+        'signal_line': latest['Signal_Line'],
+        'histogram': latest['Histogram']
     }
+
+from supabase import create_client, Client
+SUPABASE_URL = os.getenv("NEXT_PUBLIC_SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+def get_dynamic_weights():
+    """Fetch current weight configuration from DB."""
+    try:
+        res = supabase.table("bot_params").select("*").eq("active", "true").limit(1).execute()
+        if res.data:
+            p = res.data[0]
+            # normalize to ensure they sum to ~1.0 if needed, for now trust DB
+            return {
+                "rsi": float(p.get('weight_rsi', 0.3)),
+                "imbalance": float(p.get('weight_imbalance', 0.3)),
+                "trend": float(p.get('weight_trend', 0.2)),
+                "macd": float(p.get('weight_macd', 0.2)) 
+            }
+        return {"rsi": 0.3, "imbalance": 0.3, "trend": 0.2, "macd": 0.2}
+    except:
+        return {"rsi": 0.3, "imbalance": 0.3, "trend": 0.2, "macd": 0.2}
 
 def analyze_quant_signal(symbol, tech_analysis):
     """
-    Combines Technicals (RSI/EMA) with Quant Data (Order Book)
+    Combines Technicals (RSI/EMA/MACD) with Quant Data (Order Book)
+    using DYNAMIC WEIGHTS from the Optimizer.
     """
     if not tech_analysis: return None
     
@@ -126,43 +168,48 @@ def analyze_quant_signal(symbol, tech_analysis):
     best_ask = book['asks'][0][0] if book['asks'] else price
     spread_pct = ((best_ask - best_bid) / price) * 100
     
-    # 2. WEIGHTED SCORE CALCULATION
-    # Components:
-    # A. RSI (0-100 normalized to 0-1) -> 30%
-    # B. Trend (Price vs EMA) -> 20%
-    # C. Imbalance (-1 to 1 normalized to 0-1) -> 30%
-    # D. Volume (Ratio) -> 20%
+    # 2. SCORING COMPONENTS (0.0 to 1.0)
     
-    # Normalize RSI (Bearish < 30, Bullish > 70? No, standard logic)
-    # Let's align everything to "Bullishness" (0 to 1)
-    
-    # RSI Score: Low RSI is Bullish (Purchase opp), High is Bearish
-    # 30 -> 1.0, 70 -> 0.0
+    # RSI Score (Mean Reversion preference)
+    # Low RSI -> Bullish (1.0), High RSI -> Bearish (0.0)
     rsi_score = 0.5
     if rsi < 30: rsi_score = 1.0
     elif rsi > 70: rsi_score = 0.0
-    else: rsi_score = 1.0 - ((rsi - 30) / 40) # Linear decay 30-70
+    else: rsi_score = 1.0 - ((rsi - 30) / 40)
     
-    # Trend Score
+    # Trend Score (EMA 200)
     trend_score = 1.0 if price > tech_analysis['ema_200'] else 0.0
     
     # Imbalance Score (-1 to 1 -> 0 to 1)
+    # +1 Imbalance (All Bids) -> Bullish (1.0)
     imb_score = (imbalance + 1) / 2
     
-    # Volume Score
-    vol_ratio = tech_analysis['volume'] / tech_analysis['vol_ma'] if tech_analysis['vol_ma'] > 0 else 1
-    vol_score = min(vol_ratio / 2, 1.0) # Cap at 2x volume
+    # MACD Score (Momentum)
+    # Histogram > 0 -> Bullish
+    hist = tech_analysis['histogram']
+    macd_score = 0.5
+    if hist > 0: macd_score = 0.8
+    if hist < 0: macd_score = 0.2
+    if hist > 0 and tech_analysis['macd'] > 0: macd_score = 1.0
     
-    # FINAL WEIGHTED SCORE
-    final_score = (rsi_score * 0.30) + (trend_score * 0.20) + (imb_score * 0.30) + (vol_score * 0.20)
+    # 3. APPLY DYNAMIC WEIGHTS
+    weights = get_dynamic_weights()
+    
+    final_score = (
+        (rsi_score * weights['rsi']) + 
+        (trend_score * weights['trend']) + 
+        (imb_score * weights['imbalance']) + 
+        (macd_score * weights['macd'])
+    )
+    
     final_confidence = int(final_score * 100)
     
     # DETERMINE SIGNAL
     signal_type = "NEUTRAL"
-    if final_confidence >= 75: signal_type = "STRONG BUY"
-    elif final_confidence >= 60: signal_type = "MODERATE BUY"
-    elif final_confidence <= 25: signal_type = "STRONG SELL" # Imbalance/Trend strongly negative
-    elif final_confidence <= 40: signal_type = "MODERATE SELL"
+    if final_confidence >= 70: signal_type = "STRONG BUY"
+    elif final_confidence >= 55: signal_type = "MODERATE BUY"
+    elif final_confidence <= 30: signal_type = "STRONG SELL"
+    elif final_confidence <= 45: signal_type = "MODERATE SELL"
     
     if signal_type == "NEUTRAL": return None
     
@@ -186,7 +233,10 @@ def analyze_quant_signal(symbol, tech_analysis):
         'ema_200': round(tech_analysis['ema_200'], 4),
         'imbalance': round(imbalance, 4),
         'spread_pct': round(spread_pct, 4),
-        'depth_score': int(vol_score * 100) # Proxy for depth/volume quality
+        'depth_score': int(weights['imbalance'] * 100), # Proxy showing how much we trust depth
+        'macd': round(tech_analysis['macd'], 4),
+        'signal_line': round(tech_analysis['signal_line'], 4),
+        'histogram': round(tech_analysis['histogram'], 4)
     }
 
 from db import insert_signal, insert_analytics, log_error
@@ -247,7 +297,10 @@ def main():
                                 atr_value=quant_signal['atr_value'],
                                 imbalance_ratio=quant_signal['imbalance'],
                                 spread_pct=quant_signal['spread_pct'],
-                                depth_score=quant_signal['depth_score']
+                                depth_score=quant_signal['depth_score'],
+                                macd_line=quant_signal['macd'],
+                                signal_line=quant_signal['signal_line'],
+                                histogram=quant_signal['histogram']
                             )
                         
                         # Broadcast via Telegram (V3 style for now, upgrade next)
