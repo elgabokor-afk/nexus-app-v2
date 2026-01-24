@@ -7,6 +7,7 @@ from supabase import create_client, Client
 from dotenv import load_dotenv
 from optimizer import run_optimization # V6 Engine
 from datetime import datetime, timedelta, timezone
+import yaml # V402
 
 # Load environment variables
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -22,6 +23,18 @@ SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 if not SUPABASE_URL or not SUPABASE_KEY:
     print("Error: Supabase credentials missing.")
     exit(1)
+
+# V402: GLOBAL CONFIG LOCKDOWN
+config_path = os.path.join(parent_dir, "config", "conf_global.yml")
+GLOBAL_CONFIG = {}
+if os.path.exists(config_path):
+    with open(config_path, 'r') as f:
+        GLOBAL_CONFIG = yaml.safe_load(f) or {}
+
+PAPER_TRADE_ENABLED = GLOBAL_CONFIG.get("paper_trade_enabled", True)
+print(f"--- V402 CONFIG: paper_trade_enabled={PAPER_TRADE_ENABLED} ---")
+if not PAPER_TRADE_ENABLED:
+    print("!!! MASTER SWITCH: Paper Trading is DISABLED. Engine restricted to LIVE path only. !!!")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -425,7 +438,10 @@ def check_new_entries():
                 balance = float(wallet['balance'])
                 
                 # V215: MARGIN LEVEL GUARD (Risk Ratio Health Check)
-                if TRADING_MODE == "LIVE":
+                # V402: Enforce LIVE check based on Master Switch
+                is_live_execution = (TRADING_MODE == "LIVE") and (not PAPER_TRADE_ENABLED)
+                
+                if is_live_execution:
                     margin_level = live_trader.get_margin_level()
                     print(f"       [V215 MARGIN GUARD] Current Risk Ratio: {margin_level:.2f} (Safe Target: 1.7+)")
                     if margin_level < 1.7:
