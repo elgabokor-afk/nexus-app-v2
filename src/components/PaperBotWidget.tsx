@@ -22,6 +22,8 @@ interface PaperPosition {
     margin_mode?: string;
     liquidation_price?: number;
     initial_margin?: number;
+    rsi_entry?: number;
+    confidence_score?: number;
 }
 
 interface PaperBotWidgetProps {
@@ -355,6 +357,18 @@ export default function PaperBotWidget({ onSelectSymbol, viewMode = 'widget' }: 
                                                             <div className="bg-white/5 px-2 py-1 rounded border border-white/10">
                                                                 <p className="text-[9px] text-gray-500 uppercase font-bold">Leverage</p>
                                                                 <p className="text-sm font-black text-[#00ffa3] font-mono">{pos.leverage || 10}x</p>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* STRATEGY INSIGHTS */}
+                                                        <div className="grid grid-cols-2 gap-1 mt-1">
+                                                            <div className="bg-black/20 p-1.5 rounded flex items-center justify-between">
+                                                                <span className="text-[9px] text-gray-500 font-bold">RSI</span>
+                                                                <span className="text-[9px] font-mono text-white">{pos.rsi_entry ? pos.rsi_entry.toFixed(1) : '---'}</span>
+                                                            </div>
+                                                            <div className="bg-black/20 p-1.5 rounded flex items-center justify-between">
+                                                                <span className="text-[9px] text-gray-500 font-bold">AI Conf</span>
+                                                                <span className="text-[9px] font-mono text-[#00ffa3]">{pos.confidence_score || '---'}%</span>
                                                             </div>
                                                         </div>
 
