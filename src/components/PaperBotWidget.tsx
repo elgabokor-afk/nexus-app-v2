@@ -22,9 +22,22 @@ interface PaperPosition {
 
 export default function PaperBotWidget() {
     const [positions, setPositions] = useState<PaperPosition[]>([]);
+    const [wallet, setWallet] = useState({ equity: 10000, balance: 10000 });
     const [stats, setStats] = useState({ totalPnl: 0, winRate: 0, activeCount: 0 });
 
     const fetchPositions = async () => {
+        // Fetch Wallet
+        const { data: walletData } = await supabase
+            .from('bot_wallet')
+            .select('*')
+            .limit(1)
+            .single();
+
+        if (walletData) {
+            setWallet(walletData);
+        }
+
+        // Fetch Positions
         const { data } = await supabase
             .from('paper_positions')
             .select('*')
@@ -60,6 +73,9 @@ export default function PaperBotWidget() {
             .on('postgres_changes', { event: '*', schema: 'public', table: 'paper_positions' }, () => {
                 fetchPositions();
             })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'bot_wallet' }, () => {
+                fetchPositions();
+            })
             .subscribe();
 
         return () => {
@@ -67,23 +83,33 @@ export default function PaperBotWidget() {
         };
     }, []);
 
+    const equityChange = wallet.equity - 10000; // Assuming 10k start
+    const isProfit = equityChange >= 0;
+
     return (
         <div className="flex flex-col h-full bg-transparent overflow-y-auto custom-scrollbar">
             <div className="p-6">
-                <div className="flex justify-between items-start mb-8">
+                {/* WALLET HEADER */}
+                <div className="flex justify-between items-start mb-8 bg-black/20 p-4 rounded-2xl border border-white/5">
                     <div className="flex flex-col gap-1">
                         <div className="flex items-center gap-2">
                             <div className="w-2 h-2 rounded-full bg-[#00ffa3] animate-pulse shadow-[0_0_10px_#00ffa3]"></div>
                             <h2 className="text-xs font-black text-[#00ffa3] uppercase tracking-[0.3em]">
-                                Paper Engine
+                                Virtual Fund
                             </h2>
                         </div>
-                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-none">Live Simulation Node</p>
+                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-none">Autonomous Portfolio</p>
+                        <div className="mt-2 text-xs font-mono text-gray-400">
+                            Cash: <span className="text-white">${wallet.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                        </div>
                     </div>
                     <div className="text-right">
-                        <p className="text-[9px] text-gray-600 font-black uppercase tracking-widest mb-1">Cumulative PnL</p>
-                        <p className={`text-2xl font-black tracking-tighter ${stats.totalPnl >= 0 ? 'text-[#00ffa3]' : 'text-red-500'}`}>
-                            {stats.totalPnl >= 0 ? '+' : ''}${stats.totalPnl.toFixed(2)}
+                        <p className="text-[9px] text-gray-600 font-black uppercase tracking-widest mb-1">Total Equity</p>
+                        <p className="text-3xl font-black tracking-tighter text-white">
+                            ${wallet.equity.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </p>
+                        <p className={`text-[10px] font-bold tracking-wider ${isProfit ? 'text-[#00ffa3]' : 'text-red-500'}`}>
+                            {isProfit ? '+' : ''}{equityChange.toLocaleString(undefined, { minimumFractionDigits: 2 })} ({((equityChange / 10000) * 100).toFixed(2)}%)
                         </p>
                     </div>
                 </div>
@@ -105,7 +131,7 @@ export default function PaperBotWidget() {
                                     <Activity size={16} />
                                 </div>
                                 <span className="text-[10px] text-white/20 font-black uppercase tracking-widest text-center px-4">
-                                    Monitoring market for entry conditions...
+                                    Scanning for high probability setups...
                                 </span>
                             </div>
                         ) : (
@@ -117,7 +143,9 @@ export default function PaperBotWidget() {
                                     <div className="flex justify-between items-start mb-3">
                                         <div>
                                             <h4 className="text-lg font-black tracking-tighter leading-none">{pos.symbol}</h4>
-                                            <p className="text-[10px] text-[#00ffa3] font-mono font-bold uppercase mt-1">Status: Executing</p>
+                                            <p className="text-[10px] text-[#00ffa3] font-mono font-bold uppercase mt-1">
+                                                Size: ${(pos.entry_price * pos.quantity).toFixed(0)}
+                                            </p>
                                         </div>
                                         <div className="text-right">
                                             <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">Entry</p>
