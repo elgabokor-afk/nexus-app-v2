@@ -7,28 +7,41 @@ import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
     const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [isRegistering, setIsRegistering] = useState(false);
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
     const router = useRouter();
 
-    const handleEmailLogin = async (e: React.FormEvent) => {
+    const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         setMessage(null);
 
-        const { error } = await supabase.auth.signInWithOtp({
-            email,
-            options: {
-                emailRedirectTo: `${window.location.origin}/dashboard`,
-            },
-        });
-
-        if (error) {
+        try {
+            if (isRegistering) {
+                const { error } = await supabase.auth.signUp({
+                    email,
+                    password,
+                    options: {
+                        emailRedirectTo: `${window.location.origin}/auth/callback`,
+                    },
+                });
+                if (error) throw error;
+                setMessage({ type: 'success', text: 'Account created! Check email to confirm.' });
+            } else {
+                const { error } = await supabase.auth.signInWithPassword({
+                    email,
+                    password,
+                });
+                if (error) throw error;
+                router.push('/dashboard');
+            }
+        } catch (error: any) {
             setMessage({ type: 'error', text: error.message });
-        } else {
-            setMessage({ type: 'success', text: 'Check your email for the magic link!' });
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     const handleGoogleLogin = async () => {
@@ -54,47 +67,77 @@ export default function LoginPage() {
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#00ffa3]/30 to-transparent"></div>
 
                     {/* Header */}
-                    <div className="flex flex-col items-center text-center mb-10">
+                    <div className="flex flex-col items-center text-center mb-8">
                         <div className="w-16 h-16 bg-[#00ffa3] rounded-2xl flex items-center justify-center shadow-[0_0_30px_rgba(0,255,163,0.4)] mb-6 rotate-3 hover:rotate-0 transition-transform duration-500">
                             <Zap size={32} className="text-black fill-black" strokeWidth={2.5} />
                         </div>
-                        <h1 className="text-3xl font-black tracking-tighter text-white mb-2">
-                            NEXUS<span className="text-[#00ffa3]">AI</span> TERMINAL
+                        <h1 className="text-2xl font-black tracking-tighter text-white mb-1">
+                            {isRegistering ? 'INITIALIZE NODE' : 'ACCESS TERMINAL'}
                         </h1>
-                        <p className="text-gray-500 text-sm font-bold uppercase tracking-widest">Advanced Quant Systems</p>
+                        <p className="text-gray-500 text-xs font-bold uppercase tracking-widest">
+                            {isRegistering ? 'Create your secure identity' : 'Enter credentials to proceed'}
+                        </p>
                     </div>
 
                     {/* Auth Form */}
                     <div className="space-y-6">
-                        <form onSubmit={handleEmailLogin} className="space-y-4">
-                            <div className="relative group">
-                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-500 group-focus-within:text-[#00ffa3] transition-colors">
-                                    <Mail size={18} />
+                        <form onSubmit={handleAuth} className="space-y-4">
+                            <div className="space-y-3">
+                                <div className="relative group">
+                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-500 group-focus-within:text-[#00ffa3] transition-colors">
+                                        <Mail size={18} />
+                                    </div>
+                                    <input
+                                        type="email"
+                                        placeholder="Email Address"
+                                        required
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-12 pr-4 text-white focus:outline-none focus:border-[#00ffa3]/50 focus:ring-1 focus:ring-[#00ffa3]/20 transition-all font-medium text-sm"
+                                    />
                                 </div>
-                                <input
-                                    type="email"
-                                    placeholder="your@email.com"
-                                    required
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white focus:outline-none focus:border-[#00ffa3]/50 focus:ring-1 focus:ring-[#00ffa3]/20 transition-all font-medium"
-                                />
+                                <div className="relative group">
+                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-500 group-focus-within:text-[#00ffa3] transition-colors">
+                                        <div className="w-4 h-4 border-2 border-current rounded-sm"></div>
+                                    </div>
+                                    <input
+                                        type="password"
+                                        placeholder="Password"
+                                        required
+                                        minLength={6}
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-12 pr-4 text-white focus:outline-none focus:border-[#00ffa3]/50 focus:ring-1 focus:ring-[#00ffa3]/20 transition-all font-medium text-sm"
+                                    />
+                                </div>
                             </div>
 
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full bg-[#00ffa3] hover:bg-[#00ffa3]/90 text-black font-black py-4 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100"
+                                className="w-full bg-[#00ffa3] hover:bg-[#00ffa3]/90 text-black font-black py-4 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100 uppercase tracking-wider text-sm mt-2 shadow-[0_0_20px_rgba(0,255,163,0.3)] hover:shadow-[0_0_30px_rgba(0,255,163,0.5)]"
                             >
                                 {loading ? (
-                                    <Loader2 className="animate-spin" size={20} />
+                                    <Loader2 className="animate-spin" size={18} />
                                 ) : (
                                     <>
-                                        ACCESS TERMINAL <ArrowRight size={18} />
+                                        {isRegistering ? 'DEPLOY ACCOUNT' : 'AUTHENTICATE'} <ArrowRight size={18} />
                                     </>
                                 )}
                             </button>
                         </form>
+
+                        <div className="text-center">
+                            <button
+                                onClick={() => {
+                                    setIsRegistering(!isRegistering);
+                                    setMessage(null);
+                                }}
+                                className="text-xs font-bold text-gray-500 hover:text-white transition-colors uppercase tracking-widest"
+                            >
+                                {isRegistering ? 'Already have a node? Login' : 'New System? Initialize'}
+                            </button>
+                        </div>
 
                         <div className="relative flex items-center justify-center py-2">
                             <div className="absolute w-full h-[1px] bg-white/5"></div>
@@ -108,17 +151,17 @@ export default function LoginPage() {
                             <Chrome size={18} />
                             Continue with Google
                         </button>
-                    </div>
 
-                    {/* Status Messages */}
-                    {message && (
-                        <div className={`mt-6 p-4 rounded-2xl border text-sm font-medium text-center animate-in fade-in slide-in-from-top-2 duration-300 ${message.type === 'success'
-                                ? 'bg-green-500/10 border-green-500/20 text-green-400'
-                                : 'bg-red-500/10 border-red-500/20 text-red-400'
-                            }`}>
-                            {message.text}
-                        </div>
-                    )}
+                        {/* Status Messages */}
+                        {message && (
+                            <div className={`mt-2 p-4 rounded-2xl border text-xs font-bold text-center animate-in fade-in slide-in-from-top-2 duration-300 ${message.type === 'success'
+                                    ? 'bg-green-500/10 border-green-500/20 text-green-400'
+                                    : 'bg-red-500/10 border-red-500/20 text-red-400'
+                                }`}>
+                                {message.text}
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Footer Footer */}
