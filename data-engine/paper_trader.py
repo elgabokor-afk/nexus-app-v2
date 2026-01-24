@@ -7,7 +7,7 @@ from supabase import create_client, Client
 from dotenv import load_dotenv
 from optimizer import run_optimization # V6 Engine
 from datetime import datetime, timedelta, timezone
-import yaml # V402
+import json # V405
 
 # Load environment variables
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -24,12 +24,12 @@ if not SUPABASE_URL or not SUPABASE_KEY:
     print("Error: Supabase credentials missing.")
     exit(1)
 
-# V402: GLOBAL CONFIG LOCKDOWN
-config_path = os.path.join(parent_dir, "config", "conf_global.yml")
+# V405: GLOBAL CONFIG LOCKDOWN (Dependency-Free JSON)
+config_path = os.path.join(parent_dir, "config", "conf_global.json")
 GLOBAL_CONFIG = {}
 if os.path.exists(config_path):
     with open(config_path, 'r') as f:
-        GLOBAL_CONFIG = yaml.safe_load(f) or {}
+        GLOBAL_CONFIG = json.load(f) or {}
 
 PAPER_TRADE_ENABLED = GLOBAL_CONFIG.get("paper_trade_enabled", True)
 print(f"--- V402 CONFIG: paper_trade_enabled={PAPER_TRADE_ENABLED} ---")

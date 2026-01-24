@@ -1,0 +1,11 @@
+{
+    "paper_trade_enabled": false,
+    "trading_pairs": [
+        "BTC/USDT",
+        "DOGE/USDT",
+        "SOL/USDT"
+    ],
+    "connector_type": "binance_margin",
+    "margin_mode": "CROSSED",
+    "leverage_limit": 3
+}
