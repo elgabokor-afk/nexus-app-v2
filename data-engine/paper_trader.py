@@ -159,8 +159,63 @@ def reconcile_positions():
                 print("   [SUCCESS] Position Adopted.")
             except Exception as e:
                 print(f"   [ERROR] Failed to adopt {symbol}: {e}")
+                print(f"   [ERROR] Failed to adopt {symbol}: {e}")
         else:
             print(f"   [OK] {symbol} is tracked.")
+
+def sync_live_status():
+    """V145: REAL-TIME SYNC & LEARNING (Detect External Closures/Liqs)"""
+    if TRADING_MODE != "LIVE": return
+
+    try:
+        # 1. Get Live Positions
+        live_positions = live_trader.get_open_positions()
+        live_symbols = [p['symbol'] for p in live_positions]
+        
+        # 2. Get Local OPEN Positions
+        response = supabase.table("paper_positions") \
+            .select("*") \
+            .eq("status", "OPEN") \
+            .execute()
+            
+        local_positions = response.data
+        
+        for local_pos in local_positions:
+            # Check if local position is missing from Binance
+            if local_pos['symbol'] not in live_symbols:
+                print(f"   [V145] EXTERNAL CLOSURE DETECTED: {local_pos['symbol']}")
+                
+                # It's gone! Likely Liquidation or Manual Close.
+                # Mark as CLOSED in DB so AI learns from it.
+                current_price = get_current_price(local_pos['symbol'])
+                if not current_price: continue
+                
+                # Calculate approximate PnL based on current price
+                # (Not perfect but better than missing data)
+                entry = float(local_pos['entry_price'])
+                qty = float(local_pos['quantity'])
+                
+                raw_pnl = (current_price - entry) * qty
+                if "SELL" in local_pos['signal_type']:
+                    raw_pnl = (entry - current_price) * qty
+                    
+                print(f"   >>> Recording External Result: PnL ${raw_pnl:.2f}")
+                
+                supabase.table("paper_positions").update({
+                    "status": "CLOSED",
+                    "exit_reason": "EXTERNAL_LIQ", # Assessing it as Liq/Manual
+                    "exit_price": current_price,
+                    "closed_at": datetime.now(timezone.utc).isoformat(),
+                    "pnl": raw_pnl
+                }).eq("id", local_pos['id']).execute()
+                
+                # Trigger Learning
+                update_wallet(raw_pnl)
+                print("   >>> Triggering Immediate Retraining...")
+                run_optimization()
+
+    except Exception as e:
+        print(f"   [V145] Sync Error: {e}")
 
 def check_new_entries():
     """Checks for new signals to open positions."""
@@ -354,7 +409,15 @@ def check_new_entries():
                 if is_scalp:
                     tp_mult = 1.8 
                     sl_mult = 2.0 
-                    print(f"       [SCALP MODE] Applying correction-tolerant targets: TP({tp_mult}x) SL({sl_mult}x)")
+                    
+                    # V150: SAFE SCALPING (Survival Mode Override)
+                    if is_survival:
+                        leverage = min(leverage, 3) # Cap at 3x
+                        tp_mult = 1.5 # Base Hits
+                        sl_mult = 1.1 # Tight Stop
+                        print(f"       [SURVIVAL SCALP] Leverage cut to {leverage}x. Targets tightened (TP 1.5x / SL 1.1x)")
+                    else:
+                        print(f"       [SCALP MODE] Applying correction-tolerant targets: TP({tp_mult}x) SL({sl_mult}x)")
 
                 target_net_profit = (atr_val * tp_mult) * abs(quantity)
                 target_net_loss = (atr_val * sl_mult) * abs(quantity)
@@ -531,6 +594,9 @@ def main():
     reconcile_positions()
     
     while True:
+        # V145: Check for external closures first
+        sync_live_status()
+        
         check_new_entries()
         monitor_positions()
         time.sleep(10) # Run every 10 seconds
