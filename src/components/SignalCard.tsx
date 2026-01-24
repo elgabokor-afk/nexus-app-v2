@@ -12,11 +12,13 @@ interface SignalProps {
     take_profit?: number;
     atr_value?: number;
     volume_ratio?: number;
+    imbalance?: number;
+    depth_score?: number;
     onViewChart?: (symbol: string) => void;
 }
 
 const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
-    symbol, price, rsi, signal_type, confidence, timestamp, stop_loss, take_profit, atr_value, volume_ratio, onViewChart, compact = false
+    symbol, price, rsi, signal_type, confidence, timestamp, stop_loss, take_profit, atr_value, volume_ratio, imbalance, depth_score, onViewChart, compact = false
 }) => {
     // ... (logic)
     const isBuy = signal_type.includes('BUY');
@@ -137,6 +139,31 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
                     </div>
                 </div>
             </div>
+
+            {/* V4 QUANT: MARKET PRESSURE BAR */}
+            {imbalance !== undefined && (
+                <div className={`px-4 pb-4 ${compact ? 'block' : 'px-6'}`}>
+                    <div className="flex justify-between items-end mb-1">
+                        <p className="text-[9px] uppercase tracking-widest text-gray-500 font-bold flex items-center gap-1">
+                            Market Pressure
+                            {depth_score && depth_score > 50 && <span className="text-[8px] text-[#00ffa3] bg-[#00ffa3]/10 px-1 rounded">DEEP</span>}
+                        </p>
+                        <p className={`text-[9px] font-mono font-bold ${imbalance > 0 ? 'text-[#00ffa3]' : 'text-red-500'}`}>
+                            {imbalance > 0 ? 'BULLISH' : 'BEARISH'} ({(imbalance * 100).toFixed(0)}%)
+                        </p>
+                    </div>
+                    <div className="h-1.5 w-full bg-white/5 rounded-full relative overflow-hidden flex">
+                        <div className="w-1/2 h-full bg-gradient-to-l from-transparent to-red-500/50"></div>
+                        <div className="w-1/2 h-full bg-gradient-to-r from-transparent to-[#00ffa3]/50"></div>
+
+                        {/* Indicator */}
+                        <div
+                            className="absolute top-0 bottom-0 w-1 bg-white shadow-[0_0_5px_white] transition-all duration-500"
+                            style={{ left: `${((imbalance + 1) / 2) * 100}%` }}
+                        ></div>
+                    </div>
+                </div>
+            )}
 
             {/* Metrics Row */}
             {!isNeutral && (

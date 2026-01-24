@@ -11,7 +11,8 @@ class TelegramAlerts:
         if not self.token or not self.chat_id:
             logging.warning("⚠️ Telegram Bot Token or Chat ID missing. Alerts disabled.")
 
-    def send_signal(self, symbol, signal_type, price, confidence, stop_loss=None, take_profit=None):
+    def send_signal(self, symbol, signal_type, price, confidence, stop_loss=None, take_profit=None, 
+                    imbalance=None, spread_pct=None, depth_score=None, ema_200=None):
         if not self.token or not self.chat_id:
             return
 
@@ -26,6 +27,20 @@ class TelegramAlerts:
             f"🎯 <b>Confidence:</b> {confidence}%\n"
             f"━━━━━━━━━━━━━━━━━━━━\n"
         )
+        
+        # Add V4 Quant Metrics Section
+        if imbalance is not None:
+             # Interpret Imbalance
+             imb_str = "Neutral"
+             if imbalance > 0.2: imb_str = "Bullish 🐂"
+             elif imbalance < -0.2: imb_str = "Bearish 🐻"
+             
+             message += (
+                 f"📊 <b>Quant Analysis:</b>\n"
+                 f"• Imbalance: {imb_str} ({imbalance:+.2f})\n"
+                 f"• Spread: {spread_pct:.2f}%\n"
+                 f"• Depth Quality: {depth_score}/100 🌊\n\n"
+             )
         
         if stop_loss:
             message += f"🛑 <b>Stop Loss:</b> ${stop_loss:,.2f}\n"

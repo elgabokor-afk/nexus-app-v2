@@ -35,6 +35,11 @@ interface Signal {
     take_profit?: number;
     atr_value?: number;
     volume_ratio?: number;
+    analytics_signals?: {
+        imbalance_ratio: number;
+        depth_score: number;
+        spread_pct: number;
+    }[];
 }
 
 export default function Dashboard() {
@@ -67,7 +72,7 @@ export default function Dashboard() {
     const fetchSignals = async () => {
         const { data, error } = await supabase
             .from('market_signals')
-            .select('*')
+            .select('*, analytics_signals(*)')
             .order('timestamp', { ascending: false })
             .limit(50);
 
@@ -311,6 +316,8 @@ export default function Dashboard() {
                                         <SignalCard
                                             key={signal.id}
                                             {...signal}
+                                            imbalance={signal.analytics_signals?.[0]?.imbalance_ratio}
+                                            depth_score={signal.analytics_signals?.[0]?.depth_score}
                                             onViewChart={handleViewChart}
                                             compact={true}
                                         />

@@ -28,6 +28,15 @@ def calculate_rsi(series, period=14):
 def calculate_ema(series, period=200):
     return series.ewm(span=period, adjust=False).mean()
 
+def fetch_order_book(symbol='BTC/USD', limit=50):
+    try:
+        # Fetch Level 2 Order Book
+        book = exchange.fetch_order_book(symbol, limit=limit)
+        return book
+    except Exception as e:
+        print(f"Error fetching order book for {symbol}: {e}")
+        return None
+
 def fetch_data(symbol='BTC/USD', timeframe='1h', limit=100):
     try:
         # Fetch OHLCV (Open, High, Low, Close, Volume)
@@ -38,6 +47,26 @@ def fetch_data(symbol='BTC/USD', timeframe='1h', limit=100):
     except Exception as e:
         print(f"Error fetching data: {e}")
         return pd.DataFrame()
+
+def calculate_imbalance(book):
+    """
+    Calculates Order Book Imbalance.
+    Formula: (Bid_Vol - Ask_Vol) / (Bid_Vol + Ask_Vol)
+    Returns: -1.0 (Bearish) to 1.0 (Bullish)
+    """
+    if not book: return 0
+    
+    bids = book['bids']
+    asks = book['asks']
+    
+    bid_vol = sum([b[1] for b in bids])
+    ask_vol = sum([a[1] for a in asks])
+    
+    total_vol = bid_vol + ask_vol
+    if total_vol == 0: return 0
+    
+    imbalance = (bid_vol - ask_vol) / total_vol
+    return imbalance
 
 def calculate_atr(df, period=14):
     high = df['high']
@@ -52,97 +81,115 @@ def calculate_atr(df, period=14):
     atr = tr.ewm(alpha=1/period, adjust=False).mean()
     return atr
 
-def analyze_market(df):
-    if df.empty or len(df) < 50:
-        return None
+    # V4 UPGRADE: QUANTITATIVE SCORING
+    # Fetch Order Book for Deep Analysis
+    order_book = fetch_order_book(latest['symbol'] if 'symbol' in latest else df.attrs.get('symbol')) 
+    # Note: df doesn't store symbol by default, we need to pass it or assume main loop handles it.
+    # We will fetch book inside main loop to avoid passing too many args, or fetch here if we refactor.
+    # Refactoring: Let's fetch OB inside here to keep logic encapsulated, but we need symbol.
+    # Quick fix: Pass symbol to analyze_market or rely on main. 
+    # Let's adjust main loop to pass symbol to verify. For now, we return partial analysis and let main finish it?
+    # No, cleaner to pass symbol. Changing signature.
     
-    # 2. Calculate Indicators
-    df['RSI'] = calculate_rsi(df['close'], 14)
-    df['EMA_200'] = calculate_ema(df['close'], 200)
-    df['ATR'] = calculate_atr(df, 14)
+    # ... Wait, changing signature might break tests. 
+    # Let's assume 'analyze_market' is called with symbol context. 
+    # Actually, let's keep it simple: We do the technicals here, and add Quant metrics in the Main loop or 
+    # improve this function to accept symbol. I'll update the main call to pass symbol.
     
-    # Volume MA for confirmation
-    df['Vol_MA'] = df['volume'].rolling(window=20).mean()
-    
-    latest = df.iloc[-1]
-    
-    # Metric Extraction
-    price = latest['close']
-    rsi = latest['RSI']
-    ema = latest['EMA_200']
-    atr = latest['ATR']
-    volume = latest['volume']
-    vol_ma = latest['Vol_MA']
-    
-    # Validation
-    if pd.isna(rsi) or pd.isna(ema) or pd.isna(atr):
-        return None
-
-    # --- SENIOR LOGIC: CONFIDENCE SCORING (0-100) ---
-    score = 50 # Neutral Base
-    signal_type = "NEUTRAL"
-    
-    # 1. RSI Confluence (Max +30)
-    if rsi < 30: score += 25       # Deep Oversold
-    elif rsi < 45: score += 15     # Dip
-    elif rsi > 70: score -= 25     # Deep Overbought
-    elif rsi > 55: score -= 15     # Pullback Top
-    
-    # 2. Trend Filter (Max +10)
-    uptrend = price > ema
-    if uptrend and rsi < 50: score += 10    # Buying dips in uptrend
-    if not uptrend and rsi > 50: score -= 10 # Selling rips in downtrend
-    
-    # 3. Volume Confirmation (Max +20)
-    if volume > (vol_ma * 1.5):
-        if uptrend: score += 10
-        else: score -= 10
-    
-    # Determine Signal based on Score
-    confidence = 0
-    if score >= 75:
-        signal_type = "STRONG BUY"
-        confidence = score
-    elif score >= 65:
-        signal_type = "MODERATE BUY"
-        confidence = score
-    elif score <= 25:
-        signal_type = "STRONG SELL"
-        confidence = 100 - score # Invert for display confidence
-    elif score <= 35:
-        signal_type = "MODERATE SELL"
-        confidence = 100 - score
-        
-    if signal_type == "NEUTRAL":
-        return None
-
-    # ATR Based Risk Management
-    # Buy: SL below price, TP above
-    # Sell: SL above price, TP below
-    
-    stop_loss = 0
-    take_profit = 0
-    
-    if "BUY" in signal_type:
-        stop_loss = price - (atr * 1.5)
-        take_profit = price + (atr * 2.5)
-    else: # SELL
-        stop_loss = price + (atr * 1.5)
-        take_profit = price - (atr * 2.5)
-
     return {
         'timestamp': latest['timestamp'],
         'price': price,
         'rsi': round(rsi, 2),
+        'ema_200': ema_200,
+        'atr': atr,
+        'volume': volume,
+        'vol_ma': vol_ma,
+        # Techncial Signal (Base)
+        'tech_score': score 
+    }
+
+def analyze_quant_signal(symbol, tech_analysis):
+    """
+    Combines Technicals (RSI/EMA) with Quant Data (Order Book)
+    """
+    if not tech_analysis: return None
+    
+    price = tech_analysis['price']
+    rsi = tech_analysis['rsi']
+    
+    # 1. Fetch Liquidity Data
+    book = fetch_order_book(symbol)
+    imbalance = calculate_imbalance(book) # -1 to 1
+    
+    # Spread Calculation
+    best_bid = book['bids'][0][0] if book['bids'] else price
+    best_ask = book['asks'][0][0] if book['asks'] else price
+    spread_pct = ((best_ask - best_bid) / price) * 100
+    
+    # 2. WEIGHTED SCORE CALCULATION
+    # Components:
+    # A. RSI (0-100 normalized to 0-1) -> 30%
+    # B. Trend (Price vs EMA) -> 20%
+    # C. Imbalance (-1 to 1 normalized to 0-1) -> 30%
+    # D. Volume (Ratio) -> 20%
+    
+    # Normalize RSI (Bearish < 30, Bullish > 70? No, standard logic)
+    # Let's align everything to "Bullishness" (0 to 1)
+    
+    # RSI Score: Low RSI is Bullish (Purchase opp), High is Bearish
+    # 30 -> 1.0, 70 -> 0.0
+    rsi_score = 0.5
+    if rsi < 30: rsi_score = 1.0
+    elif rsi > 70: rsi_score = 0.0
+    else: rsi_score = 1.0 - ((rsi - 30) / 40) # Linear decay 30-70
+    
+    # Trend Score
+    trend_score = 1.0 if price > tech_analysis['ema_200'] else 0.0
+    
+    # Imbalance Score (-1 to 1 -> 0 to 1)
+    imb_score = (imbalance + 1) / 2
+    
+    # Volume Score
+    vol_ratio = tech_analysis['volume'] / tech_analysis['vol_ma'] if tech_analysis['vol_ma'] > 0 else 1
+    vol_score = min(vol_ratio / 2, 1.0) # Cap at 2x volume
+    
+    # FINAL WEIGHTED SCORE
+    final_score = (rsi_score * 0.30) + (trend_score * 0.20) + (imb_score * 0.30) + (vol_score * 0.20)
+    final_confidence = int(final_score * 100)
+    
+    # DETERMINE SIGNAL
+    signal_type = "NEUTRAL"
+    if final_confidence >= 75: signal_type = "STRONG BUY"
+    elif final_confidence >= 60: signal_type = "MODERATE BUY"
+    elif final_confidence <= 25: signal_type = "STRONG SELL" # Imbalance/Trend strongly negative
+    elif final_confidence <= 40: signal_type = "MODERATE SELL"
+    
+    if signal_type == "NEUTRAL": return None
+    
+    # ATR Risk Logic
+    atr = tech_analysis['atr']
+    if "BUY" in signal_type:
+        stop_loss = price - (atr * 1.5)
+        take_profit = price + (atr * 2.5)
+    else:
+        stop_loss = price + (atr * 1.5)
+        take_profit = price - (atr * 2.5)
+        
+    return {
         'signal': signal_type,
-        'confidence': int(confidence),
+        'confidence': final_confidence,
+        'price': price,
+        'rsi': rsi,
         'stop_loss': round(stop_loss, 4),
         'take_profit': round(take_profit, 4),
         'atr_value': round(atr, 4),
-        'volume_ratio': round(volume / vol_ma, 2) if vol_ma > 0 else 1.0
+        'ema_200': round(tech_analysis['ema_200'], 4),
+        'imbalance': round(imbalance, 4),
+        'spread_pct': round(spread_pct, 4),
+        'depth_score': int(vol_score * 100) # Proxy for depth/volume quality
     }
 
-from db import insert_signal, log_error
+from db import insert_signal, insert_analytics, log_error
 from telegram_utils import TelegramAlerts
 
 # Initialize Telegram Broadcaster
@@ -168,36 +215,52 @@ def main():
             print(f"\n--- Scan at {datetime.now().strftime('%H:%M:%S')} ---")
             for symbol in symbols:
                 df = fetch_data(symbol)
-                analysis = analyze_market(df)
+                techs = analyze_market(df) # Returns basic tech metrics
                 
-                if analysis:
-                    print(f"[{symbol}] Price: {analysis['price']} | RSI: {analysis['rsi']}")
-                    if analysis['signal'] != "NEUTRAL":
-                        print(f"   >>> SIGNAL: {analysis['signal']} ({analysis['confidence']}%)")
-                        # Save to Supabase
-                        insert_signal(
+                if techs:
+                    # Upgrade to V4 Analysis
+                    quant_signal = analyze_quant_signal(symbol, techs)
+                    
+                    if quant_signal:
+                        print(f"[{symbol}] Price: {quant_signal['price']} | RSI: {quant_signal['rsi']} | Imb: {quant_signal['imbalance']}")
+                        print(f"   >>> V4 SIGNAL: {quant_signal['signal']} ({quant_signal['confidence']}%)")
+                        
+                        # 1. Insert Base Signal
+                        sig_id = insert_signal(
                             symbol=symbol,
-                            price=float(analysis['price']),
-                            rsi=float(analysis['rsi']),
-                            signal_type=analysis['signal'],
-                            confidence=int(analysis['confidence']),
-                            stop_loss=float(analysis['stop_loss']),
-                            take_profit=float(analysis['take_profit']),
-                            atr_value=float(analysis['atr_value']),
-                            volume_ratio=float(analysis['volume_ratio'])
+                            price=float(quant_signal['price']),
+                            rsi=float(quant_signal['rsi']),
+                            signal_type=quant_signal['signal'],
+                            confidence=int(quant_signal['confidence']),
+                            stop_loss=float(quant_signal['stop_loss']),
+                            take_profit=float(quant_signal['take_profit']),
+                            atr_value=float(quant_signal['atr_value']),
+                            volume_ratio=float(quant_signal['depth_score']/100) # Approx
                         )
                         
-                        # Broadcast via Telegram
+                        # 2. Insert Quant Analytics
+                        if sig_id:
+                            insert_analytics(
+                                signal_id=sig_id,
+                                ema_200=quant_signal['ema_200'],
+                                rsi_value=quant_signal['rsi'],
+                                atr_value=quant_signal['atr_value'],
+                                imbalance_ratio=quant_signal['imbalance'],
+                                spread_pct=quant_signal['spread_pct'],
+                                depth_score=quant_signal['depth_score']
+                            )
+                        
+                        # Broadcast via Telegram (V3 style for now, upgrade next)
                         tg.send_signal(
                             symbol=symbol,
-                            signal_type=analysis['signal'],
-                            price=float(analysis['price']),
-                            confidence=int(analysis['confidence']),
-                            stop_loss=float(analysis['stop_loss']),
-                            take_profit=float(analysis['take_profit'])
+                            signal_type=quant_signal['signal'],
+                            price=float(quant_signal['price']),
+                            confidence=int(quant_signal['confidence']),
+                            stop_loss=float(quant_signal['stop_loss']),
+                            take_profit=float(quant_signal['take_profit'])
                         )
                     else:
-                        print("   --- No Signal")
+                        print(f"   --- No Signal ({symbol})")
                 time.sleep(1) # Rate limit friendly per symbol
 
             print("Waiting 60s for next scan...")

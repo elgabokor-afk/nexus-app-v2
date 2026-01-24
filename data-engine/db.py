@@ -46,15 +46,50 @@ def insert_signal(symbol, price, rsi, signal_type, confidence, stop_loss=0, take
     
     try:
         # POST to /market_signals
+        # POST to /market_signals
+        # Prefer=return=representation header tells Supabase to return the created object
         url = f"{client.base_url}/market_signals"
+        client.headers.update({"Prefer": "return=representation"})
+        
         resp = client.post(url, json=data)
+        
         if resp.status_code in [200, 201]:
-            print(f"   >>> DB Insert: {symbol} Signal Saved.")
+            result = resp.json()
+            if result and len(result) > 0:
+                print(f"   >>> DB Insert: {symbol} Signal Saved (ID: {result[0]['id']})")
+                return result[0]['id']
+            return None
         else:
              print(f"   !!! DB Error: {resp.status_code} - {resp.text}")
+             return None
 
     except Exception as e:
         print(f"   !!! DB Error: {e}")
+        return None
+
+def insert_analytics(signal_id, ema_200, rsi_value, atr_value, imbalance_ratio, spread_pct, depth_score):
+    if not client or not signal_id:
+        return
+
+    data = {
+        "signal_id": signal_id,
+        "ema_200": ema_200,
+        "rsi_value": rsi_value,
+        "atr_value": atr_value,
+        "imbalance_ratio": imbalance_ratio,
+        "spread_pct": spread_pct,
+        "order_book_depth_score": depth_score
+    }
+    
+    try:
+        url = f"{client.base_url}/analytics_signals"
+        resp = client.post(url, json=data)
+        if resp.status_code in [200, 201]:
+             print(f"   >>> DB Analytics: Extended Metrics Saved for Signal #{signal_id}")
+        else:
+             print(f"   !!! DB Analytics Fail: {resp.status_code} - {resp.text}")
+    except Exception as e:
+         print(f"   !!! DB Analytics Error: {e}")
 
 def log_error(service, message, error_level="ERROR", stack_trace=None, metadata=None):
     """ Centralized logging to Supabase for remote monitoring """
