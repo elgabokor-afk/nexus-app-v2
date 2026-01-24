@@ -110,6 +110,19 @@ def check_new_entries():
         signals = response.data
         
         for signal in signals:
+            # 0. GLOBAL POSITION LIMIT (V12 Risk Guard)
+            active_count_resp = supabase.table("paper_positions") \
+                .select("id", count="exact") \
+                .eq("status", "OPEN") \
+                .execute()
+            
+            active_count = active_count_resp.count or 0
+            max_pos = int(params.get('max_open_positions', 5))
+            
+            if active_count >= max_pos:
+                print(f"       [GUARD] Max Positions Reached ({active_count}/{max_pos}). Skipping remaining signals.")
+                break
+
             # V3 LOGIC: Dynamic Filter based on 'bot_params'
             # 1. RSI Check
             if signal['rsi'] > params['rsi_buy_threshold'] and "BUY" in signal['signal_type']:
