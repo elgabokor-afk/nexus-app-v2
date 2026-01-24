@@ -166,7 +166,32 @@ def check_new_entries():
     """Checks for new signals to open positions."""
     try:
         params = get_bot_params()
+        # V130: STANDARDIZED FEE (0.075%)
+        # Covers 0.05% Exchange Fee + 0.025% Slippage Buffer
+        params['trading_fee_pct'] = 0.00075 
+        
         wallet = get_wallet()
+
+        # V135: LIVE BALANCE SYNC & SURVIVAL MODE (<$50)
+        is_survival = False
+        if TRADING_MODE == "LIVE":
+            try:
+                live_bal = live_trader.get_live_balance()
+                if live_bal > 0:
+                     # Update local wallet tracking to match reality
+                     wallet['equity'] = live_bal
+                     wallet['balance'] = live_bal
+                     print(f"   [V135] Synced Real Equity: ${live_bal:.2f}")
+                
+                if float(wallet['equity']) < 50:
+                    is_survival = True
+                    print(f"   [SURVIVAL MODE] Equity ${wallet['equity']} < $50. ACTIVATING PROTOCOL V135.")
+                    # STRICT OVERRIDES
+                    params['min_confidence'] = 92
+                    params['max_open_positions'] = 2
+                    params['default_leverage'] = 5 # Cap leverage for safety
+            except Exception as e:
+                print(f"   [V135] Sync Error: {e}")
         
         # Get recent signals (last 1 hour)
         one_hour_ago = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
@@ -280,6 +305,11 @@ def check_new_entries():
 
                 # Target Margin Calculation
                 target_margin = equity * base_account_risk * conf_multiplier
+                
+                # V135: SURVIVAL OVERRIDE
+                if is_survival:
+                    target_margin = 6.0 # Fixed viable margin for Binance Min Notional (~$5.50)
+                    print(f"       [SURVIVAL] Forcing fixed margin ${target_margin} (Min Viable)")
                 
                 # V80: MULTI-ASSET DIVERSIFICATION (15% Cap per Symbol)
                 max_asset_exposure = equity * 0.15
