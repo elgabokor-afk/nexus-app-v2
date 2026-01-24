@@ -78,7 +78,13 @@ export default function LiveTradesPage() {
                 const data = JSON.parse(event.data);
                 if (Array.isArray(data)) {
                     const ticker = data[1];
-                    const pair = data[3];
+                    let pair = data[3];
+
+                    // NORMALIZE KRAKEN SYMBOLS (XBT -> BTC, XDG -> DOGE)
+                    if (pair) {
+                        pair = pair.replace('XBT', 'BTC').replace('XDG', 'DOGE');
+                    }
+
                     if (ticker && ticker.c && pair) {
                         const currentPrice = parseFloat(ticker.c[0]);
                         setPrices(prev => ({ ...prev, [pair]: currentPrice }));
