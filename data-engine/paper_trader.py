@@ -547,7 +547,7 @@ def check_new_entries():
 
                 # V100: LIVE EXECUTION BRIDGE
                 if TRADING_MODE == "LIVE":
-                    print(f"   [V100] ROUTING ORDER TO BINANCE: {binance_side.upper()} {abs_qty} {signal['symbol']}")
+                    print(f"   [V480] EXECUTING CROSS-MARGIN ORDER: {binance_side.upper()} {abs_qty} {signal['symbol']} (Auto-Borrow)")
                     # Note: Symbol mapping might be needed if Supabase uses different format than Binance
                     # Binance usually expects BTCUSDT (futures)
                     # V180: Strict Binance Futures Symbol Mapping (e.g. BTC/USD -> BTCUSDT)
