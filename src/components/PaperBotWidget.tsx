@@ -21,6 +21,8 @@ interface Position {
     liquidation_price?: number;
     confidence_score?: number;
     rsi_entry?: number;
+    atr_entry?: number;
+    signal_type?: string;
 }
 
 interface Wallet {
@@ -177,6 +179,7 @@ export default function PaperBotWidget({
                                 <th className="p-3 text-right">Mark</th>
                                 <th className="p-3 text-right text-red-500/80">Liq.</th>
                                 <th className="p-3 text-right">Margin</th>
+                                <th className="p-3 text-center">Signal Context</th>
                                 <th className="p-3 text-right">PnL (ROE %)</th>
                                 <th className="p-3 text-right">Actions</th>
                             </tr>
@@ -221,6 +224,17 @@ export default function PaperBotWidget({
                                         </td>
                                         <td className="p-3 text-right font-mono text-xs text-gray-300">
                                             ${margin.toFixed(2)}
+                                        </td>
+                                        <td className="p-3 text-center">
+                                            <div className="flex flex-col items-center">
+                                                <span className="text-[9px] font-black uppercase text-gray-400 bg-white/5 px-1.5 py-0.5 rounded mb-1">
+                                                    {pos.signal_type?.replace('ADOPTED_', '') || 'MANUAL'}
+                                                </span>
+                                                <div className="flex gap-2">
+                                                    <span className="text-[9px] font-mono text-yellow-500">RSI: {Math.round(pos.rsi_entry || 50)}</span>
+                                                    <span className="text-[9px] font-mono text-blue-400">Conf: {Math.round(pos.confidence_score || 0)}%</span>
+                                                </div>
+                                            </div>
                                         </td>
                                         <td className="p-3 text-right">
                                             <div className="flex flex-col items-end">
@@ -298,6 +312,13 @@ export default function PaperBotWidget({
                                                         <h4 className="text-lg font-black tracking-tighter leading-none">{pos.symbol}</h4>
                                                         <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${pos.quantity >= 0 ? 'bg-[#00ffa3]/10 text-[#00ffa3]' : 'bg-red-500/10 text-red-500'}`}>
                                                             {pos.quantity >= 0 ? 'LONG' : 'SHORT'}
+                                                        </span>
+                                                        {/* V520: Widget View Context Tags */}
+                                                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/10">
+                                                            {Math.round(pos.confidence_score || 0)}% Conf
+                                                        </span>
+                                                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-500 border border-yellow-500/10">
+                                                            RSI {Math.round(pos.rsi_entry || 0)}
                                                         </span>
                                                     </div>
 
