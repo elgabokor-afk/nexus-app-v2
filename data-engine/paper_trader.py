@@ -76,7 +76,8 @@ def get_bot_params():
             "stop_loss_atr_mult": 1.5, 
             "take_profit_atr_mult": 2.5,
             "default_leverage": 10,
-            "margin_mode": "ISOLATED"
+            "margin_mode": "ISOLATED",
+            "account_risk_pct": 0.02
         }
     except Exception as e:
         print(f"Error fetching params: {e}")
@@ -128,8 +129,10 @@ def check_new_entries():
                 leverage = int(params.get('default_leverage', 10))
                 margin_mode = params.get('margin_mode', 'ISOLATED')
                 
-                # Risk = 5% of Equity is our INITIAL MARGIN (Cash used)
-                account_risk = 0.05 
+                # Risk Management: Dynamic % of Equity (capped at 5% safety)
+                user_risk = float(params.get('account_risk_pct', 0.02))
+                account_risk = min(user_risk, 0.05) # Hard cap at 5%
+                
                 initial_margin = float(wallet['equity']) * account_risk
                 
                 # Leveraged Position Size (Notional Value)
