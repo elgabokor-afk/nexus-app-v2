@@ -83,6 +83,7 @@ class BinanceTrader:
             order = self.exchange.create_market_order(symbol, side, clean_amount)
             print(f"   [BINANCE] LIVE ORDER EXECUTED: {side} {clean_amount} {symbol}")
             return order
+        except Exception as e:
             print(f"   [BINANCE] Execution Error: {e}")
             return None
 
