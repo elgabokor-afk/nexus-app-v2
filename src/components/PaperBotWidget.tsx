@@ -26,9 +26,10 @@ interface PaperPosition {
 
 interface PaperBotWidgetProps {
     onSelectSymbol?: (symbol: string) => void;
+    viewMode?: 'widget' | 'pro';
 }
 
-export default function PaperBotWidget({ onSelectSymbol }: PaperBotWidgetProps) {
+export default function PaperBotWidget({ onSelectSymbol, viewMode = 'widget' }: PaperBotWidgetProps) {
     const [positions, setPositions] = useState<PaperPosition[]>([]);
     const [wallet, setWallet] = useState({ equity: 10000, balance: 10000 });
     const [stats, setStats] = useState({ totalPnl: 0, winRate: 0, activeCount: 0 });
@@ -159,185 +160,277 @@ export default function PaperBotWidget({ onSelectSymbol }: PaperBotWidgetProps) 
                     </div>
                 </div>
 
-                {/* ACTIVE TRADES */}
-                <div className="mb-8">
-                    <div className="flex items-center justify-between mb-4 px-1">
-                        <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] flex items-center gap-2">
-                            Active Positions
-                        </h3>
-                        <span className="px-2 py-0.5 bg-white/5 rounded-full text-[9px] font-mono font-bold text-white/50 border border-white/5">
-                            {stats.activeCount} OPEN
-                        </span>
-                    </div>
-                    <div className="space-y-3">
-                        {positions.filter(p => p.status === 'OPEN').length === 0 ? (
-                            <div className="group relative py-8 px-4 border border-dashed border-white/10 rounded-3xl flex flex-col items-center justify-center gap-3 bg-white/[0.01] hover:bg-white/[0.02] transition-all">
-                                <Activity size={16} className="text-white/20" />
-                                <span className="text-[10px] text-white/20 font-black uppercase tracking-widest text-center px-4">
-                                    Scanning for high probability setups...
-                                </span>
-                            </div>
-                        ) : (
-                            positions.filter(p => p.status === 'OPEN').map(pos => {
-                                const livePrice = prices[pos.symbol.toUpperCase()] || pos.entry_price;
+            </div>
 
-                                // V5: PnL based on Leverage (Notional Size)
-                                // Unrealized PnL = (Current - Entry) * Quantity
+            {/* PRO TABLE VIEW */}
+            {viewMode === 'pro' && (
+                <div className="mb-8 overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                        <thead className="bg-white/[0.02] border-b border-white/5 text-[9px] font-black text-gray-500 uppercase tracking-widest">
+                            <tr>
+                                <th className="p-3">Contract</th>
+                                <th className="p-3">Side</th>
+                                <th className="p-3 text-right">Size (USDT)</th>
+                                <th className="p-3 text-right">Entry Price</th>
+                                <th className="p-3 text-right">Mark Price</th>
+                                <th className="p-3 text-right text-red-500/80">Liq. Price</th>
+                                <th className="p-3 text-right">Margin</th>
+                                <th className="p-3 text-right">PnL (ROE %)</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                            {positions.filter(p => p.status === 'OPEN').map(pos => {
+                                const livePrice = prices[pos.symbol.toUpperCase()] || pos.entry_price;
                                 let pnl = (livePrice - pos.entry_price) * pos.quantity;
 
-                                // Short Logic
+                                // Short Logic correction
                                 if (pos.quantity < 0 || (pos.bot_take_profit && pos.bot_take_profit < pos.entry_price)) {
                                     pnl = (pos.entry_price - livePrice) * Math.abs(pos.quantity);
                                 }
 
-                                // V5: ROE Calculation (Return on Equity)
-                                // If initial_margin exists, use it. Else fall back to full value (1x)
                                 const margin = pos.initial_margin || (pos.entry_price * Math.abs(pos.quantity));
-                                const roePercent = (pnl / margin) * 100;
-
+                                const roePercent = margin > 0 ? (pnl / margin) * 100 : 0;
                                 const isPosGreen = pnl >= 0;
-
-                                // Liquidation Warning (within 1.5% distance)
-                                const liqPrice = pos.liquidation_price;
-                                const distToLiq = liqPrice ? Math.abs((livePrice - liqPrice) / livePrice) * 100 : 100;
-                                const isLiqRisk = distToLiq < 1.5;
+                                const leverage = pos.leverage || 10;
+                                const notional = pos.entry_price * Math.abs(pos.quantity); // Approximate notional at entry
 
                                 return (
-                                    <div
-                                        key={pos.id}
-                                        onClick={() => onSelectSymbol && onSelectSymbol(pos.symbol)}
-                                        className={`group relative p-4 bg-gradient-to-br from-white/[0.05] to-transparent rounded-2xl border transition-all overflow-hidden shadow-xl cursor-pointer active:scale-95 ${isPosGreen ? 'border-[#00ffa3]/20 hover:border-[#00ffa3]/40' : 'border-red-500/20 hover:border-red-500/40'}`}
-                                    >
-                                        <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-30 transition-all">
-                                            <TrendingUp size={32} className={isPosGreen ? "text-[#00ffa3]" : "text-red-500"} />
-                                        </div>
-                                        <div className="flex justify-between items-start mb-3">
-                                            <div>
-                                                <h4 className="text-lg font-black tracking-tighter leading-none flex items-center gap-2">
-                                                    {pos.symbol}
-                                                    <span className="text-[9px] px-1.5 py-0.5 rounded font-black bg-white/10 text-white border border-white/10">
-                                                        {pos.leverage || 10}x {pos.margin_mode === 'CROSS' ? 'CROSS' : 'ISO'}
-                                                    </span>
-                                                </h4>
-                                                <div className="flex flex-col gap-1 mt-1">
-                                                    <p className="text-[10px] text-gray-500 font-mono font-bold uppercase">
-                                                        Margin: ${margin.toFixed(0)}
-                                                    </p>
-                                                    {isLiqRisk && (
-                                                        <p className="text-[9px] font-black text-red-500 animate-pulse flex items-center gap-1">
-                                                            <AlertCircle size={10} /> LIQ RISK: ${liqPrice?.toLocaleString()}
+                                    <tr key={pos.id} className="hover:bg-white/[0.02] transition-colors group">
+                                        <td className="p-3">
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-bold text-white text-xs font-mono">{pos.symbol}</span>
+                                                <span className="text-[9px] px-1 py-0.5 rounded bg-white/10 text-gray-300 font-mono">
+                                                    {leverage}x {pos.margin_mode === 'CROSS' ? 'CROSS' : 'ISO'}
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td className="p-3">
+                                            <span className={`text-[10px] font-black uppercase ${pos.quantity >= 0 ? 'text-[#00ffa3]' : 'text-red-500'}`}>
+                                                {pos.quantity >= 0 ? 'LONG' : 'SHORT'}
+                                            </span>
+                                        </td>
+                                        <td className="p-3 text-right font-mono text-xs text-gray-300">
+                                            ${notional.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                        </td>
+                                        <td className="p-3 text-right font-mono text-xs text-gray-400">
+                                            ${pos.entry_price.toLocaleString()}
+                                        </td>
+                                        <td className={`p-3 text-right font-mono text-xs font-bold ${isPosGreen ? 'text-[#00ffa3]' : 'text-red-500'}`}>
+                                            ${livePrice.toLocaleString()}
+                                        </td>
+                                        <td className="p-3 text-right font-mono text-xs text-orange-500">
+                                            {pos.liquidation_price ? `$${pos.liquidation_price.toLocaleString()}` : '---'}
+                                        </td>
+                                        <td className="p-3 text-right font-mono text-xs text-gray-300">
+                                            ${margin.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                                        </td>
+                                        <td className="p-3 text-right">
+                                            <div className="flex flex-col items-end">
+                                                <span className={`font-mono text-xs font-black ${isPosGreen ? 'text-[#00ffa3]' : 'text-red-500'}`}>
+                                                    {isPosGreen ? '+' : ''}${pnl.toFixed(2)}
+                                                </span>
+                                                <span className={`text-[9px] font-bold ${isPosGreen ? 'text-[#00ffa3]' : 'text-red-500'}`}>
+                                                    ({isPosGreen ? '+' : ''}{roePercent.toFixed(2)}%)
+                                                </span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                            {positions.filter(p => p.status === 'OPEN').length === 0 && (
+                                <tr>
+                                    <td colSpan={8} className="p-8 text-center text-gray-600 text-xs font-mono uppercase tracking-widest">
+                                        No Open Positions
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+
+            {/* ACTIVE TRADES & HISTORY (WIDGET MODE) */}
+            {viewMode === 'widget' && (
+                <div className="px-6 mb-8">
+                    <div className="mb-8">
+                        <div className="flex items-center justify-between mb-4 px-1">
+                            <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] flex items-center gap-2">
+                                Active Positions
+                            </h3>
+                            <span className="px-2 py-0.5 bg-white/5 rounded-full text-[9px] font-mono font-bold text-white/50 border border-white/5">
+                                {stats.activeCount} OPEN
+                            </span>
+                        </div>
+                        <div className="space-y-3">
+                            {positions.filter(p => p.status === 'OPEN').length === 0 ? (
+                                <div className="group relative py-8 px-4 border border-dashed border-white/10 rounded-3xl flex flex-col items-center justify-center gap-3 bg-white/[0.01] hover:bg-white/[0.02] transition-all">
+                                    <Activity size={16} className="text-white/20" />
+                                    <span className="text-[10px] text-white/20 font-black uppercase tracking-widest text-center px-4">
+                                        Scanning for high probability setups...
+                                    </span>
+                                </div>
+                            ) : (
+                                positions.filter(p => p.status === 'OPEN').map(pos => {
+                                    const livePrice = prices[pos.symbol.toUpperCase()] || pos.entry_price;
+
+                                    // V5: PnL based on Leverage (Notional Size)
+                                    // Unrealized PnL = (Current - Entry) * Quantity
+                                    let pnl = (livePrice - pos.entry_price) * pos.quantity;
+
+                                    // Short Logic
+                                    if (pos.quantity < 0 || (pos.bot_take_profit && pos.bot_take_profit < pos.entry_price)) {
+                                        pnl = (pos.entry_price - livePrice) * Math.abs(pos.quantity);
+                                    }
+
+                                    // V5: ROE Calculation (Return on Equity)
+                                    // If initial_margin exists, use it. Else fall back to full value (1x)
+                                    const margin = pos.initial_margin || (pos.entry_price * Math.abs(pos.quantity));
+                                    const roePercent = margin > 0 ? (pnl / margin) * 100 : 0;
+
+                                    const isPosGreen = pnl >= 0;
+
+                                    // Liquidation Warning (within 1.5% distance)
+                                    const liqPrice = pos.liquidation_price;
+                                    const distToLiq = liqPrice ? Math.abs((livePrice - liqPrice) / livePrice) * 100 : 100;
+                                    const isLiqRisk = distToLiq < 1.5;
+
+                                    return (
+                                        <div
+                                            key={pos.id}
+                                            onClick={() => onSelectSymbol && onSelectSymbol(pos.symbol)}
+                                            className={`group relative p-4 bg-gradient-to-br from-white/[0.05] to-transparent rounded-2xl border transition-all overflow-hidden shadow-xl cursor-pointer active:scale-95 ${isPosGreen ? 'border-[#00ffa3]/20 hover:border-[#00ffa3]/40' : 'border-red-500/20 hover:border-red-500/40'}`}
+                                        >
+                                            <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-30 transition-all">
+                                                <TrendingUp size={32} className={isPosGreen ? "text-[#00ffa3]" : "text-red-500"} />
+                                            </div>
+                                            <div className="flex justify-between items-start mb-3">
+                                                <div>
+                                                    <h4 className="text-lg font-black tracking-tighter leading-none flex items-center gap-2">
+                                                        {pos.symbol}
+                                                        <span className="text-[9px] px-1.5 py-0.5 rounded font-black bg-white/10 text-white border border-white/10">
+                                                            {pos.leverage || 10}x {pos.margin_mode === 'CROSS' ? 'CROSS' : 'ISO'}
+                                                        </span>
+                                                    </h4>
+                                                    <div className="flex flex-col gap-1 mt-1">
+                                                        <p className="text-[10px] text-gray-500 font-mono font-bold uppercase">
+                                                            Margin: ${margin.toFixed(0)}
                                                         </p>
-                                                    )}
+                                                        {isLiqRisk && (
+                                                            <p className="text-[9px] font-black text-red-500 animate-pulse flex items-center gap-1">
+                                                                <AlertCircle size={10} /> LIQ RISK: ${liqPrice?.toLocaleString()}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">ROE PnL</p>
+                                                    <p className={`text-base font-mono font-black ${isPosGreen ? 'text-[#00ffa3]' : 'text-red-500'}`}>
+                                                        {isPosGreen ? '+' : ''}${pnl.toFixed(2)}
+                                                    </p>
+                                                    <p className={`text-[9px] font-bold ${isPosGreen ? 'text-[#00ffa3]' : 'text-red-500'}`}>
+                                                        {isPosGreen ? '+' : ''}{roePercent.toFixed(2)}%
+                                                    </p>
                                                 </div>
                                             </div>
-                                            <div className="text-right">
-                                                <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">ROE PnL</p>
-                                                <p className={`text-base font-mono font-black ${isPosGreen ? 'text-[#00ffa3]' : 'text-red-500'}`}>
-                                                    {isPosGreen ? '+' : ''}${pnl.toFixed(2)}
-                                                </p>
-                                                <p className={`text-[9px] font-bold ${isPosGreen ? 'text-[#00ffa3]' : 'text-red-500'}`}>
-                                                    {isPosGreen ? '+' : ''}{roePercent.toFixed(2)}%
-                                                </p>
+
+                                            {/* Progress Bar relative to TP/SL could go here, for now just a separator */}
+                                            <div className="w-full h-[1px] bg-white/5 my-2"></div>
+
+                                            <div className="flex justify-between text-[9px] font-mono font-bold text-gray-500">
+                                                <span>SL: ${pos.bot_stop_loss?.toFixed(2) || '---'}</span>
+                                                <span className="text-[#00ffa3]">TP: ${pos.bot_take_profit?.toFixed(2) || '---'}</span>
                                             </div>
                                         </div>
+                                    );
+                                })
+                            )}
+                        </div>
+                    </div>
 
-                                        {/* Progress Bar relative to TP/SL could go here, for now just a separator */}
-                                        <div className="w-full h-[1px] bg-white/5 my-2"></div>
+                    {/* RECENT HISTORY */}
+                    <div className="flex flex-col space-y-6">
+                        <div className="flex items-center justify-between px-1">
+                            <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Execution Logs</h3>
+                            <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Efficiency:</span>
+                                <span className="text-[10px] font-black tracking-widest text-[#00ffa3]">{stats.winRate.toFixed(0)}%</span>
+                            </div>
+                        </div>
 
-                                        <div className="flex justify-between text-[9px] font-mono font-bold text-gray-500">
-                                            <span>SL: ${pos.bot_stop_loss?.toFixed(2) || '---'}</span>
-                                            <span className="text-[#00ffa3]">TP: ${pos.bot_take_profit?.toFixed(2) || '---'}</span>
+                        {positions.filter(p => p.status === 'CLOSED').length === 0 ? (
+                            <div className="py-8 px-4 border border-dashed border-white/5 rounded-2xl flex items-center justify-center bg-white/[0.01]">
+                                <span className="text-[9px] text-white/20 font-bold uppercase tracking-widest">Awaiting first settlement...</span>
+                            </div>
+                        ) : (
+                            <div className="space-y-6">
+                                {/* WINS SECTION */}
+                                {positions.filter(p => p.status === 'CLOSED' && (p.pnl || 0) > 0).length > 0 && (
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-2 px-2">
+                                            <div className="w-1 h-1 rounded-full bg-[#00ffa3]"></div>
+                                            <span className="text-[9px] font-black text-[#00ffa3] uppercase tracking-widest">Settled Wins ({positions.filter(p => p.status === 'CLOSED' && (p.pnl || 0) > 0).length})</span>
+                                        </div>
+                                        <div className="space-y-2">
+                                            {positions.filter(p => p.status === 'CLOSED' && (p.pnl || 0) > 0).map(pos => (
+                                                <div
+                                                    key={pos.id}
+                                                    onClick={() => onSelectSymbol && onSelectSymbol(pos.symbol)}
+                                                    className="flex justify-between items-center p-3 bg-[#00ffa3]/[0.03] hover:bg-[#00ffa3]/[0.06] rounded-xl border border-[#00ffa3]/10 transition-all group cursor-pointer active:scale-95"
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-[#00ffa3] shadow-[0_0_8px_#00ffa3]"></div>
+                                                        <div>
+                                                            <span className="font-black text-sm tracking-tight">{pos.symbol}</span>
+                                                            <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest leading-none mt-0.5">{pos.exit_reason}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <span className="font-mono text-xs font-black text-[#00ffa3]">
+                                                            +${(pos.pnl || 0).toFixed(2)}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            ))}
                                         </div>
                                     </div>
-                                );
-                            })
+                                )}
+
+                                {/* LOSSES SECTION */}
+                                {positions.filter(p => p.status === 'CLOSED' && (p.pnl || 0) <= 0).length > 0 && (
+                                    <div className="space-y-3 pb-4">
+                                        <div className="flex items-center gap-2 px-2">
+                                            <div className="w-1 h-1 rounded-full bg-red-500"></div>
+                                            <span className="text-[9px] font-black text-red-500 uppercase tracking-widest">Settled Losses ({positions.filter(p => p.status === 'CLOSED' && (p.pnl || 0) <= 0).length})</span>
+                                        </div>
+                                        <div className="space-y-2">
+                                            {positions.filter(p => p.status === 'CLOSED' && (p.pnl || 0) <= 0).map(pos => (
+                                                <div
+                                                    key={pos.id}
+                                                    onClick={() => onSelectSymbol && onSelectSymbol(pos.symbol)}
+                                                    className="flex justify-between items-center p-3 bg-red-500/[0.03] hover:bg-red-500/[0.06] rounded-xl border border-red-500/10 transition-all group cursor-pointer active:scale-95"
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_8px_red]"></div>
+                                                        <div>
+                                                            <span className="font-black text-sm tracking-tight">{pos.symbol}</span>
+                                                            <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest leading-none mt-0.5">{pos.exit_reason}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <span className="font-mono text-xs font-black text-red-500">
+                                                            ${(pos.pnl || 0).toFixed(2)}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         )}
                     </div>
                 </div>
-
-                {/* RECENT HISTORY */}
-                <div className="flex flex-col space-y-6">
-                    <div className="flex items-center justify-between px-1">
-                        <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Execution Logs</h3>
-                        <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Efficiency:</span>
-                            <span className="text-[10px] font-black tracking-widest text-[#00ffa3]">{stats.winRate.toFixed(0)}%</span>
-                        </div>
-                    </div>
-
-                    {positions.filter(p => p.status === 'CLOSED').length === 0 ? (
-                        <div className="py-8 px-4 border border-dashed border-white/5 rounded-2xl flex items-center justify-center bg-white/[0.01]">
-                            <span className="text-[9px] text-white/20 font-bold uppercase tracking-widest">Awaiting first settlement...</span>
-                        </div>
-                    ) : (
-                        <div className="space-y-6">
-                            {/* WINS SECTION */}
-                            {positions.filter(p => p.status === 'CLOSED' && (p.pnl || 0) > 0).length > 0 && (
-                                <div className="space-y-3">
-                                    <div className="flex items-center gap-2 px-2">
-                                        <div className="w-1 h-1 rounded-full bg-[#00ffa3]"></div>
-                                        <span className="text-[9px] font-black text-[#00ffa3] uppercase tracking-widest">Settled Wins ({positions.filter(p => p.status === 'CLOSED' && (p.pnl || 0) > 0).length})</span>
-                                    </div>
-                                    <div className="space-y-2">
-                                        {positions.filter(p => p.status === 'CLOSED' && (p.pnl || 0) > 0).map(pos => (
-                                            <div
-                                                key={pos.id}
-                                                onClick={() => onSelectSymbol && onSelectSymbol(pos.symbol)}
-                                                className="flex justify-between items-center p-3 bg-[#00ffa3]/[0.03] hover:bg-[#00ffa3]/[0.06] rounded-xl border border-[#00ffa3]/10 transition-all group cursor-pointer active:scale-95"
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-1.5 h-1.5 rounded-full bg-[#00ffa3] shadow-[0_0_8px_#00ffa3]"></div>
-                                                    <div>
-                                                        <span className="font-black text-sm tracking-tight">{pos.symbol}</span>
-                                                        <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest leading-none mt-0.5">{pos.exit_reason}</p>
-                                                    </div>
-                                                </div>
-                                                <div className="text-right">
-                                                    <span className="font-mono text-xs font-black text-[#00ffa3]">
-                                                        +${(pos.pnl || 0).toFixed(2)}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* LOSSES SECTION */}
-                            {positions.filter(p => p.status === 'CLOSED' && (p.pnl || 0) <= 0).length > 0 && (
-                                <div className="space-y-3 pb-4">
-                                    <div className="flex items-center gap-2 px-2">
-                                        <div className="w-1 h-1 rounded-full bg-red-500"></div>
-                                        <span className="text-[9px] font-black text-red-500 uppercase tracking-widest">Settled Losses ({positions.filter(p => p.status === 'CLOSED' && (p.pnl || 0) <= 0).length})</span>
-                                    </div>
-                                    <div className="space-y-2">
-                                        {positions.filter(p => p.status === 'CLOSED' && (p.pnl || 0) <= 0).map(pos => (
-                                            <div
-                                                key={pos.id}
-                                                onClick={() => onSelectSymbol && onSelectSymbol(pos.symbol)}
-                                                className="flex justify-between items-center p-3 bg-red-500/[0.03] hover:bg-red-500/[0.06] rounded-xl border border-red-500/10 transition-all group cursor-pointer active:scale-95"
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_8px_red]"></div>
-                                                    <div>
-                                                        <span className="font-black text-sm tracking-tight">{pos.symbol}</span>
-                                                        <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest leading-none mt-0.5">{pos.exit_reason}</p>
-                                                    </div>
-                                                </div>
-                                                <div className="text-right">
-                                                    <span className="font-mono text-xs font-black text-red-500">
-                                                        ${(pos.pnl || 0).toFixed(2)}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </div>
-            </div>
+            )}
         </div>
     );
 }

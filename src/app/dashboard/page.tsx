@@ -394,7 +394,7 @@ export default function Dashboard() {
                                 </div>
                                 <div className="flex-1 relative">
                                     <div className="absolute inset-0">
-                                        <PaperBotWidget onSelectSymbol={handleViewChart} />
+                                        <PaperBotWidget onSelectSymbol={handleViewChart} viewMode="pro" />
                                     </div>
                                 </div>
                             </div>
