@@ -67,11 +67,23 @@ def get_bot_params():
         res = supabase.table("bot_params").select("*").eq("active", "true").limit(1).execute()
         if res.data:
             return res.data[0]
-        # Fallback defaults
-        return {"rsi_buy_threshold": 30, "stop_loss_atr_mult": 1.5, "take_profit_atr_mult": 2.5}
+        # Fallback defaults with V5 support
+        return {
+            "rsi_buy_threshold": 30, 
+            "stop_loss_atr_mult": 1.5, 
+            "take_profit_atr_mult": 2.5,
+            "default_leverage": 10,
+            "margin_mode": "ISOLATED"
+        }
     except Exception as e:
         print(f"Error fetching params: {e}")
-        return {"rsi_buy_threshold": 30, "stop_loss_atr_mult": 1.5, "take_profit_atr_mult": 2.5}
+        return {
+            "rsi_buy_threshold": 30, 
+            "stop_loss_atr_mult": 1.5, 
+            "take_profit_atr_mult": 2.5,
+            "default_leverage": 10,
+            "margin_mode": "ISOLATED"
+        }
 
 def check_new_entries():
     """Checks for new signals to open positions."""
@@ -109,26 +121,34 @@ def check_new_entries():
                 # OPEN POSITION
                 print(f"   >>> FOUND SIGNAL: {signal['symbol']} | RSI: {signal['rsi']} (Thresh: {params['rsi_buy_threshold']})")
                 
-                # V3 LOGIC: Position Sizing = 5% of Equity (Compounding)
+                # V5 LOGIC: LEVERAGE & MARGIN
+                leverage = int(params.get('default_leverage', 10))
+                margin_mode = params.get('margin_mode', 'ISOLATED')
+                
+                # Risk = 5% of Equity is our INITIAL MARGIN (Cash used)
                 account_risk = 0.05 
-                trade_value = float(wallet['equity']) * account_risk
+                initial_margin = float(wallet['equity']) * account_risk
+                
+                # Leveraged Position Size (Notional Value)
+                trade_value = initial_margin * leverage
                 quantity = trade_value / signal['price']
                 
-                print(f"       Opening Position: ${trade_value:.2f} ({quantity:.4f} units)")
+                print(f"       Opening Position: ${trade_value:.2f} ({leverage}x) | Margin: ${initial_margin:.2f}")
                 
-                # V3 LOGIC: Dynamic Exits based on ATR Multipliers from DB
+                # V3 LOGIC: ATR Stops
                 atr = signal.get('atr_value', 0)
                 entry = signal['price']
                 
-                # Recalculate SL/TP based on *CURRENT* bot params, confusing raw signal values if needed
-                # Ideally we trust the signal, but V3 implies the BOT decides.
-                # Let's Apply the Multipliers to the Entry Price
                 if "BUY" in signal['signal_type']:
                     bot_sl = entry - (atr * float(params['stop_loss_atr_mult']))
                     bot_tp = entry + (atr * float(params['take_profit_atr_mult']))
+                    # Liquidation: Entry - (Entry / Leverage) for Longs
+                    liq_price = entry - (entry / leverage)
                 else:
                     bot_sl = entry + (atr * float(params['stop_loss_atr_mult']))
                     bot_tp = entry - (atr * float(params['take_profit_atr_mult']))
+                    # Liquidation: Entry + (Entry / Leverage) for Shorts
+                    liq_price = entry + (entry / leverage)
 
                 trade_data = {
                     "signal_id": signal['id'],
@@ -140,13 +160,17 @@ def check_new_entries():
                     "signal_type": signal.get('signal_type'),
                     "rsi_entry": signal.get('rsi'),
                     "atr_entry": signal.get('atr_value'),
-                    # NEW: Track Bot's specific decision
                     "bot_stop_loss": round(bot_sl, 4),
-                    "bot_take_profit": round(bot_tp, 4)
+                    "bot_take_profit": round(bot_tp, 4),
+                    # V5 Fields
+                    "leverage": leverage,
+                    "margin_mode": margin_mode,
+                    "initial_margin": round(initial_margin, 2),
+                    "liquidation_price": round(liq_price, 4)
                 }
                 
                 supabase.table("paper_positions").insert(trade_data).execute()
-                print(f"--- TRADE OPENED: {signal['symbol']} | SL: {bot_sl:.2f} | TP: {bot_tp:.2f} ---")
+                print(f"--- TRADE OPENED: {signal['symbol']} ({leverage}x) | Liq: {liq_price:.2f} ---")
                 
     except Exception as e:
         print(f"Error checking entries: {e}")
@@ -180,18 +204,28 @@ def monitor_positions():
             exit_reason = None
             
             # CHECK EXITS
-            if stop_loss and current_price <= stop_loss:
+            # CHECK EXITS
+            if pos.get('liquidation_price') and (
+                ("BUY" in (pos.get('signal_type') or "BUY") and current_price <= pos['liquidation_price']) or
+                ("SELL" in (pos.get('signal_type') or "BUY") and current_price >= pos['liquidation_price'])
+            ):
+                 exit_reason = "LIQUIDATION"
+            elif stop_loss and current_price <= stop_loss:
                 exit_reason = "STOP_LOSS"
             elif take_profit and current_price >= take_profit:
                 exit_reason = "TAKE_PROFIT"
                 
             if exit_reason:
                 # CLOSE POSITION
-                pnl = (current_price - pos['entry_price']) * pos['quantity']
-                
-                # If SHORT, PnL is inverted (Entry - Exit)
-                if "SELL" in (pos.get('signal_type') or "BUY"): 
-                     pnl = (pos['entry_price'] - current_price) * pos['quantity']
+                if exit_reason == "LIQUIDATION":
+                    # Total Loss of Initial Margin
+                    pnl = -float(pos.get('initial_margin') or 0)
+                else:
+                    # Standard PnL Calculation
+                    pnl = (current_price - pos['entry_price']) * pos['quantity']
+                    # If SHORT, PnL is inverted (Entry - Exit)
+                    if "SELL" in (pos.get('signal_type') or "BUY"): 
+                         pnl = (pos['entry_price'] - current_price) * pos['quantity']
 
                 print(f"Closing {pos['symbol']} | Reason: {exit_reason} | PnL: ${pnl:.2f}")
                 

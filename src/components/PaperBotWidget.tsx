@@ -18,6 +18,10 @@ interface PaperPosition {
     closed_at: string | null;
     bot_stop_loss?: number;
     bot_take_profit?: number;
+    leverage?: number;
+    margin_mode?: string;
+    liquidation_price?: number;
+    initial_margin?: number;
 }
 
 interface PaperBotWidgetProps {
@@ -176,13 +180,27 @@ export default function PaperBotWidget({ onSelectSymbol }: PaperBotWidgetProps) 
                         ) : (
                             positions.filter(p => p.status === 'OPEN').map(pos => {
                                 const livePrice = prices[pos.symbol.toUpperCase()] || pos.entry_price;
+
+                                // V5: PnL based on Leverage (Notional Size)
+                                // Unrealized PnL = (Current - Entry) * Quantity
                                 let pnl = (livePrice - pos.entry_price) * pos.quantity;
-                                // Simple short detection (if TP is lower than entry)
-                                if (pos.bot_take_profit && pos.bot_take_profit < pos.entry_price) {
+
+                                // Short Logic
+                                if (pos.quantity < 0 || (pos.bot_take_profit && pos.bot_take_profit < pos.entry_price)) {
                                     pnl = (pos.entry_price - livePrice) * Math.abs(pos.quantity);
                                 }
-                                const pnlPercent = (pnl / (pos.entry_price * pos.quantity)) * 100;
+
+                                // V5: ROE Calculation (Return on Equity)
+                                // If initial_margin exists, use it. Else fall back to full value (1x)
+                                const margin = pos.initial_margin || (pos.entry_price * Math.abs(pos.quantity));
+                                const roePercent = (pnl / margin) * 100;
+
                                 const isPosGreen = pnl >= 0;
+
+                                // Liquidation Warning (within 1.5% distance)
+                                const liqPrice = pos.liquidation_price;
+                                const distToLiq = liqPrice ? Math.abs((livePrice - liqPrice) / livePrice) * 100 : 100;
+                                const isLiqRisk = distToLiq < 1.5;
 
                                 return (
                                     <div
@@ -197,21 +215,28 @@ export default function PaperBotWidget({ onSelectSymbol }: PaperBotWidgetProps) 
                                             <div>
                                                 <h4 className="text-lg font-black tracking-tighter leading-none flex items-center gap-2">
                                                     {pos.symbol}
-                                                    <span className={`text-[8px] px-1.5 py-0.5 rounded font-bold ${isPosGreen ? 'bg-[#00ffa3]/20 text-[#00ffa3]' : 'bg-red-500/20 text-red-500'}`}>
-                                                        ${livePrice.toLocaleString()}
+                                                    <span className="text-[9px] px-1.5 py-0.5 rounded font-black bg-white/10 text-white border border-white/10">
+                                                        {pos.leverage || 10}x {pos.margin_mode === 'CROSS' ? 'CROSS' : 'ISO'}
                                                     </span>
                                                 </h4>
-                                                <p className="text-[10px] text-gray-500 font-mono font-bold uppercase mt-1">
-                                                    Size: ${(pos.entry_price * pos.quantity).toFixed(0)}
-                                                </p>
+                                                <div className="flex flex-col gap-1 mt-1">
+                                                    <p className="text-[10px] text-gray-500 font-mono font-bold uppercase">
+                                                        Margin: ${margin.toFixed(0)}
+                                                    </p>
+                                                    {isLiqRisk && (
+                                                        <p className="text-[9px] font-black text-red-500 animate-pulse flex items-center gap-1">
+                                                            <AlertCircle size={10} /> LIQ RISK: ${liqPrice?.toLocaleString()}
+                                                        </p>
+                                                    )}
+                                                </div>
                                             </div>
                                             <div className="text-right">
-                                                <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">Unrealized PnL</p>
+                                                <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">ROE PnL</p>
                                                 <p className={`text-base font-mono font-black ${isPosGreen ? 'text-[#00ffa3]' : 'text-red-500'}`}>
                                                     {isPosGreen ? '+' : ''}${pnl.toFixed(2)}
                                                 </p>
                                                 <p className={`text-[9px] font-bold ${isPosGreen ? 'text-[#00ffa3]' : 'text-red-500'}`}>
-                                                    {isPosGreen ? '+' : ''}{pnlPercent.toFixed(2)}%
+                                                    {isPosGreen ? '+' : ''}{roePercent.toFixed(2)}%
                                                 </p>
                                             </div>
                                         </div>
