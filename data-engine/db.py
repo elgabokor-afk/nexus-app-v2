@@ -55,3 +55,24 @@ def insert_signal(symbol, price, rsi, signal_type, confidence, stop_loss=0, take
 
     except Exception as e:
         print(f"   !!! DB Error: {e}")
+
+def log_error(service, message, error_level="ERROR", stack_trace=None, metadata=None):
+    """ Centralized logging to Supabase for remote monitoring """
+    if not client:
+        return
+    
+    data = {
+        "service": service,
+        "message": str(message),
+        "error_level": error_level,
+        "stack_trace": stack_trace,
+        "metadata": metadata
+    }
+    
+    try:
+        url = f"{client.base_url}/error_logs"
+        resp = client.post(url, json=data)
+        if resp.status_code not in [200, 201]:
+             print(f"   !!! Log Error Fail: {resp.status_code}")
+    except Exception as e:
+        print(f"   !!! Logging Failed: {e}")

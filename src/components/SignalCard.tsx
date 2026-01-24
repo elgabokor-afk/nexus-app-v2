@@ -10,12 +10,15 @@ interface SignalProps {
     timestamp: string;
     stop_loss?: number;
     take_profit?: number;
+    atr_value?: number;
+    volume_ratio?: number;
     onViewChart?: (symbol: string) => void;
 }
 
 const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
-    symbol, price, rsi, signal_type, confidence, timestamp, stop_loss, take_profit, onViewChart, compact = false
+    symbol, price, rsi, signal_type, confidence, timestamp, stop_loss, take_profit, atr_value, volume_ratio, onViewChart, compact = false
 }) => {
+    // ... (logic)
     const isBuy = signal_type.includes('BUY');
     const isSell = signal_type.includes('SELL');
     const isNeutral = !isBuy && !isSell;
@@ -38,8 +41,6 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
         textColor = 'text-[#ff4d4d]';
         actionText = 'SHORT';
         reasoning = rsi > 70 ? "Overbought Correction" : "Momentum Shift";
-    } else {
-        reasoning = "Range Bound";
     }
 
     const formatPrice = (p: number | undefined) =>
@@ -84,14 +85,15 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
                     <div>
                         <div className="flex items-center gap-2">
                             <h3 className={`${compact ? 'text-sm' : 'text-xl'} font-bold font-sans text-white tracking-tight`}>{symbol}</h3>
-                            {confidence > 90 && <span className="px-1.5 py-0.5 rounded-[4px] text-[8px] font-black bg-[#00ffa3] text-black uppercase tracking-tighter">Premium</span>}
+                            {/* Vol Badge */}
+                            {(volume_ratio || 0) > 1.2 && <span className="px-1.5 py-0.5 rounded-[4px] text-[8px] font-black bg-blue-500 text-black uppercase tracking-tighter">High Vol</span>}
                         </div>
                         <div className="flex items-center gap-2 mt-0.5">
                             <span className={`text-[10px] font-black tracking-widest uppercase ${textColor}`}>
                                 {actionText}
                             </span>
                             <span className="text-[10px] text-white/20 font-mono">•</span>
-                            <span className="text-[10px] text-gray-500 font-medium">Confidence: {confidence}%</span>
+                            <span className="text-[10px] text-gray-500 font-medium">{confidence}% Conf.</span>
                         </div>
                     </div>
                 </div>
@@ -111,8 +113,15 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
             <div className={`px-4 pb-2 pt-1 ${compact ? 'block' : 'px-6 pb-6'}`}>
                 <div className="bg-white/[0.02] border border-white/5 rounded-xl p-2.5 flex items-center justify-between">
                     <div>
-                        <p className="text-[8px] text-gray-500 uppercase tracking-widest font-bold">AI Logic</p>
-                        <p className="text-[11px] text-gray-300 font-medium">{reasoning}</p>
+                        <p className="text-[8px] text-gray-500 uppercase tracking-widest font-bold">Vol Pressure</p>
+                        <p className={`text-[11px] font-medium ${(volume_ratio || 0) > 1 ? 'text-white' : 'text-gray-500'}`}>
+                            {(volume_ratio || 0).toFixed(2)}x
+                        </p>
+                    </div>
+                    <div className="h-6 w-px bg-white/5 mx-3"></div>
+                    <div>
+                        <p className="text-[8px] text-gray-500 uppercase tracking-widest font-bold">ATR Risk</p>
+                        <p className="text-[11px] text-gray-300 font-medium">{(atr_value || 0).toFixed(2)}</p>
                     </div>
                     <div className="h-6 w-px bg-white/5 mx-3"></div>
                     <div className="flex-1">

@@ -3,9 +3,11 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import SignalCard from '@/components/SignalCard';
-import { Zap, Activity } from 'lucide-react';
+import SystemLogs from '@/components/SystemLogs';
+import { Zap, Activity, LogOut, User } from 'lucide-react';
 import PaperBotWidget from '@/components/PaperBotWidget';
 import dynamic from 'next/dynamic';
+import { useRouter } from 'next/navigation';
 
 const SmartChart = dynamic(
     () => import('@/components/SmartChart').then((mod) => mod.SmartChart),
@@ -31,15 +33,19 @@ interface Signal {
     timestamp: string;
     stop_loss?: number;
     take_profit?: number;
+    atr_value?: number;
+    volume_ratio?: number;
 }
 
-// ... (imports remain same, just ensure structure)
 export default function Dashboard() {
     const [signals, setSignals] = useState<Signal[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedSignal, setSelectedSignal] = useState<Signal | null>(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true); // Default open on desktop
     const [mounted, setMounted] = useState(false);
+    const [user, setUser] = useState<any>(null);
+    const [showLogs, setShowLogs] = useState(false);
+    const router = useRouter();
 
     const handleViewChart = (symbol: string) => {
         const sig = signals.find(s => s.symbol === symbol);
@@ -71,7 +77,20 @@ export default function Dashboard() {
 
     useEffect(() => {
         setMounted(true);
-        fetchSignals();
+
+        const checkAuth = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+                // For development, we might want to skip redirect if no env vars. 
+                // But as a Product Engineer, we enforce security.
+                router.push('/login');
+                return;
+            }
+            setUser(session.user);
+            fetchSignals();
+        };
+
+        checkAuth();
 
         // Close sidebar by default on smaller screens
         if (window.innerWidth < 1280) setIsSidebarOpen(false);
@@ -209,7 +228,7 @@ export default function Dashboard() {
                         </button>
                     </nav>
 
-                    <div className="p-6">
+                    <div className="p-6 space-y-4">
                         <div className="p-5 rounded-3xl bg-white/[0.03] border border-white/5 relative overflow-hidden group">
                             <div className="absolute top-0 right-0 w-24 h-24 bg-[#00ffa3]/5 rounded-full blur-3xl -mr-12 -mt-12 transition-all group-hover:bg-[#00ffa3]/10"></div>
                             <div className="flex items-center gap-3 mb-2">
@@ -233,10 +252,21 @@ export default function Dashboard() {
                                 </p>
                             </div>
                             <div className="flex items-end justify-between">
-                                <span className="text-sm font-black text-white">OPTIMIZED (v2.2)</span>
+                                <span className="text-sm font-black text-white">{user?.email?.split('@')[0].toUpperCase() || 'ANONYMOUS'}</span>
                                 <span className="text-[9px] font-mono text-gray-600 uppercase">99.9% Uptime</span>
                             </div>
                         </div>
+
+                        <button
+                            onClick={async () => {
+                                await supabase.auth.signOut();
+                                router.push('/login');
+                            }}
+                            className="w-full flex items-center gap-4 px-5 py-4 text-red-500/50 hover:text-red-500 hover:bg-red-500/5 rounded-2xl transition-all duration-300 border border-transparent hover:border-red-500/10 group"
+                        >
+                            <LogOut size={18} className="group-hover:rotate-12 transition-transform" />
+                            <span className="text-sm font-black tracking-tight">LOGOUT SYSTEM</span>
+                        </button>
                     </div>
 
                 </aside>

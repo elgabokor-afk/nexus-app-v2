@@ -142,7 +142,11 @@ def analyze_market(df):
         'volume_ratio': round(volume / vol_ma, 2) if vol_ma > 0 else 1.0
     }
 
-from db import insert_signal
+from db import insert_signal, log_error
+from telegram_utils import TelegramAlerts
+
+# Initialize Telegram Broadcaster
+tg = TelegramAlerts()
 
 # ... (rest of imports)
 
@@ -179,9 +183,18 @@ def main():
                             confidence=int(analysis['confidence']),
                             stop_loss=float(analysis['stop_loss']),
                             take_profit=float(analysis['take_profit']),
-                            # New Senior Metrics
                             atr_value=float(analysis['atr_value']),
                             volume_ratio=float(analysis['volume_ratio'])
+                        )
+                        
+                        # Broadcast via Telegram
+                        tg.send_signal(
+                            symbol=symbol,
+                            signal_type=analysis['signal'],
+                            price=float(analysis['price']),
+                            confidence=int(analysis['confidence']),
+                            stop_loss=float(analysis['stop_loss']),
+                            take_profit=float(analysis['take_profit'])
                         )
                     else:
                         print("   --- No Signal")
@@ -191,7 +204,10 @@ def main():
             time.sleep(60)
             
         except Exception as e:
-            print(f"!!! CRITICAL ERROR in Main Loop: {e}")
+            error_msg = f"Scanner Main Loop Error: {e}"
+            print(f"!!! CRITICAL ERROR: {error_msg}")
+            log_error("scanner", error_msg, error_level="CRITICAL")
+            tg.send_error(error_msg)
             time.sleep(60)
 
 if __name__ == "__main__":
