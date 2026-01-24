@@ -105,9 +105,7 @@ def log_error(service, message, error_level="ERROR", stack_trace=None, metadata=
     data = {
         "service": service,
         "message": str(message),
-        "error_level": error_level,
-        "stack_trace": stack_trace,
-        "metadata": metadata
+        "error_level": error_level
     }
     
     try:

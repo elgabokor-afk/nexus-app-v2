@@ -7,7 +7,10 @@ from dotenv import load_dotenv
 from cosmos_engine import brain
 from db import insert_oracle_insight, log_error, insert_signal, insert_analytics, get_active_assets, upsert_asset_ranking, fetch_trade_history
 
-load_dotenv(dotenv_path="../.env.local")
+# V415: Robust Path Resolution
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+load_dotenv(dotenv_path=os.path.join(parent_dir, '.env.local'))
 
 from binance_engine import live_trader
 
@@ -56,6 +59,10 @@ def run_oracle_step(symbol='BTC/USDT'):
     try:
         # 1. FETCH 5m DATA (V410: Shifted from 1m for better signal quality)
         bars = live_trader.fetch_ohlcv(symbol, timeframe='5m', limit=100)
+        if not bars or len(bars) < 50:
+            print(f"   [ORACLE] Skipping {symbol}: Insufficient data.")
+            return
+
         df = pd.DataFrame(bars, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
         
         # 2. COMPUTE TECHS

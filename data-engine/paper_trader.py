@@ -321,7 +321,7 @@ def check_new_entries():
                 # LIVE Mode: The source of truth is THE EXCHANGE, not the DB zombies.
                 real_positions = live_trader.get_open_positions()
                 active_count = len(real_positions)
-                print(f"   [V250 REALITY CHECK] Binance has {active_count} active positions. (DB count ignored)")
+                print(f"   [V250 REALITY CHECK] Binance has {active_count} active positions.")
             else:
                 # PAPER Mode: Focus on recent trades to ignore historical artifacts
                 yesterday = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
