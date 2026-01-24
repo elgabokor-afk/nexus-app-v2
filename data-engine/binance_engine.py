@@ -65,35 +65,50 @@ class BinanceTrader:
             print("   [BINANCE] Error: Not connected to API.")
             return None
 
+        print(f"   [BINANCE] PRE-ORDER DIAGNOSTICS: {symbol} | Side: {side} | Target Amount: {amount} | Leverage: {leverage}")
+
         try:
             # 1. Load Markets (if not loaded)
             if not self.exchange.markets:
+                print("   [BINANCE] Loading market data...")
                 self.exchange.load_markets()
+
+            if symbol not in self.exchange.markets:
+                print(f"   [BINANCE] ERROR: Symbol {symbol} not found in Binance Futures markets.")
+                return None
 
             # 2. Precision Handling
             clean_amount = self.exchange.amount_to_precision(symbol, amount)
+            print(f"   [BINANCE] Precision Adjustment: {amount} -> {clean_amount}")
             
+            if float(clean_amount) <= 0:
+                print(f"   [BINANCE] ERROR: Amount {clean_amount} is too small for precision limits.")
+                return None
+
             # 3. Set Leverage & Margin Mode
-            # Binance requires setting leverage & margin before opening a position
             try:
+                print(f"   [BINANCE] Setting leverage to {leverage} for {symbol}...")
                 self.exchange.set_leverage(leverage, symbol)
             except Exception as lev_err:
-                print(f"   [BINANCE] Leverage warning: {lev_err}")
+                print(f"   [BINANCE] Leverage warning (non-fatal): {lev_err}")
 
             try:
                 # V160: Ensure CROSSED margin mode
+                print(f"   [BINANCE] Ensuring CROSSED margin mode...")
                 self.exchange.set_margin_mode('CROSSED', symbol)
-                print(f"   [BINANCE] Margin Mode set to CROSSED for {symbol}")
             except Exception as margin_err:
-                # CCXT often throws error if already in the requested mode
                 if "No need to change margin type" not in str(margin_err):
-                    print(f"   [BINANCE] Margin Mode warning: {margin_err}")
+                    print(f"   [BINANCE] Margin Mode warning (non-fatal): {margin_err}")
 
+            # 4. Final Execution
+            print(f"   [BINANCE] EXECUTING MARKET ORDER: {side.upper()} {clean_amount} {symbol}")
             order = self.exchange.create_market_order(symbol, side, clean_amount)
-            print(f"   [BINANCE] LIVE ORDER EXECUTED: {side} {clean_amount} {symbol}")
+            print(f"   [BINANCE] SUCCESS: Order ID {order.get('id')} executed.")
             return order
         except Exception as e:
-            print(f"   [BINANCE] Execution Error: {e}")
+            print(f"   [BINANCE] CRITICAL EXECUTION ERROR: {e}")
+            # Log more details if possible
+            if hasattr(e, 'feedback'): print(f"   [BINANCE] API Feedback: {e.feedback}")
             return None
 
     def get_open_positions(self):
