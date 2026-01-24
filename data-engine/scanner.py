@@ -136,8 +136,8 @@ SUPABASE_URL = os.getenv("NEXT_PUBLIC_SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-def get_dynamic_weights():
-    """Fetch current weight configuration from DB."""
+def get_bot_params():
+    """Fetch current configuration from DB (Weights + Risk)."""
     try:
         res = supabase.table("bot_params").select("*").eq("active", "true").limit(1).execute()
         if res.data:
@@ -147,11 +147,13 @@ def get_dynamic_weights():
                 "rsi": float(p.get('weight_rsi', 0.3)),
                 "imbalance": float(p.get('weight_imbalance', 0.3)),
                 "trend": float(p.get('weight_trend', 0.2)),
-                "macd": float(p.get('weight_macd', 0.2)) 
+                "macd": float(p.get('weight_macd', 0.2)),
+                "max_open_positions": int(p.get('max_open_positions', 3)),
+                "cooldown_minutes": int(p.get('cooldown_minutes', 15))
             }
-        return {"rsi": 0.3, "imbalance": 0.3, "trend": 0.2, "macd": 0.2}
+        return {"rsi": 0.3, "imbalance": 0.3, "trend": 0.2, "macd": 0.2, "max_open_positions": 3, "cooldown_minutes": 15}
     except:
-        return {"rsi": 0.3, "imbalance": 0.3, "trend": 0.2, "macd": 0.2}
+        return {"rsi": 0.3, "imbalance": 0.3, "trend": 0.2, "macd": 0.2, "max_open_positions": 3, "cooldown_minutes": 15}
 
 def fetch_fear_greed():
     """
@@ -292,14 +294,12 @@ def analyze_quant_signal(symbol, tech_analysis, sentiment_score=50):
         'sentiment': sentiment_score
     }
 
-from db import insert_signal, insert_analytics, log_error
+from db import insert_signal, insert_analytics, log_error, get_active_position_count, get_last_trade_time
 from telegram_utils import TelegramAlerts
 from cosmos_engine import brain # V8 AI Core
 
 # Initialize Telegram Broadcaster
 tg = TelegramAlerts()
-
-# ... (rest of imports)
 
 def main():
     print("/// N E X U S  D A T A  E N G I N E  (v1.0) ///")
@@ -333,7 +333,39 @@ def main():
             # 1. Fetch Global Data (Sentiment)
             fng_index = fetch_fear_greed()
             
-            print(f"\n--- Scan at {datetime.now().strftime('%H:%M:%S')} | Fear & Greed: {fng_index} ---")
+            # V12.0: RISK GUARD CHECK
+            params = get_bot_params()
+            active_positions = get_active_position_count()
+            
+            # Max Positions Limit
+            if active_positions >= params['max_open_positions']:
+                print(f"\n[RISK GUARD] Max Positions Reached ({active_positions}/{params['max_open_positions']}). Scanning Paused.")
+                time.sleep(30)
+                continue
+
+            # Cooldown Check
+            last_trade_ts_str = get_last_trade_time()
+            if last_trade_ts_str:
+                # Handle ISO format: '2025-01-24T10:00:00+00:00' or similar
+                # Simple parsing logic
+                try:
+                    last_trade = datetime.fromisoformat(last_trade_ts_str.replace('Z', '+00:00'))
+                    # Ensure timezone awareness compatibility
+                    if last_trade.tzinfo is None:
+                        last_trade = last_trade.replace(tzinfo=datetime.now().astimezone().tzinfo)
+                    
+                    # current time
+                    current_localized = datetime.now(last_trade.tzinfo)
+                    mins_since = (current_localized - last_trade).total_seconds() / 60
+                    
+                    if mins_since < params['cooldown_minutes']:
+                         print(f"\n[RISK GUARD] Cooling Down... {int(mins_since)}/{params['cooldown_minutes']} mins. Scanning Paused.")
+                         time.sleep(30)
+                         continue
+                except Exception as e:
+                    print(f"Date Parse Warning: {e}")
+
+            print(f"\n--- Scan at {datetime.now().strftime('%H:%M:%S')} | Fear & Greed: {fng_index} | Open: {active_positions} ---")
             for symbol in symbols:
                 df = fetch_data(symbol)
                 techs = analyze_market(df) # Returns basic tech metrics

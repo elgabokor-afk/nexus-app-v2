@@ -116,3 +116,26 @@ def log_error(service, message, error_level="ERROR", stack_trace=None, metadata=
              print(f"   !!! Log Error Fail: {resp.status_code}")
     except Exception as e:
         print(f"   !!! Logging Failed: {e}")
+
+def get_active_position_count():
+    if not client: return 0
+    try:
+        # Select all OPEN positions
+        url = f"{client.base_url}/paper_positions?status=eq.OPEN&select=id"
+        resp = client.get(url)
+        if resp.status_code == 200:
+            return len(resp.json())
+        return 999 # Safe fallback if error (stop trading)
+    except:
+        return 999
+
+def get_last_trade_time():
+    if not client: return None
+    try:
+        url = f"{client.base_url}/paper_positions?order=opened_at.desc&limit=1"
+        resp = client.get(url)
+        if resp.status_code == 200 and resp.json():
+            return resp.json()[0]['opened_at'] 
+        return None
+    except:
+        return None
