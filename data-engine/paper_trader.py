@@ -107,6 +107,64 @@ def get_bot_params():
             "strategy_version": 1 # Initial version
         }
 
+            "strategy_version": 1 # Initial version
+        }
+
+def reconcile_positions():
+    """ADOPT ORPHANED TRADES (V121): Sync DB with Real Binance Positions."""
+    if TRADING_MODE != "LIVE": return
+
+    print("--- [V121] RECONCILING POSITIONS WITH BINANCE ---")
+    real_positions = live_trader.get_open_positions()
+    
+    for pos in real_positions:
+        symbol = pos['symbol']
+        contracts = float(pos['contracts'])
+        side = pos['side'] # 'long' or 'short'
+        entry_price = float(pos['entryPrice'])
+        unrealized_pnl = float(pos['unrealizedPnl'])
+        
+        # Check if DB knows about this position
+        db_pos = supabase.table("paper_positions") \
+            .select("id") \
+            .eq("symbol", symbol) \
+            .eq("status", "OPEN") \
+            .execute()
+            
+        if not db_pos.data:
+            print(f"   >>> FOUND GHOST POSITION: {symbol} ({side}) {contracts} contracts")
+            print(f"   >>> ADOPTING into Database...")
+            
+            # Create "Adopted" Record
+            clean_side = "BUY" if side == 'long' else "SELL"
+            
+            adopted_data = {
+                "signal_id": 9999, # Placeholder for adopted trades
+                "symbol": symbol,
+                "entry_price": entry_price,
+                "quantity": contracts if side == 'long' else -contracts,
+                "status": "OPEN",
+                "confidence_score": 50,
+                "signal_type": f"ADOPTED_{clean_side}",
+                "rsi_entry": 50,
+                "atr_entry": 0,
+                # Safe Defaults for Adopted Trades
+                "bot_stop_loss": entry_price * 0.95 if side == 'long' else entry_price * 1.05,
+                "bot_take_profit": entry_price * 1.05 if side == 'long' else entry_price * 0.95,
+                "leverage": int(pos['leverage']),
+                "margin_mode": "ISOLATED",
+                "initial_margin": float(pos['initialMargin']),
+                "liquidation_price": float(pos['liquidationPrice'] or 0),
+                "strategy_version": 121
+            }
+            try:
+                supabase.table("paper_positions").insert(adopted_data).execute()
+                print("   [SUCCESS] Position Adopted.")
+            except Exception as e:
+                print(f"   [ERROR] Failed to adopt {symbol}: {e}")
+        else:
+            print(f"   [OK] {symbol} is tracked.")
+
 def check_new_entries():
     """Checks for new signals to open positions."""
     try:
@@ -440,6 +498,11 @@ def monitor_positions():
         print(f"Error monitoring positions: {e}")
 
 def main():
+    print("--- NEXUS PAPER TRADER STARTED ---")
+    
+    # V121: Sync Orphaned Positions on Startup
+    reconcile_positions()
+    
     while True:
         check_new_entries()
         monitor_positions()

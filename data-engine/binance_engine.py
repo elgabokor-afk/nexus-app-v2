@@ -83,9 +83,20 @@ class BinanceTrader:
             order = self.exchange.create_market_order(symbol, side, clean_amount)
             print(f"   [BINANCE] LIVE ORDER EXECUTED: {side} {clean_amount} {symbol}")
             return order
-        except Exception as e:
             print(f"   [BINANCE] Execution Error: {e}")
             return None
+
+    def get_open_positions(self):
+        """Fetch all currently open positions from Binance."""
+        if not self.is_connected: return []
+        try:
+            positions = self.exchange.fetch_positions()
+            # Filter for active positions only
+            active = [p for p in positions if float(p['contracts']) > 0]
+            return active
+        except Exception as e:
+            print(f"   [BINANCE] Error fetching positions: {e}")
+            return []
 
 # Singleton for easy access
 live_trader = BinanceTrader()

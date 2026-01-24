@@ -60,41 +60,61 @@ class CosmosBrain:
             print(f"   >>> Cosmos Brain: Save failed ({e})")
 
     def fetch_training_data(self):
-        """Fetches Closed Trades + Analytics Signals for training."""
+        """Fetches Closed Trades + Analytics Signals for training (V125: Includes Ghost Trades)."""
         try:
-            # 1. Get Closed Trades
+            # 1. Get Closed Trades (Select fallback features too)
             res_pos = self.supabase.table("paper_positions") \
-                .select("signal_id, pnl, status") \
+                .select("signal_id, pnl, status, rsi_entry, atr_entry") \
                 .eq("status", "CLOSED") \
-                .not_.is_("signal_id", "null") \
-                .limit(500) \
+                .limit(1000) \
                 .execute()
             
             positions = res_pos.data
             if not positions: return pd.DataFrame()
             
-            # 2. Extract Signal IDs
-            sig_ids = [p['signal_id'] for p in positions]
+            # 2. Extract Signal IDs (Filter out None, but keep 9999)
+            sig_ids = [p['signal_id'] for p in positions if p['signal_id']]
             
             # 3. Get Analytics for these signals
-            # Note: In production with thousands of signals, this batch fetch needs pagination or join.
-            # optimized for V8 MVP (<500 items).
             res_analytics = self.supabase.table("analytics_signals") \
                 .select("*") \
                 .in_("signal_id", sig_ids) \
                 .execute()
             
             analytics = res_analytics.data
-            if not analytics: return pd.DataFrame()
-            
-            # 4. Merge
             df_pos = pd.DataFrame(positions)
-            df_ana = pd.DataFrame(analytics)
             
-            # Join on signal_id
-            df = pd.merge(df_pos, df_ana, on='signal_id', how='inner')
+            if not analytics:
+                # If no analytics found (e.g. all manual trades), create empty DF with columns
+                df_ana = pd.DataFrame(columns=['signal_id'] + self.feature_cols)
+            else:
+                df_ana = pd.DataFrame(analytics)
             
-            # 5. Define Target: 1 if PnL > 0, else 0
+            # 4. Merge (Left Join to keep Ghost Trades)
+            # V125: Use LEFT JOIN so manual/adopted trades aren't dropped
+            df = pd.merge(df_pos, df_ana, on='signal_id', how='left')
+            
+            # 5. Feature Reconstruction (Fallback Logic)
+            # If rsi_value is NaN (missing analytics), use rsi_entry from position
+            if 'rsi_value' in df.columns and 'rsi_entry' in df.columns:
+                df['rsi_value'] = df['rsi_value'].fillna(df['rsi_entry'])
+                
+            if 'atr_value' in df.columns and 'atr_entry' in df.columns:
+                df['atr_value'] = df['atr_value'].fillna(df['atr_entry'])
+            
+            # Fill remaining missing technicals with Neutral/Zero
+            df.fillna({
+                'rsi_value': 50,
+                'imbalance_ratio': 0, 
+                'spread_pct': 0.0002, 
+                'atr_value': 0, 
+                'macd_line': 0, 
+                'histogram': 0
+            }, inplace=True)
+
+            print(f"   [V125] Training Data Fetched: {len(df)} samples (Including recovered ghosts)")
+            
+            # 6. Define Target: 1 if PnL > 0, else 0
             df['target'] = (df['pnl'] > 0).astype(int)
             
             return df
