@@ -50,7 +50,7 @@ export default function Dashboard() {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true); // Default open on desktop
     const [mounted, setMounted] = useState(false);
     const [user, setUser] = useState<any>(null);
-    const [showLogs, setShowLogs] = useState(false);
+    const [currentView, setCurrentView] = useState<'dashboard' | 'bot' | 'logs'>('dashboard');
     const router = useRouter();
 
     const handleViewChart = (symbol: string) => {
@@ -222,18 +222,45 @@ export default function Dashboard() {
                 `}>
                     <nav className="flex-1 p-6 space-y-2 mt-4">
                         <div className="px-4 py-2 text-[10px] font-black text-gray-600 uppercase tracking-[0.3em] mb-4">Operations</div>
-                        <button className="w-full flex items-center justify-between px-5 py-4 bg-gradient-to-r from-[#00ffa3]/10 to-transparent text-[#00ffa3] rounded-2xl border border-[#00ffa3]/20 shadow-[0_0_20px_-5px_rgba(0,255,163,0.2)] group">
+
+                        <button
+                            onClick={() => setCurrentView('dashboard')}
+                            className={`w-full flex items-center justify-between px-5 py-4 rounded-2xl border transition-all duration-300 group
+                                ${currentView === 'dashboard'
+                                    ? 'bg-gradient-to-r from-[#00ffa3]/10 to-transparent text-[#00ffa3] border-[#00ffa3]/20 shadow-[0_0_20px_-5px_rgba(0,255,163,0.2)]'
+                                    : 'text-gray-500 hover:text-white hover:bg-white/[0.03] border-transparent hover:border-white/5'
+                                }
+                            `}
+                        >
                             <div className="flex items-center gap-4">
-                                <Activity size={18} className="animate-pulse" />
+                                <Activity size={18} className={currentView === 'dashboard' ? "animate-pulse" : ""} />
                                 <span className="text-sm font-black tracking-tight">AI TERMINAL</span>
                             </div>
-                            <Zap size={14} fill="currentColor" />
+                            {currentView === 'dashboard' && <Zap size={14} fill="currentColor" />}
                         </button>
-                        <button className="w-full flex items-center gap-4 px-5 py-4 text-gray-500 hover:text-white hover:bg-white/[0.03] rounded-2xl transition-all duration-300 border border-transparent hover:border-white/5">
+
+                        <button
+                            onClick={() => setCurrentView('bot')}
+                            className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-300 border
+                                ${currentView === 'bot'
+                                    ? 'bg-white/[0.05] text-white border-white/10'
+                                    : 'text-gray-500 hover:text-white hover:bg-white/[0.03] border-transparent hover:border-white/5'
+                                }
+                            `}
+                        >
                             <Zap size={18} />
                             <span className="text-sm font-bold tracking-tight">PAPER BOT ENGINE</span>
                         </button>
-                        <button className="w-full flex items-center gap-4 px-5 py-4 text-gray-500 hover:text-white hover:bg-white/[0.03] rounded-2xl transition-all duration-300 border border-transparent hover:border-white/5">
+
+                        <button
+                            onClick={() => setCurrentView('logs')}
+                            className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-300 border
+                                ${currentView === 'logs'
+                                    ? 'bg-white/[0.05] text-white border-white/10'
+                                    : 'text-gray-500 hover:text-white hover:bg-white/[0.03] border-transparent hover:border-white/5'
+                                }
+                            `}
+                        >
                             <Activity size={18} />
                             <span className="text-sm font-bold tracking-tight">ALGORITHMIC LOGS</span>
                         </button>
@@ -296,66 +323,91 @@ export default function Dashboard() {
                     {/* Background Pattern */}
                     <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)', backgroundSize: '40px 40px' }}></div>
 
-                    <div className="flex-1 p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 overflow-y-auto lg:overflow-hidden z-20 custom-scrollbar">
+                    {currentView === 'dashboard' && (
+                        <div className="flex-1 p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 overflow-y-auto lg:overflow-hidden z-20 custom-scrollbar">
 
-                        {/* COL 1: ADVANCED SIGNALS (3 Columns) */}
-                        <div className="lg:col-span-3 flex flex-col gap-6 overflow-hidden min-h-[400px] lg:min-h-0 bg-black/20 backdrop-blur-md rounded-[2.5rem] border border-white/5 p-6 shadow-2xl">
-                            <div className="flex items-center justify-between px-2">
-                                <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.4em]">Signal Pulse</h3>
-                                <div className="flex items-center gap-2 bg-[#00ffa3]/10 px-3 py-1 rounded-full border border-[#00ffa3]/20">
-                                    <span className="text-[10px] text-[#00ffa3] font-black font-mono">{signals.length} ANALYZED</span>
-                                </div>
-                            </div>
-                            <div className="flex-1 overflow-y-auto space-y-4 pr-3 custom-scrollbar-wide pb-4">
-                                {loading ? (
-                                    <div className="space-y-4">
-                                        {[1, 2, 3, 4].map(i => <div key={i} className="h-32 rounded-3xl bg-white/5 animate-pulse border border-white/5"></div>)}
+                            {/* COL 1: ADVANCED SIGNALS (3 Columns) */}
+                            <div className="lg:col-span-3 flex flex-col gap-6 overflow-hidden min-h-[400px] lg:min-h-0 bg-black/20 backdrop-blur-md rounded-[2.5rem] border border-white/5 p-6 shadow-2xl">
+                                <div className="flex items-center justify-between px-2">
+                                    <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.4em]">Signal Pulse</h3>
+                                    <div className="flex items-center gap-2 bg-[#00ffa3]/10 px-3 py-1 rounded-full border border-[#00ffa3]/20">
+                                        <span className="text-[10px] text-[#00ffa3] font-black font-mono">{signals.length} ANALYZED</span>
                                     </div>
-                                ) : (
-                                    signals.map((signal) => (
-                                        <SignalCard
-                                            key={signal.id}
-                                            {...signal}
-                                            imbalance={signal.analytics_signals?.[0]?.imbalance_ratio}
-                                            depth_score={signal.analytics_signals?.[0]?.depth_score}
-                                            onViewChart={handleViewChart}
-                                            compact={true}
+                                </div>
+                                <div className="flex-1 overflow-y-auto space-y-4 pr-3 custom-scrollbar-wide pb-4">
+                                    {loading ? (
+                                        <div className="space-y-4">
+                                            {[1, 2, 3, 4].map(i => <div key={i} className="h-32 rounded-3xl bg-white/5 animate-pulse border border-white/5"></div>)}
+                                        </div>
+                                    ) : (
+                                        signals.map((signal) => (
+                                            <SignalCard
+                                                key={signal.id}
+                                                {...signal}
+                                                imbalance={signal.analytics_signals?.[0]?.imbalance_ratio}
+                                                depth_score={signal.analytics_signals?.[0]?.depth_score}
+                                                onViewChart={handleViewChart}
+                                                compact={true}
+                                            />
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* COL 2: MAIN CHART ENGINE (6 Columns) */}
+                            <div id="main-chart-area" className="lg:col-span-6 flex flex-col">
+                                <div className="flex-1 min-h-[500px] rounded-[2.5rem] border border-white/10 bg-[#0a0a0c]/40 backdrop-blur-3xl relative overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col group/chart">
+                                    <div className="flex-1 w-full h-full relative">
+                                        <div className="absolute inset-0 bg-gradient-to-b from-[#00ffa3]/5 to-transparent pointer-events-none"></div>
+                                        <SmartChart
+                                            symbol={selectedSignal?.symbol || customSymbol || 'BTC/USD'}
+                                            signalData={selectedSignal ? {
+                                                entry: selectedSignal.price,
+                                                stop_loss: selectedSignal.stop_loss,
+                                                take_profit: selectedSignal.take_profit,
+                                                confidence: selectedSignal.confidence,
+                                                signal_type: selectedSignal.signal_type
+                                            } : null}
                                         />
-                                    ))
-                                )}
+                                    </div>
+                                </div>
                             </div>
-                        </div>
 
-                        {/* COL 2: MAIN CHART ENGINE (6 Columns) */}
-                        <div id="main-chart-area" className="lg:col-span-6 flex flex-col">
-                            <div className="flex-1 min-h-[500px] rounded-[2.5rem] border border-white/10 bg-[#0a0a0c]/40 backdrop-blur-3xl relative overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col group/chart">
-                                <div className="flex-1 w-full h-full relative">
-                                    <div className="absolute inset-0 bg-gradient-to-b from-[#00ffa3]/5 to-transparent pointer-events-none"></div>
-                                    <SmartChart
-                                        symbol={selectedSignal?.symbol || customSymbol || 'BTC/USD'}
-                                        signalData={selectedSignal ? {
-                                            entry: selectedSignal.price,
-                                            stop_loss: selectedSignal.stop_loss,
-                                            take_profit: selectedSignal.take_profit,
-                                            confidence: selectedSignal.confidence,
-                                            signal_type: selectedSignal.signal_type
-                                        } : null}
-                                    />
+                            {/* COL 3: OPERATIONS & POSITIONS (3 Columns) */}
+                            <div className="lg:col-span-3 flex flex-col gap-6 overflow-hidden min-h-[400px] lg:min-h-0">
+                                <div className="flex-1 flex flex-col rounded-[2.5rem] border border-white/10 bg-[#0a0a0c]/60 backdrop-blur-2xl shadow-2xl relative overflow-hidden">
+                                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#00ffa3]/20 to-transparent"></div>
+                                    <div className="flex-1">
+                                        <PaperBotWidget onSelectSymbol={handleViewChart} />
+                                    </div>
                                 </div>
                             </div>
                         </div>
+                    )}
 
-                        {/* COL 3: OPERATIONS & POSITIONS (3 Columns) */}
-                        <div className="lg:col-span-3 flex flex-col gap-6 overflow-hidden min-h-[400px] lg:min-h-0">
-                            <div className="flex-1 flex flex-col rounded-[2.5rem] border border-white/10 bg-[#0a0a0c]/60 backdrop-blur-2xl shadow-2xl relative overflow-hidden">
-                                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#00ffa3]/20 to-transparent"></div>
-                                <div className="flex-1">
-                                    <PaperBotWidget onSelectSymbol={handleViewChart} />
+                    {currentView === 'bot' && (
+                        <div className="flex-1 p-6 overflow-hidden z-20">
+                            <div className="h-full rounded-[2.5rem] border border-white/10 bg-[#0a0a0c]/60 backdrop-blur-2xl shadow-2xl overflow-hidden relative flex flex-col">
+                                <div className="p-6 border-b border-white/5 flex items-center gap-4 bg-white/[0.02]">
+                                    <Zap size={24} className="text-[#00ffa3]" />
+                                    <h1 className="text-2xl font-black tracking-tighter text-white">AUTONOMOUS PAPER ENGINE</h1>
+                                </div>
+                                <div className="flex-1 relative">
+                                    <div className="absolute inset-0">
+                                        <PaperBotWidget onSelectSymbol={handleViewChart} />
+                                    </div>
                                 </div>
                             </div>
                         </div>
+                    )}
 
-                    </div>
+                    {currentView === 'logs' && (
+                        <div className="flex-1 p-6 overflow-hidden z-20 flex flex-col">
+                            <div className="h-full rounded-[2.5rem] border border-white/10 bg-[#0a0a0c]/80 backdrop-blur-md shadow-2xl overflow-hidden relative">
+                                <SystemLogs onClose={() => setCurrentView('dashboard')} />
+                            </div>
+                        </div>
+                    )}
                 </main>
             </div>
         </div>

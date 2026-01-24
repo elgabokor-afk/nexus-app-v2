@@ -12,7 +12,7 @@ interface Log {
     message: string;
 }
 
-export default function SystemLogs({ onClose }: { onClose: () => void }) {
+export default function SystemLogs({ onClose, embedded = false }: { onClose?: () => void, embedded?: boolean }) {
     const [logs, setLogs] = useState<Log[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -32,9 +32,17 @@ export default function SystemLogs({ onClose }: { onClose: () => void }) {
         fetchLogs();
     }, []);
 
+    const wrapperClasses = embedded
+        ? "w-full h-full flex flex-col bg-transparent"
+        : "fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4";
+
+    const containerClasses = embedded
+        ? "w-full h-full flex flex-col bg-transparent"
+        : "w-full max-w-4xl bg-[#0a0a0c] border border-white/10 rounded-3xl shadow-2xl flex flex-col max-h-[80vh] overflow-hidden animate-in zoom-in-95 duration-200";
+
     return (
-        <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="w-full max-w-4xl bg-[#0a0a0c] border border-white/10 rounded-3xl shadow-2xl flex flex-col max-h-[80vh] overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className={wrapperClasses}>
+            <div className={containerClasses}>
                 {/* Header */}
                 <div className="p-6 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
                     <div className="flex items-center gap-4">
@@ -53,12 +61,14 @@ export default function SystemLogs({ onClose }: { onClose: () => void }) {
                         >
                             <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
                         </button>
-                        <button
-                            onClick={onClose}
-                            className="p-2 hover:bg-red-500/10 rounded-xl text-gray-500 hover:text-red-500 transition-colors"
-                        >
-                            <X size={18} />
-                        </button>
+                        {!embedded && onClose && (
+                            <button
+                                onClick={onClose}
+                                className="p-2 hover:bg-red-500/10 rounded-xl text-gray-500 hover:text-red-500 transition-colors"
+                            >
+                                <X size={18} />
+                            </button>
+                        )}
                     </div>
                 </div>
 
