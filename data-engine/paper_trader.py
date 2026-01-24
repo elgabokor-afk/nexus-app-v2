@@ -294,11 +294,17 @@ def check_new_entries():
             return
 
         for signal in signals:
-            # V220: DOGE-EXCLUSIVE FILTER
-            is_doge = "DOGE" in signal['symbol'].upper()
-            if not is_doge:
-                # User requested to only operate DOGE USDT
+            # V300: DYNAMIC ASSET ROTATION (Pivot to trend leaders)
+            # Fetch the current #1 asset every run (cached by engine logic)
+            top_winner = brain.get_top_performing_assets(limit=1)
+            active_asset = top_winner[0] if top_winner else "DOGE"
+            
+            is_active = active_asset in signal['symbol'].upper()
+            if not is_active:
+                # V300: Automatically pivot to the current market leader
                 continue
+            
+            print(f"       [V300 PIVOT CHECK] Focused on {active_asset}. Ignoring others.")
             
             # V170: PRUNING CHECK (Not strictly needed if BTC Only, but kept for logic safety)
             if is_survival and top_assets:
@@ -426,15 +432,14 @@ def check_new_entries():
                     continue
 
                 # Target Margin Calculation
-                # V240: USER REQUESTED FIXED $15 MARGIN
-                target_margin = 15.0
-                scaling_reason = " (Fixed $15)"
+                # V300: SMART MARGIN SIZING (40% of Equity for scalable growth)
+                target_margin = equity * 0.40
+                scaling_reason = " (Smart 40%)"
                 
                 # V135: SURVIVAL OVERRIDE
                 if is_survival:
-                    # Even in survival, we use $15 as requested
-                    target_margin = 15.0
-                    print(f"       [SURVIVAL] Using fixed margin ${target_margin}")
+                    # In survival, we keep the smart sizing to ensure we grow the small account
+                    print(f"       [SURVIVAL] Using smart margin ${target_margin:.2f}")
                 
                 # V80: MULTI-ASSET DIVERSIFICATION (15% Cap per Symbol)
                 # V240: Disable this cap for fixed $15 margin mode on micro-accounts
@@ -475,31 +480,29 @@ def check_new_entries():
                 
                 print(f"       Opening Position: {signal['symbol']} ${trade_value:.2f} {scaling_reason} | Margin: ${initial_margin:.2f}")
                 
-                # V30/V60: NET-TARGETED TP/SL CALCULATION
+                # V300: ADAPTIVE ATR TARGETS
                 is_scalp = "(SCALP)" in signal.get('signal_type', '')
                 atr_val = signal.get('atr_value', 0)
-                tp_mult = float(params.get('take_profit_atr_mult', 2.5))
-                sl_mult = float(params.get('stop_loss_atr_mult', 1.5))
                 
-                if is_scalp:
-                    tp_mult = 1.8 
-                    sl_mult = 2.0 
-                    
-                    # V150: SAFE SCALPING (Survival Mode Override)
-                    if is_survival:
-                        # V220: DOGE HYPER-SCALP OVERRIDE
-                        if is_doge:
-                            leverage = min(leverage, 3) # Max 3x for DOGE
-                            tp_mult = 2.5 # Aggressive DOGE Target
-                            sl_mult = 1.8 # Balanced Stop
-                            print(f"       [V220 DOGE SCALP] Leverage: {leverage}x | TP: {tp_mult}x | SL: {sl_mult}x")
-                        else:
-                            leverage = min(leverage, 2) 
-                            tp_mult = 2.8 
-                            sl_mult = 2.2 
-                            print(f"       [V185 BREATHING ROOM] Leverage: {leverage}x | TP: {tp_mult}x | SL: {sl_mult}x")
-                    else:
-                        print(f"       [SCALP MODE] Applying correction-tolerant targets: TP({tp_mult}x) SL({sl_mult}x)")
+                # V300 Volatility Adaptation
+                # If ATR is high, we widen targets; if low, we tighten.
+                vol_proxy = atr_val / signal['price'] # Relative volatility
+                
+                if vol_proxy > 0.005: # High Volatility (>0.5% move per candle)
+                    tp_mult = 2.8
+                    sl_mult = 2.0
+                    print(f"       [V300 VOL-ADAPT] High Vol detected. Widening targets.")
+                else:
+                    tp_mult = 1.8
+                    sl_mult = 1.5
+                    print(f"       [V300 VOL-ADAPT] Low Vol detected. Tightening for scalp.")
+
+                if is_survival:
+                    # Overwrite with V300 optimized leverage
+                    leverage = min(leverage, 3) 
+                    print(f"       [V300 OPTIMIZED] Leverage: {leverage}x | TP: {tp_mult}x | SL: {sl_mult}x")
+                else:
+                    print(f"       [SCALP MODE] Applying correction-tolerant targets: TP({tp_mult}x) SL({sl_mult}x)")
 
                 target_net_profit = (atr_val * tp_mult) * abs(quantity)
                 target_net_loss = (atr_val * sl_mult) * abs(quantity)
@@ -628,6 +631,20 @@ def monitor_positions():
                     # Not enough profit to cover fees yet. Wait longer!
                     pass
                 
+            # V300: STAGNATION PRUNING
+            # If trade > 4 hours and at a loss, close it to free margin.
+            try:
+                created_at = datetime.fromisoformat(pos['created_at'].replace('Z', '+00:00'))
+                age = (datetime.now(timezone.utc) - created_at).total_seconds() / 3600
+                raw_pnl = (current_price - pos['entry_price']) * pos['quantity']
+                if "SELL" in (pos.get('signal_type') or "BUY"): 
+                    raw_pnl = (pos['entry_price'] - current_price) * pos['quantity']
+                
+                if age > 4 and raw_pnl < 0:
+                    exit_reason = "STAGNATION_PRUNE"
+            except Exception as e:
+                print(f"       [STAGNATION] Error calculating age: {e}")
+
             if exit_reason:
                 # CLOSE POSITION
                 total_fees = 0
