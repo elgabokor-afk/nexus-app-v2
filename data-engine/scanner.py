@@ -323,7 +323,8 @@ def main():
                                 depth_score=quant_signal['depth_score'],
                                 macd_line=quant_signal['macd'],
                                 signal_line=quant_signal['signal_line'],
-                                histogram=quant_signal['histogram']
+                                histogram=quant_signal['histogram'],
+                                ai_score=float(quant_signal['ai_prob']/100) # Convert back to 0.0-1.0 for DB
                             )
                         
                         # Broadcast via Telegram
