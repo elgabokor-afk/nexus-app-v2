@@ -32,10 +32,54 @@ def get_current_price(symbol):
         print(f"Error fetching price for {symbol}: {e}")
         return None
 
+def get_wallet():
+    """Fetch current virtual wallet state."""
+    try:
+        res = supabase.table("bot_wallet").select("*").limit(1).execute()
+        if res.data:
+            return res.data[0]
+        return {"id": 1, "balance": 10000, "equity": 10000}
+    except Exception as e:
+        print(f"Error fetching wallet: {e}")
+        return {"id": 1, "balance": 10000, "equity": 10000}
+
+def update_wallet(pnl):
+    """Update wallet equity after a trade close."""
+    try:
+        wallet = get_wallet()
+        new_equity = float(wallet['equity']) + float(pnl)
+        new_balance = float(wallet['balance']) + float(pnl) 
+        
+        # In a Margin model, Balance and Equity move together on Realized PnL
+        supabase.table("bot_wallet").update({
+            "equity": new_equity, 
+            "balance": new_balance,
+            "last_updated": datetime.now(timezone.utc).isoformat()
+        }).eq("id", wallet['id']).execute()
+        
+        print(f"   $$$ WALLET UPDATE: Equity ${new_equity:.2f} (PnL: ${pnl:.2f})")
+    except Exception as e:
+        print(f"Error updating wallet: {e}")
+
+def get_bot_params():
+    """Fetch active trading parameters from the Brain."""
+    try:
+        res = supabase.table("bot_params").select("*").eq("active", "true").limit(1).execute()
+        if res.data:
+            return res.data[0]
+        # Fallback defaults
+        return {"rsi_buy_threshold": 30, "stop_loss_atr_mult": 1.5, "take_profit_atr_mult": 2.5}
+    except Exception as e:
+        print(f"Error fetching params: {e}")
+        return {"rsi_buy_threshold": 30, "stop_loss_atr_mult": 1.5, "take_profit_atr_mult": 2.5}
+
 def check_new_entries():
     """Checks for new signals to open positions."""
     try:
-        # Get recent signals (last 1 hour to ensure we catch active market moves)
+        params = get_bot_params()
+        wallet = get_wallet()
+        
+        # Get recent signals (last 1 hour)
         one_hour_ago = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
         
         response = supabase.table("market_signals") \
@@ -47,6 +91,14 @@ def check_new_entries():
         signals = response.data
         
         for signal in signals:
+            # V3 LOGIC: Dynamic Filter based on 'bot_params'
+            # Only trade if the signal matches our CURRENT learning state
+            # (e.g. if we learned to be conservative, we might skip high RSI buys)
+            
+            # Simple check: If signal RSI is strictly below our Threshold
+            if signal['rsi'] > params['rsi_buy_threshold'] and "BUY" in signal['signal_type']:
+                continue # Skip signal, too risky for current brain
+                
             # Check if we already traded this signal
             existing = supabase.table("paper_positions") \
                 .select("id") \
@@ -55,16 +107,28 @@ def check_new_entries():
                 
             if not existing.data:
                 # OPEN POSITION
-                print(f"   >>> FOUND SIGNAL: {signal['symbol']} ({signal['signal_type']}) | Conf: {signal['confidence']}%")
-                print(f"       Opening Position at {signal['price']}...")
+                print(f"   >>> FOUND SIGNAL: {signal['symbol']} | RSI: {signal['rsi']} (Thresh: {params['rsi_buy_threshold']})")
                 
-                # Simple allocation: $1000 per trade
-                quantity = 1000 / signal['price']
+                # V3 LOGIC: Position Sizing = 5% of Equity (Compounding)
+                account_risk = 0.05 
+                trade_value = float(wallet['equity']) * account_risk
+                quantity = trade_value / signal['price']
                 
-                # Calculate Bot's SL/TP (Currently simply adopting Signal's, but ready for V3 optimization)
-                # In V3, we will modify these based on 'bot_params' history
-                bot_sl = signal.get('stop_loss')
-                bot_tp = signal.get('take_profit')
+                print(f"       Opening Position: ${trade_value:.2f} ({quantity:.4f} units)")
+                
+                # V3 LOGIC: Dynamic Exits based on ATR Multipliers from DB
+                atr = signal.get('atr_value', 0)
+                entry = signal['price']
+                
+                # Recalculate SL/TP based on *CURRENT* bot params, confusing raw signal values if needed
+                # Ideally we trust the signal, but V3 implies the BOT decides.
+                # Let's Apply the Multipliers to the Entry Price
+                if "BUY" in signal['signal_type']:
+                    bot_sl = entry - (atr * float(params['stop_loss_atr_mult']))
+                    bot_tp = entry + (atr * float(params['take_profit_atr_mult']))
+                else:
+                    bot_sl = entry + (atr * float(params['stop_loss_atr_mult']))
+                    bot_tp = entry - (atr * float(params['take_profit_atr_mult']))
 
                 trade_data = {
                     "signal_id": signal['id'],
@@ -77,12 +141,12 @@ def check_new_entries():
                     "rsi_entry": signal.get('rsi'),
                     "atr_entry": signal.get('atr_value'),
                     # NEW: Track Bot's specific decision
-                    "bot_stop_loss": bot_sl,
-                    "bot_take_profit": bot_tp
+                    "bot_stop_loss": round(bot_sl, 4),
+                    "bot_take_profit": round(bot_tp, 4)
                 }
                 
                 supabase.table("paper_positions").insert(trade_data).execute()
-                print(f"--- TRADE OPENED: {signal['symbol']} | SL: {bot_sl} | TP: {bot_tp} ---")
+                print(f"--- TRADE OPENED: {signal['symbol']} | SL: {bot_sl:.2f} | TP: {bot_tp:.2f} ---")
                 
     except Exception as e:
         print(f"Error checking entries: {e}")
@@ -125,6 +189,10 @@ def monitor_positions():
                 # CLOSE POSITION
                 pnl = (current_price - pos['entry_price']) * pos['quantity']
                 
+                # If SHORT, PnL is inverted (Entry - Exit)
+                if "SELL" in (pos.get('signal_type') or "BUY"): 
+                     pnl = (pos['entry_price'] - current_price) * pos['quantity']
+
                 print(f"Closing {pos['symbol']} | Reason: {exit_reason} | PnL: ${pnl:.2f}")
                 
                 update_data = {
@@ -139,6 +207,9 @@ def monitor_positions():
                     .update(update_data) \
                     .eq("id", pos['id']) \
                     .execute()
+                    
+                # V3: Update Wallet Balance
+                update_wallet(pnl)
 
     except Exception as e:
         print(f"Error monitoring positions: {e}")
