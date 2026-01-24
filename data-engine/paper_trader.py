@@ -166,88 +166,7 @@ def check_new_entries():
                 leverage = int(params.get('default_leverage', 10))
                 margin_mode = params.get('margin_mode', 'ISOLATED')
                 
-                # Risk Management: Dynamic % of Equity (capped at 5% safety)
-                user_risk = float(params.get('account_risk_pct', 0.02))
-                account_risk = min(user_risk, 0.05) # Hard cap at 5%
-                
-                # SOLVENCY CHECK: Cannot trade if broke
-                if float(wallet['equity']) <= 10: 
-                    print(f"       [SKIPPED] Insufficient Equity (${wallet['equity']}). Trading Halted.")
-                    continue
-
-                # V22: BALANCE-BASED MARGIN SIZING
-                # Use Total Equity for the risk calculation (Fixed Fractional Sizing)
-                target_margin = float(wallet['equity']) * account_risk
-                
-                # V80: MULTI-ASSET DIVERSIFICATION (15% Cap per Symbol)
-                # Ensure we don't put too much into one coin
-                max_asset_exposure = float(wallet['equity']) * 0.15
-                
-                # But CAP it based on Free Balance (Cash) to avoid over-exposure
-                free_balance = float(wallet['balance'])
-                # Never use more than 25% of REMAINING cash on a single trade for safety
-                max_safe_margin = free_balance * 0.25 
-                
-                # V80: Check current exposure for this symbol
-                existing_asset_pos = supabase.table("paper_positions") \
-                    .select("margin") \
-                    .eq("symbol", signal['symbol']) \
-                    .eq("status", "OPEN") \
-                    .execute()
-                
-                current_exposure = sum([p['margin'] for p in existing_asset_pos.data])
-                if current_exposure + target_margin > max_asset_exposure:
-                    # Scale down the margin if it exceeds the 15% cap
-                    target_margin = max(0, max_asset_exposure - current_exposure)
-                    if target_margin < 2.0:
-                        print(f"       [SKIPPED] Max Asset Exposure reached for {signal['symbol']} (${current_exposure:.2f}/$ {max_asset_exposure:.2f})")
-                        continue
-                    print(f"       [DIVERSIFICATION] Scaling down margin to ${target_margin:.2f} to stay under 15% cap.")
-
-                initial_margin = min(target_margin, max_safe_margin)
-                
-                # Minimum margin check (don't open dust trades)
-                if initial_margin < 2.0:
-                    print(f"       [SKIPPED] Insufficient Free Balance (${free_balance:.2f}). Required: ${target_margin:.2f}")
-                    continue
-
-                # Leveraged Position Size (Notional Value)
-                trade_value = initial_margin * leverage
-                quantity = trade_value / signal['price']
-                
-                print(f"       Opening Position: {signal['symbol']} ${trade_value:.2f} ({leverage}x) | Margin: ${initial_margin:.2f} (from ${free_balance:.2f} free)")
-                
-                
-                # V3 LOGIC: ATR Stops
-                atr = signal.get('atr_value', 0)
-                entry = signal['price']
-                
-                # V23: FEE BREAK-EVEN CALCULATION
-                fee_rate = float(params.get('trading_fee_pct', 0.001))
-                # Min break-even price move is approx 2x fee_rate
-                min_tp_move = entry * (fee_rate * 2.1) # 2.1x for a small safety buffer
-                
-                if "BUY" in signal['signal_type']:
-                    # Standard ATR TP
-                    tp_atr = entry + (atr * float(params['take_profit_atr_mult']))
-                    # Ensure TP covers fees + at least a small profit
-                    bot_tp = max(tp_atr, entry + min_tp_move)
-                    
-                    bot_sl = entry - (atr * float(params['stop_loss_atr_mult']))
-                    # Liquidation: Entry - (Entry / Leverage) for Longs
-                    liq_price = entry - (entry / leverage)
-                else:
-                    # Standard ATR TP (Short)
-                    tp_atr = entry - (atr * float(params['take_profit_atr_mult']))
-                    # Ensure TP covers fees
-                    bot_tp = min(tp_atr, entry - min_tp_move)
-                    
-                    bot_sl = entry + (atr * float(params['stop_loss_atr_mult']))
-                    # Liquidation: Entry + (Entry / Leverage) for Shorts
-                    liq_price = entry + (entry / leverage)
-
-                # 5. V45/V50 TOTAL AI AUTHORITY (BLM + Oracle Gatekeeper)
-                # We fetch the latest 1-minute Oracle analysis to confirm the long-term signal.
+                # 3. V45/V50 TOTAL AI AUTHORITY (BLM + Oracle Gatekeeper)
                 oracle_insight = get_latest_oracle_insight(signal['symbol'])
                 
                 features = {
@@ -260,7 +179,6 @@ def check_new_entries():
                     "imbalance_ratio": signal.get('imbalance', 0)
                 }
                 
-                # Pass the oracle insight to the AI Decision Matrix
                 should_trade, ai_conf, ai_reason = brain.decide_trade(
                     signal['signal_type'], 
                     features, 
@@ -273,18 +191,74 @@ def check_new_entries():
                 
                 print(f"       [AI APPROVED] {ai_reason}")
 
-                # V30/V60: NET-TARGETED TP/SL CALCULATION
-                # Target Net Profit = (ATR * TakeProfitMult) * Qty
-                # V60: Tighter multipliers for Scalps
-                is_scalp = "(SCALP)" in signal.get('signal_type', '')
+                # V94: DYNAMIC MARGIN SIZING (Confidence-Based Scaling)
+                # Risk Management: Dynamic % of Equity (capped at 5% safety)
+                user_risk = float(params.get('account_risk_pct', 0.02))
+                base_account_risk = min(user_risk, 0.05) 
                 
+                # Confidence Multiplier:
+                # Ultra High Conf (>95%) -> 2.0x | High Conf (90-95%) -> 1.0x | Lower Confluence (<90%) -> 0.5x
+                conf_multiplier = 1.0
+                if ai_conf >= 0.95:
+                    conf_multiplier = 2.0
+                elif ai_conf < 0.90:
+                    conf_multiplier = 0.5
+                
+                scaling_reason = f"({conf_multiplier}x Scaled)" if conf_multiplier != 1.0 else " (Standard)"
+                
+                # Solvency Check
+                equity = float(wallet['equity'])
+                balance = float(wallet['balance'])
+                if equity <= 10: 
+                    print(f"       [SKIPPED] Insufficient Equity (${equity}). Trading Halted.")
+                    continue
+
+                # Target Margin Calculation
+                target_margin = equity * base_account_risk * conf_multiplier
+                
+                # V80: MULTI-ASSET DIVERSIFICATION (15% Cap per Symbol)
+                max_asset_exposure = equity * 0.15
+                
+                # Free Balance Protection (Never use more than 25% of free balance)
+                max_safe_margin = balance * 0.25 
+                
+                # Check current exposure for this symbol
+                existing_asset_pos = supabase.table("paper_positions") \
+                    .select("initial_margin") \
+                    .eq("symbol", signal['symbol']) \
+                    .eq("status", "OPEN") \
+                    .execute()
+                
+                current_exposure = sum([float(p['initial_margin'] or 0) for p in existing_asset_pos.data])
+                if current_exposure + target_margin > max_asset_exposure:
+                    target_margin = max(0, max_asset_exposure - current_exposure)
+                    if target_margin < 2.0:
+                        print(f"       [SKIPPED] Max Asset Exposure reached for {signal['symbol']}")
+                        continue
+                    print(f"       [DIVERSIFICATION] Scaling down to ${target_margin:.2f} for cap safety.")
+
+                initial_margin = min(target_margin, max_safe_margin)
+                
+                if initial_margin < 2.0:
+                    print(f"       [SKIPPED] Final Margin too low (${initial_margin:.2f})")
+                    continue
+
+                # Final Position Values
+                trade_value = initial_margin * leverage
+                quantity = trade_value / signal['price']
+                entry = signal['price']
+                
+                print(f"       Opening Position: {signal['symbol']} ${trade_value:.2f} {scaling_reason} | Margin: ${initial_margin:.2f}")
+                
+                # V30/V60: NET-TARGETED TP/SL CALCULATION
+                is_scalp = "(SCALP)" in signal.get('signal_type', '')
                 atr_val = signal.get('atr_value', 0)
                 tp_mult = float(params.get('take_profit_atr_mult', 2.5))
                 sl_mult = float(params.get('stop_loss_atr_mult', 1.5))
                 
                 if is_scalp:
-                    tp_mult = 1.8 # Tight scalp TP
-                    sl_mult = 2.0 # Wider scalp SL (V61) for correction tolerance
+                    tp_mult = 1.8 
+                    sl_mult = 2.0 
                     print(f"       [SCALP MODE] Applying correction-tolerant targets: TP({tp_mult}x) SL({sl_mult}x)")
 
                 target_net_profit = (atr_val * tp_mult) * abs(quantity)
@@ -294,19 +268,13 @@ def check_new_entries():
                 fee_r = float(params.get('trading_fee_pct', 0.0005))
                 
                 if "BUY" in signal['signal_type']:
-                    # Net-Targeted TP (Solve for Price)
-                    # Price = (NetTarget + Entry*Qty*(1+Fee)) / (Qty*(1-Fee))
-                    bot_tp = (target_net_profit + price_val * abs_qty * (1 + fee_r)) / (abs_qty * (1 - fee_r))
-                    # Net-Targeted SL (Solve for Price where NetPnL = -target_net_loss)
-                    bot_sl = (-target_net_loss + price_val * abs_qty * (1 + fee_r)) / (abs_qty * (1 - fee_r))
-                    liq_price = price_val - (price_val / leverage)
+                    bot_tp = (target_net_profit + entry * abs_qty * (1 + fee_r)) / (abs_qty * (1 - fee_r))
+                    bot_sl = (-target_net_loss + entry * abs_qty * (1 + fee_r)) / (abs_qty * (1 - fee_r))
+                    liq_price = entry - (entry / leverage)
                 else:
-                    # Net-Targeted TP (Short)
-                    # Price = (Entry*Qty*(1-Fee) - NetTarget) / (Qty*(1+Fee))
-                    bot_tp = (price_val * abs_qty * (1 - fee_r) - target_net_profit) / (abs_qty * (1 + fee_r))
-                    # Net-Targeted SL (Short)
-                    bot_sl = (price_val * abs_qty * (1 - fee_r) + target_net_loss) / (abs_qty * (1 + fee_r))
-                    liq_price = price_val + (price_val / leverage)
+                    bot_tp = (entry * abs_qty * (1 - fee_r) - target_net_profit) / (abs_qty * (1 + fee_r))
+                    bot_sl = (entry * abs_qty * (1 - fee_r) + target_net_loss) / (abs_qty * (1 + fee_r))
+                    liq_price = entry + (entry / leverage)
 
                 trade_data = {
                     "signal_id": signal['id'],
