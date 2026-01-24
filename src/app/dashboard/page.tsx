@@ -306,7 +306,7 @@ export default function Dashboard() {
                         <div className="lg:col-span-3 flex flex-col gap-6 overflow-hidden min-h-[400px] lg:min-h-0">
                             <div className="flex-1 flex flex-col rounded-[2.5rem] border border-white/10 bg-[#0a0a0c]/60 backdrop-blur-2xl shadow-2xl relative overflow-hidden">
                                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#00ffa3]/20 to-transparent"></div>
-                                <div className="flex-1 overflow-y-auto custom-scrollbar">
+                                <div className="flex-1">
                                     <PaperBotWidget />
                                 </div>
                             </div>
