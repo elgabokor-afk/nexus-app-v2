@@ -25,11 +25,13 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 # Initialize Kraken Client (Public data only needed for price checks)
 exchange = ccxt.kraken()
 
-# V50: Database & AI Oracle Integration
+# V100: Database & AI Oracle Integration
 from db import get_latest_oracle_insight
 from cosmos_engine import brain
+from binance_engine import live_trader
 
-print("--- PAPER TRADING BOT INITIALIZED ---")
+TRADING_MODE = os.getenv("TRADING_MODE", "PAPER")
+print(f"--- NEXUS TRADING ENGINE INITIALIZED [MODE: {TRADING_MODE}] ---")
 
 def get_current_price(symbol):
     try:
@@ -271,10 +273,23 @@ def check_new_entries():
                     bot_tp = (target_net_profit + entry * abs_qty * (1 + fee_r)) / (abs_qty * (1 - fee_r))
                     bot_sl = (-target_net_loss + entry * abs_qty * (1 + fee_r)) / (abs_qty * (1 - fee_r))
                     liq_price = entry - (entry / leverage)
+                    binance_side = 'buy'
                 else:
                     bot_tp = (entry * abs_qty * (1 - fee_r) - target_net_profit) / (abs_qty * (1 + fee_r))
                     bot_sl = (entry * abs_qty * (1 - fee_r) + target_net_loss) / (abs_qty * (1 + fee_r))
                     liq_price = entry + (entry / leverage)
+                    binance_side = 'sell'
+
+                # V100: LIVE EXECUTION BRIDGE
+                if TRADING_MODE == "LIVE":
+                    print(f"   [V100] ROUTING ORDER TO BINANCE: {binance_side.upper()} {abs_qty} {signal['symbol']}")
+                    # Note: Symbol mapping might be needed if Supabase uses different format than Binance
+                    # Binance usually expects BTCUSDT (futures)
+                    binance_pair = signal['symbol'].replace('/', '')
+                    if 'USDT' not in binance_pair: binance_pair += 'USDT'
+                    
+                    live_trader.execute_market_order(binance_pair, binance_side, abs_qty, leverage=leverage)
+
 
                 trade_data = {
                     "signal_id": signal['id'],

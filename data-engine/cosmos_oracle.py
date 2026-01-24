@@ -136,6 +136,15 @@ def run_oracle_step(symbol='BTC/USD'):
                 "type": "RECURSIVE_RANK_SCAN"
             }
         )
+
+        # V72: Sync Recursive Ranking to Cloud Leaderboard
+        upsert_asset_ranking(
+            symbol=symbol,
+            score=prob * 100, # Use prob as base score for ranking
+            confidence=prob,
+            trend=trend,
+            reasoning=reasoning
+        )
         
     except Exception as e:
         print(f"!!! Oracle Error ({symbol}): {e}")

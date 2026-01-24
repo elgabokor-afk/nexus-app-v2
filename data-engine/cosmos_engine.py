@@ -130,6 +130,18 @@ class CosmosBrain:
         self.save_model()
         
         print(f"   >>> Cosmos Brain: Training Complete. Accuracy on Memory: {accuracy:.2%}")
+        
+        # V72: Sync to Neural Link (Cloud)
+        try:
+            from db import sync_model_metadata
+            sync_model_metadata(
+                version=os.getenv("STRATEGY_VERSION", "1.0"),
+                accuracy=accuracy,
+                samples=len(df),
+                features=self.feature_cols
+            )
+        except Exception as e:
+            print(f"   !!! Neural Link Sync Failed: {e}")
 
     def get_trend_status(self, features):
         """Simple trend classifier based on EMA/Price."""
