@@ -206,10 +206,10 @@ def analyze_quant_signal(symbol, tech_analysis):
     
     # DETERMINE SIGNAL
     signal_type = "NEUTRAL"
-    if final_confidence >= 70: signal_type = "STRONG BUY"
-    elif final_confidence >= 55: signal_type = "MODERATE BUY"
-    elif final_confidence <= 30: signal_type = "STRONG SELL"
-    elif final_confidence <= 45: signal_type = "MODERATE SELL"
+    if final_confidence >= 65: signal_type = "STRONG BUY"
+    elif final_confidence >= 50: signal_type = "MODERATE BUY"
+    elif final_confidence <= 35: signal_type = "STRONG SELL"
+    elif final_confidence <= 50: signal_type = "MODERATE SELL"
     
     if signal_type == "NEUTRAL": return None
     
@@ -275,6 +275,7 @@ def main():
                         print(f"[{symbol}] Price: {quant_signal['price']} | RSI: {quant_signal['rsi']} | Imb: {quant_signal['imbalance']}")
                         print(f"   >>> V4 SIGNAL: {quant_signal['signal']} ({quant_signal['confidence']}%)")
                         
+                        # ... (DB Insert Logic) ...
                         # 1. Insert Base Signal
                         sig_id = insert_signal(
                             symbol=symbol,
@@ -303,7 +304,7 @@ def main():
                                 histogram=quant_signal['histogram']
                             )
                         
-                        # Broadcast via Telegram (V3 style for now, upgrade next)
+                        # Broadcast via Telegram
                         tg.send_signal(
                             symbol=symbol,
                             signal_type=quant_signal['signal'],
@@ -313,7 +314,12 @@ def main():
                             take_profit=float(quant_signal['take_profit'])
                         )
                     else:
-                        print(f"   --- No Signal ({symbol})")
+                        # DEBUG: Why no signal?
+                        # Re-calculate score to show user why
+                        # (Ideally analyze_quant_signal returns the score even if neutral, but it returns None currently)
+                        # Let's verify by calling a modified version or just trusting the logic is strict.
+                        # For now, let's print a "Scanning..." message with basic metrics to prove it's alive.
+                        print(f"   --- No Signal ({symbol}) -> RSI: {techs['rsi']:.1f}")
                 time.sleep(1) # Rate limit friendly per symbol
 
             print("Waiting 60s for next scan...")
