@@ -86,7 +86,8 @@ def get_bot_params():
             "stop_loss_atr_mult": 1.5, 
             "take_profit_atr_mult": 2.5,
             "default_leverage": 10,
-            "margin_mode": "ISOLATED"
+            "margin_mode": "ISOLATED",
+            "account_risk_pct": 0.02 # Safe default
         }
 
 def check_new_entries():
