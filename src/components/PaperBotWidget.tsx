@@ -125,6 +125,21 @@ export default function PaperBotWidget({ onSelectSymbol, viewMode = 'widget' }: 
     const equityChange = displayEquity - 10000;
     const isProfit = equityChange >= 0;
 
+    const handleClosePosition = async (id: number) => {
+        try {
+            const { error } = await supabase
+                .from('paper_positions')
+                .update({ closure_requested: true })
+                .eq('id', id);
+
+            if (error) throw error;
+            // Optimistic update or wait for subscription
+        } catch (e) {
+            console.error("Error requesting close:", e);
+            alert("Failed to request close");
+        }
+    };
+
     return (
         <div className="flex flex-col h-full bg-transparent overflow-y-auto custom-scrollbar">
             <div className="p-6">
@@ -176,6 +191,7 @@ export default function PaperBotWidget({ onSelectSymbol, viewMode = 'widget' }: 
                                 <th className="p-3 text-right text-red-500/80">Liq. Price</th>
                                 <th className="p-3 text-right">Margin</th>
                                 <th className="p-3 text-right">PnL (ROE %)</th>
+                                <th className="p-3 text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-white/5">
@@ -234,12 +250,20 @@ export default function PaperBotWidget({ onSelectSymbol, viewMode = 'widget' }: 
                                                 </span>
                                             </div>
                                         </td>
+                                        <td className="p-3 text-right">
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleClosePosition(pos.id); }}
+                                                className="px-2 py-1 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded text-[9px] font-bold uppercase transition-colors border border-white/5"
+                                            >
+                                                Close
+                                            </button>
+                                        </td>
                                     </tr>
                                 );
                             })}
                             {positions.filter(p => p.status === 'OPEN').length === 0 && (
                                 <tr>
-                                    <td colSpan={8} className="p-8 text-center text-gray-600 text-xs font-mono uppercase tracking-widest">
+                                    <td colSpan={9} className="p-8 text-center text-gray-600 text-xs font-mono uppercase tracking-widest">
                                         No Open Positions
                                     </td>
                                 </tr>
@@ -307,14 +331,26 @@ export default function PaperBotWidget({ onSelectSymbol, viewMode = 'widget' }: 
                                                 <div>
                                                     <h4 className="text-lg font-black tracking-tighter leading-none flex items-center gap-2">
                                                         {pos.symbol}
-                                                        <span className="text-[9px] px-1.5 py-0.5 rounded font-black bg-white/10 text-white border border-white/10">
-                                                            {pos.leverage || 10}x {pos.margin_mode === 'CROSS' ? 'CROSS' : 'ISO'}
-                                                        </span>
                                                     </h4>
-                                                    <div className="flex flex-col gap-1 mt-1">
-                                                        <p className="text-[10px] text-gray-500 font-mono font-bold uppercase">
-                                                            Margin: ${margin.toFixed(0)}
-                                                        </p>
+
+                                                    <div className="flex flex-col gap-2 mt-2">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="bg-white/5 px-2 py-1 rounded border border-white/10">
+                                                                <p className="text-[9px] text-gray-500 uppercase font-bold">Invested</p>
+                                                                <p className="text-sm font-black text-white font-mono">${margin.toFixed(2)}</p>
+                                                            </div>
+                                                            <div className="bg-white/5 px-2 py-1 rounded border border-white/10">
+                                                                <p className="text-[9px] text-gray-500 uppercase font-bold">Leverage</p>
+                                                                <p className="text-sm font-black text-[#00ffa3] font-mono">{pos.leverage || 10}x</p>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="flex items-center gap-2 text-[10px] font-mono text-gray-400 bg-black/20 p-1.5 rounded">
+                                                            <span>Entry: <span className="text-white">${pos.entry_price.toLocaleString()}</span></span>
+                                                            <span className="text-gray-600">|</span>
+                                                            <span>Mark: <span className={`font-bold ${isPosGreen ? 'text-[#00ffa3]' : 'text-red-500'}`}>${livePrice.toLocaleString()}</span></span>
+                                                        </div>
+
                                                         {isLiqRisk && (
                                                             <p className="text-[9px] font-black text-red-500 animate-pulse flex items-center gap-1">
                                                                 <AlertCircle size={10} /> LIQ RISK: ${liqPrice?.toLocaleString()}
@@ -323,7 +359,12 @@ export default function PaperBotWidget({ onSelectSymbol, viewMode = 'widget' }: 
                                                     </div>
                                                 </div>
                                                 <div className="text-right">
-                                                    <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">ROE PnL</p>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); handleClosePosition(pos.id); }}
+                                                        className="mb-1 px-2 py-0.5 bg-white/5 hover:bg-white/10 rounded-full text-[9px] font-bold uppercase tracking-widest text-gray-400 hover:text-white transition-colors border border-white/5 z-10 relative"
+                                                    >
+                                                        Manual Close
+                                                    </button>
                                                     <p className={`text-base font-mono font-black ${isPosGreen ? 'text-[#00ffa3]' : 'text-red-500'}`}>
                                                         {isPosGreen ? '+' : ''}${pnl.toFixed(2)}
                                                     </p>

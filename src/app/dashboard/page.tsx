@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import SignalCard from '@/components/SignalCard';
 import SystemLogs from '@/components/SystemLogs';
-import { Zap, Activity, LogOut, User } from 'lucide-react';
+import { Zap, Activity, LogOut, User, TrendingUp } from 'lucide-react';
 import PaperBotWidget from '@/components/PaperBotWidget';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
@@ -263,6 +263,14 @@ export default function Dashboard() {
                         >
                             <Activity size={18} />
                             <span className="text-sm font-bold tracking-tight">ALGORITHMIC LOGS</span>
+                        </button>
+
+                        <button
+                            onClick={() => window.open('/live', '_blank')}
+                            className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-300 border text-[#00ffa3]/50 hover:text-[#00ffa3] hover:bg-[#00ffa3]/5 border-transparent hover:border-[#00ffa3]/10`}
+                        >
+                            <TrendingUp size={18} />
+                            <span className="text-sm font-bold tracking-tight">LIVE ENGINE WEBLINK</span>
                         </button>
                     </nav>
 

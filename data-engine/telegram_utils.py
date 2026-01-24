@@ -2,11 +2,15 @@ import requests
 import os
 import logging
 
+import time
+
 class TelegramAlerts:
     def __init__(self):
         self.token = os.getenv("TELEGRAM_BOT_TOKEN")
         self.chat_id = os.getenv("TELEGRAM_CHAT_ID")
         self.base_url = f"https://api.telegram.org/bot{self.token}"
+        self.last_sent_time = 0
+        self.cleanup_mode = False # Prevent error spam
         
         if not self.token or not self.chat_id:
             logging.warning("⚠️ Telegram Bot Token or Chat ID missing. Alerts disabled.")
@@ -15,6 +19,11 @@ class TelegramAlerts:
                     imbalance=None, spread_pct=None, depth_score=None, ema_200=None):
         if not self.token or not self.chat_id:
             return
+            
+        # Rate Limiting: Max 1 message per 3 seconds
+        now = time.time()
+        if now - self.last_sent_time < 3:
+            time.sleep(3 - (now - self.last_sent_time))
 
         emoji = "🚀 BUY" if signal_type == "BUY" else "🔻 SELL"
         color_dot = "🟢" if signal_type == "BUY" else "🔴"
@@ -59,6 +68,7 @@ class TelegramAlerts:
             response = requests.post(f"{self.base_url}/sendMessage", json=payload)
             response.raise_for_status()
             logging.info(f"✅ Telegram alert sent for {symbol}")
+            self.last_sent_time = time.time()
         except Exception as e:
             logging.error(f"❌ Failed to send Telegram alert: {e}")
 
@@ -66,9 +76,18 @@ class TelegramAlerts:
         if not self.token or not self.chat_id:
             return
             
+        # Error Limiter: Prevent infinite loops of error messages
+        now = time.time()
+        if now - self.last_sent_time < 5:
+            return 
+            
         payload = {
             "chat_id": self.chat_id,
             "text": f"⚠️ <b>NEXUS SYSTEM ERROR:</b>\n\n<code>{message}</code>",
             "parse_mode": "HTML"
         }
-        requests.post(f"{self.base_url}/sendMessage", json=payload)
+        try:
+            requests.post(f"{self.base_url}/sendMessage", json=payload)
+            self.last_sent_time = time.time()
+        except:
+            pass

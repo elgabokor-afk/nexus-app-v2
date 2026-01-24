@@ -1,12 +1,16 @@
 import ccxt
 import pandas as pd
+import requests
 import time
 from datetime import datetime
 
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+# Load env from parent directory
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+load_dotenv(dotenv_path=os.path.join(parent_dir, '.env.local'))
 
 # 1. Setup Exchange Connection (Kraken - US Friendly)
 exchange_config = {
@@ -149,7 +153,25 @@ def get_dynamic_weights():
     except:
         return {"rsi": 0.3, "imbalance": 0.3, "trend": 0.2, "macd": 0.2}
 
-def analyze_quant_signal(symbol, tech_analysis):
+def fetch_fear_greed():
+    """
+    Fetches the Fear & Greed Index from Alternative.me.
+    Returns: int (0-100), default 50 (Neutral)
+    """
+    try:
+        # 1 day cache could be implemented, but the API is free for limited use.
+        # We will call this once per scan cycle (approx every 2 mins), which is fine.
+        response = requests.get("https://api.alternative.me/fng/")
+        if response.status_code == 200:
+            data = response.json()
+            # Structure: {'data': [{'value': '25', ...}]}
+            idx = int(data['data'][0]['value'])
+            return idx
+    except Exception as e:
+        print(f"Warning: Could not fetch Fear & Greed Index: {e}")
+    return 50 # Default Neutral
+
+def analyze_quant_signal(symbol, tech_analysis, sentiment_score=50):
     """
     Combines Technicals (RSI/EMA/MACD) with Quant Data (Order Book)
     using DYNAMIC WEIGHTS from the Optimizer.
@@ -218,9 +240,18 @@ def analyze_quant_signal(symbol, tech_analysis):
     # If AI is confident (>60%), boost score. If doubtful (<40%), penalize.
     ai_boost = 0
     if ai_prob > 0.60: ai_boost = 0.10 # +10% Confidence
-    elif ai_prob < 40: ai_boost = -0.20 # -20% Penalty (Safety Net)
+    elif ai_prob < 0.40: ai_boost = -0.20 # -20% Penalty (Safety Net)
     
-    final_score = min(1.0, final_score + ai_boost)
+    # V9 SENTIMENT ANALYSIS (Fear & Greed)
+    # Contrarian Logic: Buy when fearful, Sell when greedy
+    sentiment_boost = 0
+    if sentiment_score <= 25: sentiment_boost = 0.15 # Extreme Fear -> Buy Opportunity
+    elif sentiment_score <= 40: sentiment_boost = 0.08 # Fear
+    elif sentiment_score >= 75: sentiment_boost = -0.15 # Extreme Greed -> Sell Risk
+    elif sentiment_score >= 60: sentiment_boost = -0.08 # Greed
+    
+    final_score = final_score + ai_boost + sentiment_boost
+    final_score = max(0.0, min(1.0, final_score)) # Clamp
     
     final_confidence = int(final_score * 100)
     
@@ -257,7 +288,8 @@ def analyze_quant_signal(symbol, tech_analysis):
         'macd': round(tech_analysis['macd'], 4),
         'signal_line': round(tech_analysis['signal_line'], 4),
         'histogram': round(tech_analysis['histogram'], 4),
-        'ai_prob': round(ai_prob * 100, 1)
+        'ai_prob': round(ai_prob * 100, 1),
+        'sentiment': sentiment_score
     }
 
 from db import insert_signal, insert_analytics, log_error
@@ -282,20 +314,37 @@ def main():
         'UNI/USD'
     ]
     
+    # V10.0: Initial AI Training (Startup)
+    print("--- [SVC] Initializing Cosmos AI Brain ---")
+    brain.train()
+    last_train_time = datetime.now()
+    train_interval_hours = 6
+    
     while True:
         try:
-            print(f"\n--- Scan at {datetime.now().strftime('%H:%M:%S')} ---")
+            # Check for Re-Training (Continuous Learning)
+            now = datetime.now()
+            elapsed = (now - last_train_time).total_seconds() / 3600
+            if elapsed >= train_interval_hours:
+                print(f"--- [SVC] Cosmos Brain: Scheduled Retraining ({train_interval_hours}h elapsed) ---")
+                brain.train()
+                last_train_time = now
+            
+            # 1. Fetch Global Data (Sentiment)
+            fng_index = fetch_fear_greed()
+            
+            print(f"\n--- Scan at {datetime.now().strftime('%H:%M:%S')} | Fear & Greed: {fng_index} ---")
             for symbol in symbols:
                 df = fetch_data(symbol)
                 techs = analyze_market(df) # Returns basic tech metrics
                 
                 if techs:
-                    # Upgrade to V4 Analysis
-                    quant_signal = analyze_quant_signal(symbol, techs)
+                    # Upgrade to V4 Analysis + V8 AI + V9 Sentiment
+                    quant_signal = analyze_quant_signal(symbol, techs, sentiment_score=fng_index)
                     
                     if quant_signal:
                         print(f"[{symbol}] Price: {quant_signal['price']} | RSI: {quant_signal['rsi']} | Imb: {quant_signal['imbalance']}")
-                        print(f"   >>> V4 SIGNAL: {quant_signal['signal']} ({quant_signal['confidence']}%) | Cosmos AI: {quant_signal['ai_prob']}%")
+                        print(f"   >>> V4 SIGNAL: {quant_signal['signal']} ({quant_signal['confidence']}%) | Cosmos AI: {quant_signal['ai_prob']}% | F&G: {quant_signal['sentiment']}")
                         
                         # ... (DB Insert Logic) ...
                         # 1. Insert Base Signal
@@ -324,7 +373,8 @@ def main():
                                 macd_line=quant_signal['macd'],
                                 signal_line=quant_signal['signal_line'],
                                 histogram=quant_signal['histogram'],
-                                ai_score=float(quant_signal['ai_prob']/100) # Convert back to 0.0-1.0 for DB
+                                ai_score=float(quant_signal['ai_prob']/100), # Convert back to 0.0-1.0 for DB
+                                sentiment_score=quant_signal['sentiment']
                             )
                         
                         # Broadcast via Telegram

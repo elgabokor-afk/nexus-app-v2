@@ -67,7 +67,7 @@ def insert_signal(symbol, price, rsi, signal_type, confidence, stop_loss=0, take
         print(f"   !!! DB Error: {e}")
         return None
 
-def insert_analytics(signal_id, ema_200, rsi_value, atr_value, imbalance_ratio, spread_pct, depth_score, macd_line=0, signal_line=0, histogram=0, ai_score=0):
+def insert_analytics(signal_id, ema_200, rsi_value, atr_value, imbalance_ratio, spread_pct, depth_score, macd_line=0, signal_line=0, histogram=0, ai_score=0, sentiment_score=50):
     if not client or not signal_id:
         return
 
@@ -82,7 +82,8 @@ def insert_analytics(signal_id, ema_200, rsi_value, atr_value, imbalance_ratio, 
         "macd_line": macd_line,
         "signal_line": signal_line,
         "histogram": histogram,
-        "ai_score": ai_score
+        "ai_score": ai_score,
+        "sentiment_score": sentiment_score
     }
     
     try:

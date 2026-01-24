@@ -9,7 +9,9 @@ from optimizer import run_optimization # V6 Engine
 from datetime import datetime, timedelta, timezone
 
 # Load environment variables
-load_dotenv(dotenv_path="../.env.local")
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+load_dotenv(dotenv_path=os.path.join(parent_dir, '.env.local'))
 
 SUPABASE_URL = os.getenv("NEXT_PUBLIC_SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
@@ -206,7 +208,9 @@ def monitor_positions():
             
             # CHECK EXITS
             # CHECK EXITS
-            if pos.get('liquidation_price') and (
+            if pos.get('closure_requested'):
+                 exit_reason = "MANUAL_MARKET"
+            elif pos.get('liquidation_price') and (
                 ("BUY" in (pos.get('signal_type') or "BUY") and current_price <= pos['liquidation_price']) or
                 ("SELL" in (pos.get('signal_type') or "BUY") and current_price >= pos['liquidation_price'])
             ):
