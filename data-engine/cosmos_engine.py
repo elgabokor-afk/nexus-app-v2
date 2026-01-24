@@ -269,7 +269,9 @@ class CosmosBrain:
         should_trade = prob >= required_prob
         
         reasoning = self.generate_reasoning(features, prob)
-brain = CosmosBrain()
+        final_reason = f"AI {'DECIDED TO TRADE' if should_trade else 'REJECTED'}: Confidence: {prob*100:.1f}%. Target: {required_prob*100:.1f}%. Context: {reasoning}"
+        
+        return should_trade, prob, final_reason
 
     def update_asset_bias(self, trade_history):
         """
