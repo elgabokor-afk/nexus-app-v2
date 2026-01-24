@@ -497,29 +497,22 @@ def check_new_entries():
                 
                 print(f"       Opening Position: {signal['symbol']} ${trade_value:.2f} {scaling_reason} | Margin: ${initial_margin:.2f}")
                 
-                # V300: ADAPTIVE ATR TARGETS
-                is_scalp = "(SCALP)" in signal.get('signal_type', '')
-                atr_val = signal.get('atr_value', 0)
+                # V510: SIGNAL FIDELITY (Mirror Mode)
+                # User requested EXACT signal following. We prefer signal values over dynamic calculation.
                 
-                # V300 Volatility Adaptation
-                # If ATR is high, we widen targets; if low, we tighten.
-                vol_proxy = atr_val / signal['price'] # Relative volatility
+                signal_tp = float(signal.get('take_profit', 0) or 0)
+                signal_sl = float(signal.get('stop_loss', 0) or 0)
                 
-                if vol_proxy > 0.005: # High Volatility (>0.5% move per candle)
-                    tp_mult = 2.8
-                    sl_mult = 2.0
-                    print(f"       [V300 VOL-ADAPT] High Vol detected. Widening targets.")
+                if signal_tp > 0 and signal_sl > 0:
+                     print(f"       [V510 MIRROR] Using Signal's Native Targets. TP: {signal_tp} | SL: {signal_sl}")
+                     # Pre-calculate multipliers for logging, but we will use the prices directly
+                     tp_mult = 0 
+                     sl_mult = 0
                 else:
-                    tp_mult = 1.8
-                    sl_mult = 1.5
-                    print(f"       [V300 VOL-ADAPT] Low Vol detected. Tightening for scalp.")
-
-                if is_survival:
-                    # Overwrite with V300 optimized leverage
-                    leverage = min(leverage, 3) 
-                    print(f"       [V300 OPTIMIZED] Leverage: {leverage}x | TP: {tp_mult}x | SL: {sl_mult}x")
-                else:
-                    print(f"       [SCALP MODE] Applying correction-tolerant targets: TP({tp_mult}x) SL({sl_mult}x)")
+                    # Fallback to standard multipliers (Disable V300 Vol-Adapt to be consistent)
+                    tp_mult = 2.0 
+                    sl_mult = 1.0
+                    print(f"       [V510 STANDARD] Signal lacks TP/SL. Using Fixed Multipliers: TP(2.0x) SL(1.0x)")
 
                 target_net_profit = (atr_val * tp_mult) * abs(quantity)
                 target_net_loss = (atr_val * sl_mult) * abs(quantity)
@@ -535,13 +528,23 @@ def check_new_entries():
                 fee_r = float(params.get('trading_fee_pct', 0.0005))
                 
                 if "BUY" in signal['signal_type']:
-                    bot_tp = (target_net_profit + entry * abs_qty * (1 + fee_r)) / (abs_qty * (1 - fee_r))
-                    bot_sl = (-target_net_loss + entry * abs_qty * (1 + fee_r)) / (abs_qty * (1 - fee_r))
+                    if signal_tp > 0:
+                        bot_tp = signal_tp
+                        bot_sl = signal_sl
+                    else:
+                        bot_tp = (target_net_profit + entry * abs_qty * (1 + fee_r)) / (abs_qty * (1 - fee_r))
+                        bot_sl = (-target_net_loss + entry * abs_qty * (1 + fee_r)) / (abs_qty * (1 - fee_r))
+                        
                     liq_price = entry - (entry / leverage)
                     binance_side = 'buy'
                 else:
-                    bot_tp = (entry * abs_qty * (1 - fee_r) - target_net_profit) / (abs_qty * (1 + fee_r))
-                    bot_sl = (entry * abs_qty * (1 - fee_r) + target_net_loss) / (abs_qty * (1 + fee_r))
+                    if signal_tp > 0:
+                        bot_tp = signal_tp
+                        bot_sl = signal_sl
+                    else:
+                        bot_tp = (entry * abs_qty * (1 - fee_r) - target_net_profit) / (abs_qty * (1 + fee_r))
+                        bot_sl = (entry * abs_qty * (1 - fee_r) + target_net_loss) / (abs_qty * (1 + fee_r))
+                        
                     liq_price = entry + (entry / leverage)
                     binance_side = 'sell'
 
