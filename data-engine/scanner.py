@@ -13,11 +13,8 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
 load_dotenv(dotenv_path=os.path.join(parent_dir, '.env.local'))
 
-# V301: GLOBAL ASSET BLACKLIST
-ASSET_BLACKLIST = ['PEPE', 'PEPE/USDT', 'PEPE/USD']
-
-# V301: GLOBAL ASSET BLACKLIST
-ASSET_BLACKLIST = ['PEPE', 'PEPE/USDT', 'PEPE/USD']
+# V301: GLOBAL ASSET BLACKLIST (V412: Added DOGE)
+ASSET_BLACKLIST = ['PEPE', 'PEPE/USDT', 'PEPE/USD', 'DOGE', 'DOGE/USDT']
 
 # V310: Import Binance Engine for unified data/execution
 from binance_engine import live_trader
@@ -31,7 +28,7 @@ if os.path.exists(config_path):
 
 PRIORITY_ASSETS = GLOBAL_CONFIG.get("priority_assets", ["BTC/USDT", "SOL/USDT"])
 ANALYSIS_TIMEFRAMES = GLOBAL_CONFIG.get("analysis_timeframes", ["5m", "15m"])
-SYMBOLS = GLOBAL_CONFIG.get("trading_pairs", ["BTC/USDT", "SOL/USDT", "ETH/USDT", "DOGE/USDT"])
+SYMBOLS = GLOBAL_CONFIG.get("trading_pairs", ["BTC/USDT", "SOL/USDT", "ETH/USDT"])
 
 print("--- BINANCE DATA ENGINE ACTIVE (V310 Migration) ---")
 
@@ -374,6 +371,7 @@ def main():
                     print(f"Date Parse Warning: {e}")
 
             print(f"\n--- Scan at {now.strftime('%H:%M:%S')} | Fear & Greed: {fng_index} | Open: {active_positions} ---")
+            print(f"   [PORTFOLIO FLOW] Scanning: {SYMBOLS}")
             
             # V410: Reorder symbols to ensure priority assets are scanned first
             symbols_to_scan = PRIORITY_ASSETS + [s for s in SYMBOLS if s not in PRIORITY_ASSETS]

@@ -11,8 +11,7 @@
     "trading_pairs": [
         "BTC/USDT",
         "SOL/USDT",
-        "ETH/USDT",
-        "DOGE/USDT"
+        "ETH/USDT"
     ],
     "connector_type": "binance_margin",
     "margin_mode": "CROSSED",

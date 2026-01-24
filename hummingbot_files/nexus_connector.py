@@ -17,7 +17,7 @@ class NexusConnector(ScriptStrategyBase):
     """
     
     # V411: Lock to Binance Margin Connector
-    markets = {"binance_margin": {"BTC-USDT", "SOL-USDT", "ETH-USDT", "DOGE-USDT"}}
+    markets = {"binance_margin": {"BTC-USDT", "SOL-USDT", "ETH-USDT"}}
     
     def __init__(self, connectors):
         super().__init__(connectors)
