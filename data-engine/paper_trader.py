@@ -170,13 +170,28 @@ def check_new_entries():
                     print(f"       [SKIPPED] Insufficient Equity (${wallet['equity']}). Trading Halted.")
                     continue
 
-                initial_margin = float(wallet['equity']) * account_risk
+                # V22: BALANCE-BASED MARGIN SIZING
+                # Use Total Equity for the risk calculation (Fixed Fractional Sizing)
+                target_margin = float(wallet['equity']) * account_risk
                 
+                # But CAP it based on Free Balance (Cash) to avoid over-exposure
+                free_balance = float(wallet['balance'])
+                # Never use more than 25% of REMAINING cash on a single trade for safety
+                max_safe_margin = free_balance * 0.25 
+                
+                initial_margin = min(target_margin, max_safe_margin)
+                
+                # Minimum margin check (don't open dust trades)
+                if initial_margin < 2.0:
+                    print(f"       [SKIPPED] Insufficient Free Balance (${free_balance:.2f}). Required: ${target_margin:.2f}")
+                    continue
+
                 # Leveraged Position Size (Notional Value)
                 trade_value = initial_margin * leverage
                 quantity = trade_value / signal['price']
                 
-                print(f"       Opening Position: ${trade_value:.2f} ({leverage}x) | Margin: ${initial_margin:.2f}")
+                print(f"       Opening Position: ${trade_value:.2f} ({leverage}x) | Margin: ${initial_margin:.2f} (from ${free_balance:.2f} free)")
+                
                 
                 # V3 LOGIC: ATR Stops
                 atr = signal.get('atr_value', 0)
