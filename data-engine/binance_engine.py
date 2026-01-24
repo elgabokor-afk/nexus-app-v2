@@ -73,12 +73,21 @@ class BinanceTrader:
             # 2. Precision Handling
             clean_amount = self.exchange.amount_to_precision(symbol, amount)
             
-            # 3. Set Leverage & Execute
-            # Binance requires setting leverage before opening a position
+            # 3. Set Leverage & Margin Mode
+            # Binance requires setting leverage & margin before opening a position
             try:
                 self.exchange.set_leverage(leverage, symbol)
             except Exception as lev_err:
                 print(f"   [BINANCE] Leverage warning: {lev_err}")
+
+            try:
+                # V160: Ensure CROSSED margin mode
+                self.exchange.set_margin_mode('CROSSED', symbol)
+                print(f"   [BINANCE] Margin Mode set to CROSSED for {symbol}")
+            except Exception as margin_err:
+                # CCXT often throws error if already in the requested mode
+                if "No need to change margin type" not in str(margin_err):
+                    print(f"   [BINANCE] Margin Mode warning: {margin_err}")
 
             order = self.exchange.create_market_order(symbol, side, clean_amount)
             print(f"   [BINANCE] LIVE ORDER EXECUTED: {side} {clean_amount} {symbol}")

@@ -90,7 +90,7 @@ def get_bot_params():
             "stop_loss_atr_mult": 1.5, 
             "take_profit_atr_mult": 2.5,
             "default_leverage": 10,
-            "margin_mode": "ISOLATED",
+            "margin_mode": "CROSSED",
             "account_risk_pct": 0.02
         }
     except Exception as e:
@@ -100,7 +100,7 @@ def get_bot_params():
             "stop_loss_atr_mult": 1.5, 
             "take_profit_atr_mult": 2.5,
             "default_leverage": 4, # User requested max x4
-            "margin_mode": "ISOLATED",
+            "margin_mode": "CROSSED",
             "account_risk_pct": 0.02, # Safe default
             "min_confidence": 90, # User requested 90% strictness
             "trading_fee_pct": 0.0005, # 0.05% per leg (0.1% Round-Trip)
@@ -149,7 +149,7 @@ def reconcile_positions():
                 "bot_stop_loss": entry_price * 0.95 if side == 'long' else entry_price * 1.05,
                 "bot_take_profit": entry_price * 1.05 if side == 'long' else entry_price * 0.95,
                 "leverage": int(pos['leverage']),
-                "margin_mode": "ISOLATED",
+                "margin_mode": "CROSSED",
                 "initial_margin": float(pos['initialMargin']),
                 "liquidation_price": float(pos['liquidationPrice'] or 0),
                 "strategy_version": 121
@@ -240,11 +240,11 @@ def check_new_entries():
                 
                 if float(wallet['equity']) < 50:
                     is_survival = True
-                    print(f"   [SURVIVAL MODE] Equity ${wallet['equity']} < $50. ACTIVATING PROTOCOL V135.")
-                    # STRICT OVERRIDES
+                    print(f"   [SURVIVAL MODE] Equity ${wallet['equity']} < $50. ACTIVATING PROTOCOL V155.")
+                    # V155: ULTRA-STRICT OVERRIDES
                     params['min_confidence'] = 92
                     params['max_open_positions'] = 2
-                    params['default_leverage'] = 5 # Cap leverage for safety
+                    params['default_leverage'] = 2 # V155: Hard cap at 2x
             except Exception as e:
                 print(f"   [V135] Sync Error: {e}")
         
@@ -422,6 +422,13 @@ def check_new_entries():
                 target_net_profit = (atr_val * tp_mult) * abs(quantity)
                 target_net_loss = (atr_val * sl_mult) * abs(quantity)
                 
+                # V155: ULTRA-CONSERVATIVE LOSS LIMIT
+                if is_survival:
+                    max_allowed_loss = 0.15
+                    if target_net_loss > max_allowed_loss:
+                        target_net_loss = max_allowed_loss
+                        print(f"       [V155] HARD LOSS CAP: Tightening Stop Loss to limit risk to ${max_allowed_loss}")
+                
                 abs_qty = abs(quantity)
                 fee_r = float(params.get('trading_fee_pct', 0.0005))
                 
@@ -461,7 +468,7 @@ def check_new_entries():
                     "bot_take_profit": round(bot_tp, 4),
                     # V5 Fields
                     "leverage": leverage,
-                    "margin_mode": margin_mode,
+                    "margin_mode": params.get('margin_mode', 'CROSSED'),
                     "initial_margin": round(initial_margin, 2),
                     "liquidation_price": round(liq_price, 4),
                     "strategy_version": params.get('strategy_version', 1)
