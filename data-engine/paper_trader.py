@@ -210,9 +210,17 @@ def monitor_positions():
             if isinstance(signal_data, list) and len(signal_data) > 0:
                 signal_data = signal_data[0]
                 
-            stop_loss = signal_data.get('stop_loss')
-            take_profit = signal_data.get('take_profit')
+            # PRO TRADING LOGIC: Use Editable TP/SL from Position
+            # This allows user to modify the active trade (Binance Style)
+            stop_loss = pos.get('bot_stop_loss')
+            take_profit = pos.get('bot_take_profit')
             
+            # Fallback to signal if missing (Legacy support)
+            if stop_loss is None and signal_data:
+                 stop_loss = signal_data.get('stop_loss')
+            if take_profit is None and signal_data:
+                 take_profit = signal_data.get('take_profit')
+                 
             exit_reason = None
             
             # CHECK EXITS

@@ -387,10 +387,31 @@ export default function PaperBotWidget({ onSelectSymbol, viewMode = 'widget' }: 
                                                 </div>
                                                 <div className="text-right">
                                                     <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            // PRO EDIT LOGIC (Quick Prompt)
+                                                            const newTp = prompt("New Take Profit Price:", pos.bot_take_profit?.toString());
+                                                            const newSl = prompt("New Stop Loss Price:", pos.bot_stop_loss?.toString());
+
+                                                            if (newTp && newSl) {
+                                                                supabase.from('paper_positions').update({
+                                                                    bot_take_profit: parseFloat(newTp),
+                                                                    bot_stop_loss: parseFloat(newSl)
+                                                                }).eq('id', pos.id).then(({ error }) => {
+                                                                    if (error) alert("Update Failed");
+                                                                    else fetchPositions();
+                                                                });
+                                                            }
+                                                        }}
+                                                        className="mb-1 mr-2 px-2 py-0.5 bg-blue-500/10 hover:bg-blue-500/20 rounded-full text-[9px] font-bold uppercase tracking-widest text-blue-400 hover:text-blue-300 transition-colors border border-blue-500/20 z-10 relative"
+                                                    >
+                                                        Edit
+                                                    </button>
+                                                    <button
                                                         onClick={(e) => { e.stopPropagation(); handleClosePosition(pos.id); }}
                                                         className="mb-1 px-2 py-0.5 bg-white/5 hover:bg-white/10 rounded-full text-[9px] font-bold uppercase tracking-widest text-gray-400 hover:text-white transition-colors border border-white/5 z-10 relative"
                                                     >
-                                                        Manual Close
+                                                        Close
                                                     </button>
                                                     <p className={`text-base font-mono font-black ${isPosGreen ? 'text-[#00ffa3]' : 'text-red-500'}`}>
                                                         {isPosGreen ? '+' : ''}${pnl.toFixed(2)}
