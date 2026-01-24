@@ -30,6 +30,18 @@ export default function SystemLogs({ onClose, embedded = false }: { onClose?: ()
 
     useEffect(() => {
         fetchLogs();
+
+        // REALTIME SUBSCRIPTION
+        const channel = supabase.channel('system_logs_stream')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'error_logs' }, (payload) => {
+                const newLog = payload.new as Log;
+                setLogs(prev => [newLog, ...prev].slice(0, 100));
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, []);
 
     const wrapperClasses = embedded
