@@ -17,6 +17,9 @@ class TelegramAlerts:
 
     def send_signal(self, symbol, signal_type, price, confidence, stop_loss=None, take_profit=None, 
                     imbalance=None, spread_pct=None, depth_score=None, ema_200=None):
+        # V2300: DISABLED BY USER REQUEST (Database/Bandwidth optimization)
+        return
+        
         if not self.token or not self.chat_id:
             return
             
