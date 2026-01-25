@@ -373,6 +373,9 @@ class CosmosBrain:
             
             if not oracle_aligned:
                 # Oracle is screaming Mismatch (e.g. 1m chart is crashing while 1h signal says buy)
+                reason = f"Decision REJECTED: Oracle (1m) is {o_trend} while Signal is {signal_type}. Confluence Failed. Reasoning: {o_reasoning}"
+                return False, prob, reason
+            
             print(f"       [ORACLE CONFIRMED] 1m Analysis aligns with {signal_type} signal.")
 
         # 4.5. SMC CONFLUENCE (V560: Smart Money Concepts)
