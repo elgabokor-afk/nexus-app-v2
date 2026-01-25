@@ -328,23 +328,32 @@ export default function Dashboard() {
                 )}
 
                 {/* MAIN DASHBOARD CONTENT */}
-                <main className="flex-1 flex flex-col relative overflow-hidden bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-[#1a1a2e] via-[#050505] to-[#050505]">
+                <main className="flex-1 flex flex-col relative overflow-hidden bg-black">
 
-                    {/* Background Pattern */}
-                    <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)', backgroundSize: '40px 40px' }}></div>
+                    {/* Background Pattern - subtle grid */}
+                    <div className="absolute inset-0 opacity-[0.05] pointer-events-none"
+                        style={{
+                            backgroundImage: 'linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px)',
+                            backgroundSize: '30px 30px'
+                        }}>
+                    </div>
+
+                    {/* Ambient Glow */}
+                    <div className="absolute top-[-20%] right-[-10%] w-[500px] h-[500px] bg-[#00ffa3]/5 rounded-full blur-[120px] pointer-events-none"></div>
 
                     {currentView === 'dashboard' && (
-                        <div className="flex-1 p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 overflow-y-auto lg:overflow-hidden z-20 custom-scrollbar">
+                        <div className="flex-1 p-4 lg:p-8 grid grid-cols-1 xl:grid-cols-12 gap-8 overflow-y-auto lg:overflow-hidden z-20 custom-scrollbar animate-fade-in">
 
                             {/* COL 1: ADVANCED SIGNALS (3 Columns) */}
-                            <div className="lg:col-span-3 flex flex-col gap-6 overflow-hidden min-h-[400px] lg:min-h-0 bg-black/20 backdrop-blur-md rounded-[2.5rem] border border-white/5 p-6 shadow-2xl">
-                                <div className="flex items-center justify-between px-2">
+                            <div className="xl:col-span-3 flex flex-col gap-6 overflow-hidden min-h-[400px] lg:min-h-0 bg-white/[0.02] backdrop-blur-xl rounded-[2.5rem] border border-white/5 p-6 shadow-2xl relative group">
+                                <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none group-hover:bg-white/[0.04] transition-colors duration-500"></div>
+                                <div className="flex items-center justify-between px-2 relative z-10">
                                     <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.4em]">Signal Pulse</h3>
-                                    <div className="flex items-center gap-2 bg-[#00ffa3]/10 px-3 py-1 rounded-full border border-[#00ffa3]/20">
+                                    <div className="flex items-center gap-2 bg-[#00ffa3]/10 px-3 py-1 rounded-full border border-[#00ffa3]/20 shadow-[0_0_10px_rgba(0,255,163,0.1)]">
                                         <span className="text-[10px] text-[#00ffa3] font-black font-mono">{signals.length} ANALYZED</span>
                                     </div>
                                 </div>
-                                <div className="flex-1 overflow-y-auto space-y-4 pr-3 custom-scrollbar-wide pb-4">
+                                <div className="flex-1 overflow-y-auto space-y-4 pr-3 custom-scrollbar-wide pb-4 relative z-10">
                                     {loading ? (
                                         <div className="space-y-4">
                                             {[1, 2, 3, 4].map(i => <div key={i} className="h-32 rounded-3xl bg-white/5 animate-pulse border border-white/5"></div>)}
@@ -365,8 +374,8 @@ export default function Dashboard() {
                             </div>
 
                             {/* COL 2: MAIN CHART ENGINE (6 Columns) */}
-                            <div id="main-chart-area" className="lg:col-span-6 flex flex-col">
-                                <div className="flex-1 min-h-[500px] rounded-[2.5rem] border border-white/10 bg-[#0a0a0c]/40 backdrop-blur-3xl relative overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col group/chart">
+                            <div id="main-chart-area" className="xl:col-span-6 flex flex-col">
+                                <div className="flex-1 min-h-[500px] rounded-[2rem] border border-white/10 bg-[#0a0a0c]/80 backdrop-blur-3xl relative overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col group/chart transition-all hover:border-white/20">
                                     <div className="flex-1 w-full h-full relative">
                                         <div className="absolute inset-0 bg-gradient-to-b from-[#00ffa3]/5 to-transparent pointer-events-none"></div>
                                         <SmartChart
@@ -384,7 +393,7 @@ export default function Dashboard() {
                             </div>
 
                             {/* COL 3: OPERATIONS & ORACLE (3 Columns) */}
-                            <div className="lg:col-span-3 flex flex-col gap-6 overflow-hidden min-h-[400px] lg:min-h-0">
+                            <div className="xl:col-span-3 flex flex-col gap-6 overflow-hidden min-h-[400px] lg:min-h-0">
                                 {/* V90: Portfolio Hub - AI Multi-Asset Leaderboard */}
                                 <PortfolioHub />
 
@@ -392,8 +401,8 @@ export default function Dashboard() {
                                 <OracleMonitor />
 
                                 {/* Positions & Wallet */}
-                                <div className="flex-1 flex flex-col rounded-[2.5rem] border border-white/10 bg-[#0a0a0c]/60 backdrop-blur-2xl shadow-2xl relative overflow-hidden">
-                                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#00ffa3]/20 to-transparent"></div>
+                                <div className="flex-1 flex flex-col rounded-[2.5rem] border border-white/10 bg-[#0a0a0c]/80 backdrop-blur-2xl shadow-2xl relative overflow-hidden group hover:border-[#00ffa3]/30 transition-all duration-500">
+                                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#00ffa3]/40 to-transparent"></div>
                                     <div className="flex-1">
                                         <PaperBotWidget onSelectSymbol={handleViewChart} />
                                     </div>
@@ -403,7 +412,7 @@ export default function Dashboard() {
                     )}
 
                     {currentView === 'bot' && (
-                        <div className="flex-1 p-6 overflow-hidden z-20">
+                        <div className="flex-1 p-6 overflow-hidden z-20 animate-slide-up">
                             <div className="h-full rounded-[2.5rem] border border-white/10 bg-[#0a0a0c]/60 backdrop-blur-2xl shadow-2xl overflow-hidden relative flex flex-col">
                                 <div className="p-6 border-b border-white/5 flex items-center gap-4 bg-white/[0.02]">
                                     <Zap size={24} className="text-[#00ffa3]" />
@@ -419,7 +428,7 @@ export default function Dashboard() {
                     )}
 
                     {currentView === 'logs' && (
-                        <div className="flex-1 p-6 overflow-hidden z-20 flex flex-col">
+                        <div className="flex-1 p-6 overflow-hidden z-20 flex flex-col animate-slide-up">
                             <div className="h-full rounded-[2.5rem] border border-white/10 bg-[#0a0a0c]/80 backdrop-blur-md shadow-2xl overflow-hidden relative">
                                 <SystemLogs onClose={() => setCurrentView('dashboard')} />
                             </div>

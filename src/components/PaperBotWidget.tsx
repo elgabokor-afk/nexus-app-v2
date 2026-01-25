@@ -281,34 +281,52 @@ export default function PaperBotWidget({
                                         <div
                                             key={pos.id}
                                             onClick={() => setExpandedId(isExpanded ? null : pos.id)}
-                                            className={`group relative bg-gradient-to-br from-white/[0.05] to-transparent rounded-2xl border transition-all overflow-hidden shadow-xl cursor-pointer active:scale-[0.99] ${isPosGreen ? 'border-[#00ffa3]/20 hover:border-[#00ffa3]/40' : 'border-red-500/20 hover:border-red-500/40'}`}
+                                            className={`group relative rounded-2xl border transition-all duration-300 overflow-hidden cursor-pointer active:scale-[0.99] animate-fade-in
+                                                ${isPosGreen
+                                                    ? 'bg-gradient-to-br from-[#00ffa3]/[0.02] to-transparent border-[#00ffa3]/20 hover:border-[#00ffa3]/50 hover:shadow-[0_0_20px_rgba(0,255,163,0.1)]'
+                                                    : 'bg-gradient-to-br from-red-500/[0.02] to-transparent border-red-500/20 hover:border-red-500/50 hover:shadow-[0_0_20px_rgba(239,68,68,0.1)]'}
+                                            `}
                                         >
+                                            {/* Glowing Edge Gradient */}
+                                            <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none
+                                                ${isPosGreen ? 'bg-[radial-gradient(circle_at_50%_0%,rgba(0,255,163,0.1),transparent_70%)]' : 'bg-[radial-gradient(circle_at_50%_0%,rgba(239,68,68,0.1),transparent_70%)]'}
+                                            `}></div>
+
                                             {/* COMPACT ROW (Always Visible) */}
-                                            <div className="p-4 flex justify-between items-center">
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`p-2 rounded-xl ${isPosGreen ? 'bg-[#00ffa3]/10' : 'bg-red-500/10'}`}>
-                                                        <TrendingUp size={16} className={isPosGreen ? "text-[#00ffa3]" : "text-red-500"} />
+                                            <div className="p-4 flex justify-between items-center relative z-10">
+                                                <div className="flex items-center gap-4">
+                                                    <div className={`p-2.5 rounded-xl backdrop-blur-md shadow-inner transition-colors duration-300 ${isPosGreen ? 'bg-[#00ffa3]/10 text-[#00ffa3]' : 'bg-red-500/10 text-red-500'}`}>
+                                                        <TrendingUp size={18} className={isPosGreen ? "text-[#00ffa3]" : "text-red-500"} />
                                                     </div>
                                                     <div>
                                                         <div className="flex items-center gap-2">
-                                                            <h4 className="text-sm font-black tracking-tight text-white">{pos.symbol}</h4>
-                                                            <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${pos.signal_type?.includes('BUY') ? 'bg-[#00ffa3]/10 text-[#00ffa3]' : 'bg-red-500/10 text-red-500'}`}>
+                                                            <h4 className="text-base font-black tracking-tight text-white">{pos.symbol}</h4>
+                                                            <span className={`text-[9px] font-black px-1.5 py-0.5 rounded border ${isPosGreen ? 'bg-[#00ffa3]/10 text-[#00ffa3] border-[#00ffa3]/20' : 'bg-red-500/10 text-red-500 border-red-500/20'}`}>
                                                                 {pos.signal_type?.includes('BUY') ? 'LONG' : 'SHORT'}
                                                             </span>
                                                         </div>
-                                                        <div className="flex gap-2 mt-1">
-                                                            <span className="text-[9px] font-bold text-gray-500">{pos.leverage || 10}x</span>
-                                                            <span className="text-[9px] font-mono text-gray-400">${notionalSize.toLocaleString()}</span>
+                                                        <div className="flex gap-3 mt-1.5">
+                                                            <span className="text-[10px] font-bold text-gray-500 bg-white/5 px-1.5 rounded">{pos.leverage || 10}x</span>
+                                                            <span className="text-[10px] font-mono text-gray-400 flex items-center gap-1">
+                                                                <span className="w-1 h-1 rounded-full bg-gray-600"></span>
+                                                                ${notionalSize.toLocaleString()}
+                                                            </span>
                                                         </div>
                                                     </div>
                                                 </div>
 
-                                                <div className="flex items-center gap-4">
-                                                    <div className="flex flex-col items-end">
-                                                        <span className={`text-sm font-black tracking-tight ${isPosGreen ? 'text-[#00ffa3]' : 'text-red-500'}`}>
+                                                <div className="flex items-center gap-6">
+                                                    {/* Mini Sparkline or Context Metric */}
+                                                    <div className="hidden sm:flex flex-col items-end">
+                                                        <span className="text-[9px] font-black uppercase text-gray-600 tracking-wider">Entry</span>
+                                                        <span className="text-xs font-mono text-gray-300">${pos.entry_price.toLocaleString()}</span>
+                                                    </div>
+
+                                                    <div className="flex flex-col items-end min-w-[80px]">
+                                                        <span className={`text-lg font-black tracking-tight drop-shadow-lg ${isPosGreen ? 'text-[#00ffa3]' : 'text-red-500'}`}>
                                                             {isPosGreen ? '+' : ''}{roePercent.toFixed(2)}%
                                                         </span>
-                                                        <span className={`text-[9px] font-mono font-bold ${isPosGreen ? 'text-[#00ffa3]/60' : 'text-red-500/60'}`}>
+                                                        <span className={`text-[10px] font-mono font-bold ${isPosGreen ? 'text-[#00ffa3]/80' : 'text-red-500/80'}`}>
                                                             ${pnl.toFixed(2)}
                                                         </span>
                                                     </div>
