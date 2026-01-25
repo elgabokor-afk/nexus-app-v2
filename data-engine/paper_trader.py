@@ -132,7 +132,7 @@ def get_bot_params():
             "default_leverage": 4, # User requested max x4
             "margin_mode": "CROSSED",
             "account_risk_pct": 0.02, # Safe default
-            "min_confidence": 60, # V470: Aggressive (Was 90)
+            "min_confidence": 80, # V2200: Strict filtering (Was 60)
             "trading_fee_pct": 0.0005, # 0.05% per leg (0.1% Round-Trip)
             "strategy_version": 1 # Initial version
         }
@@ -372,11 +372,10 @@ def check_new_entries():
                 .execute()
                 
             if active_on_symbol.data:
-                # V421: AGGRESSIVE STACKING UNLOCK
-                # We allow stacking if max positions haven't been reached
-                # Just warn, but DO NOT CONTINUE (do not skip)
-                print(f"       [V421 STACKING] Adding another {signal['symbol']} position (Aggressive Mode).")
-                # continue (REMOVED to allow stacking)
+                # V2200: STACKING DISABLED (Strict Mode)
+                # We do NOT allow opening multiple positions on the same symbol to prevent spam.
+                print(f"       [SKIPPED] Position already exists for {signal['symbol']}.")
+                continue
                 
             # 4. DUPLICATE SIGNAL Check
             existing = supabase.table("paper_positions") \

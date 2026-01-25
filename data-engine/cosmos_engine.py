@@ -229,14 +229,15 @@ class CosmosBrain:
         Prioritizes OpenAI (GPT-4o), then DeepSeek, then Local BLM logic.
         """
         # 1. Primary: OpenAI (V800)
+        # V1900: User requested OpenAI ONLY (DeepSeek deprecated due to balance)
         openai_reason = openai_engine.generate_trade_narrative(symbol, signal_type, features)
         if openai_reason:
-            return f"[GPT] {openai_reason}"
+            return f"[GPT-4o] {openai_reason}"
 
-        # 2. Secondary: DeepSeek (V700)
-        deep_reason = deepseek_engine.generate_deep_reasoning(symbol, signal_type, features)
-        if deep_reason:
-            return f"[DS] {deep_reason}"
+        # 2. Secondary: DeepSeek (DISABLED V1900)
+        # deep_reason = deepseek_engine.generate_deep_reasoning(symbol, signal_type, features)
+        # if deep_reason:
+        #     return f"[DS] {deep_reason}"
 
         # 3. Fallback: Local Heuristic
         rsi = features.get('rsi_value', 50)
