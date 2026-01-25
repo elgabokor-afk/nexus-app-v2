@@ -531,13 +531,20 @@ def check_new_entries():
                 abs_qty = abs(quantity)
                 fee_r = float(params.get('trading_fee_pct', 0.0005))
                 
+                # V1600: SIMPLIFIED PRECISION LOGIC
+                # Direct calculation: Entry +/- (ATR * Multiplier)
+                # This ensures the dashboard values match user expectation perfectly.
+                
+                tp_dist = atr_val * tp_mult if atr_val > 0 else entry * 0.02 # Fallback 2%
+                sl_dist = atr_val * sl_mult if atr_val > 0 else entry * 0.01 # Fallback 1%
+
                 if "BUY" in signal['signal_type']:
                     if signal_tp > 0:
                         bot_tp = signal_tp
                         bot_sl = signal_sl
                     else:
-                        bot_tp = (target_net_profit + entry * abs_qty * (1 + fee_r)) / (abs_qty * (1 - fee_r))
-                        bot_sl = (-target_net_loss + entry * abs_qty * (1 + fee_r)) / (abs_qty * (1 - fee_r))
+                        bot_tp = entry + tp_dist
+                        bot_sl = entry - sl_dist
                         
                     liq_price = entry - (entry / leverage)
                     binance_side = 'buy'
@@ -546,8 +553,8 @@ def check_new_entries():
                         bot_tp = signal_tp
                         bot_sl = signal_sl
                     else:
-                        bot_tp = (entry * abs_qty * (1 - fee_r) - target_net_profit) / (abs_qty * (1 + fee_r))
-                        bot_sl = (entry * abs_qty * (1 - fee_r) + target_net_loss) / (abs_qty * (1 + fee_r))
+                        bot_tp = entry - tp_dist
+                        bot_sl = entry + sl_dist
                         
                     liq_price = entry + (entry / leverage)
                     binance_side = 'sell'
