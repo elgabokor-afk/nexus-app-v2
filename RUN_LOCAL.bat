@@ -19,7 +19,7 @@ echo.
 echo [SUCCESS] All systems active. 
 echo Checks:
 echo  - Scanner: Watching 5m/1h Candles
-echo  - Trader:  Monitoring Portfolio & Redis
+echo  - Trader:  Monitoring Portfolio and Redis (Offline Mode Supported)
 echo  - Bridge:  Relaying to ws://localhost:8000
 echo.
 echo You can minimize these windows, but do not close them.
