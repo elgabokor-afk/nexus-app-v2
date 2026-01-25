@@ -546,6 +546,12 @@ def check_new_entries():
                         bot_tp = entry + tp_dist
                         bot_sl = entry - sl_dist
                         
+                    # V1602: SANITY GUARD (Assert TP > Entry)
+                    if bot_tp <= entry:
+                        print(f"   [V1602] CRITICAL: Invalid BUY TP (${bot_tp}) <= Entry (${entry}). Forcing Recalc.")
+                        bot_tp = entry * 1.02 # Force 2% profit
+                        bot_sl = entry * 0.99
+                        
                     liq_price = entry - (entry / leverage)
                     binance_side = 'buy'
                 else:
@@ -556,6 +562,12 @@ def check_new_entries():
                         bot_tp = entry - tp_dist
                         bot_sl = entry + sl_dist
                         
+                    # V1602: SANITY GUARD (Assert TP < Entry)
+                    if bot_tp >= entry:
+                        print(f"   [V1602] CRITICAL: Invalid SELL TP (${bot_tp}) >= Entry (${entry}). Forcing Recalc.")
+                        bot_tp = entry * 0.98 # Force 2% profit
+                        bot_sl = entry * 1.01
+
                     liq_price = entry + (entry / leverage)
                     binance_side = 'sell'
 
