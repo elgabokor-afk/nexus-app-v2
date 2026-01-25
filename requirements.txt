@@ -7,3 +7,6 @@ requests
 supabase
 postgrest
 PyYAML
+redis
+openai
+websockets

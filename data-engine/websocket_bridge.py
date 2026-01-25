@@ -56,6 +56,10 @@ async def redis_listener():
     # but since this is an async task we should use a non-blocking approach if possible.
     # redis-py's pubsub.get_message() is non-blocking.
     
+    if not redis_engine.client:
+        print("   [WS BRIDGE] Error: Redis client not connected. Bridge will not function.")
+        return
+
     pubsub = redis_engine.client.pubsub()
     pubsub.subscribe(channels)
     

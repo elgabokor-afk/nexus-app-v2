@@ -2,6 +2,8 @@
 import os
 import redis
 import json
+import pandas as pd
+from datetime import datetime
 from dotenv import load_dotenv
 
 # Load env from parent directory
@@ -23,10 +25,18 @@ class RedisEngine:
     def publish(self, channel, data):
         """Publish message to a specific channel."""
         if not self.client:
+            print(f"   [REDIS] Skip Publish on {channel}: Client not connected.")
             return False
         try:
-            message = json.dumps(data)
+            # Ensure data is serializable (handle datetime if needed)
+            def serializer(obj):
+                if isinstance(obj, (datetime, pd.Timestamp)):
+                    return obj.isoformat()
+                raise TypeError(f"Type {type(obj)} not serializable")
+
+            message = json.dumps(data, default=serializer)
             self.client.publish(channel, message)
+            print(f"   [REDIS] Broadcast on {channel}: {len(message)} bytes.")
             return True
         except Exception as e:
             print(f"   [REDIS] Publish Error on {channel}: {e}")
