@@ -312,6 +312,29 @@ def check_new_entries():
             except Exception as e:
                 print(f"   [V135] Sync Error: {e}")
         
+        
+        # V3210: DAILY TRADE LIMIT
+        # We check how many positions were opened since UTC Midnight.
+        max_daily = GLOBAL_CONFIG.get('max_daily_positions', 5)
+        # Handle case where user might set 0 or None -> Default 5
+        if not max_daily: max_daily = 5
+        
+        today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+        
+        # Count trades opened today
+        daily_res = supabase.table("paper_positions") \
+            .select("id", count="exact") \
+            .gte("created_at", today_start) \
+            .execute()
+            
+        daily_count = daily_res.count if daily_res.count is not None else len(daily_res.data)
+        
+        if daily_count >= max_daily:
+            print(f"   [Limit] DAILY CAP REACHED ({daily_count}/{max_daily} trades today). Engine sleeping until midnight UTC.")
+            # We still want to monitor existing positions, so we just return from check_new_entries,
+            # NOT exit the script. Monitor logic runs in main loop separately.
+            return
+
         # Get recent signals (last 1 hour)
         one_hour_ago = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
         res = supabase.table("market_signals") \
