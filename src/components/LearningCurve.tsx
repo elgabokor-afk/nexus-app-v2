@@ -55,7 +55,7 @@ const LearningCurve: React.FC<LearningCurveProps> = ({ data }) => {
                     <Tooltip
                         contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
                         itemStyle={{ color: '#E5E7EB' }}
-                        formatter={(value: number) => [`$${value.toFixed(2)}`, 'Equity']}
+                        formatter={(value: any) => [`$${Number(value).toFixed(2)}`, 'Equity']}
                     />
                     <Area
                         type="monotone"
