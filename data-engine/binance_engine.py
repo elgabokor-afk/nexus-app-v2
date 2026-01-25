@@ -42,9 +42,9 @@ class BinanceTrader:
         if self.api_key and self.secret:
             try:
                 # Explicitly sync time to prevent timestamp errors
-                # V2700: Removed blocking call. CCXT 'adjustForTimeDifference': True handles this lazily.
-                # time_offset = self.exchange.load_time_difference()
-                # print(f"   [BINANCE] Time Sync Active (Offset: {time_offset}ms)")
+                # V3001: RESTORED Explicit Sync (User has >3s clock drift)
+                time_offset = self.exchange.load_time_difference()
+                print(f"   [BINANCE] Time Sync Active (Offset: {time_offset}ms)")
                 
                 # Test connectivity by fetching balance
                 self.exchange.fetch_balance()
@@ -138,6 +138,12 @@ class BinanceTrader:
             return None
 
         print(f"   [BINANCE] PRE-ORDER DIAGNOSTICS (MARGIN): {symbol} | Side: {side} | Target Amount: {amount}")
+
+        # V3002: EXECUTION SYMBOL MAPPING (Kraken USD -> Binance USDT)
+        # Signals coming from Scanner (Kraken) might say 'BTC/USD', but Binance Futures needs 'BTC/USDT'
+        if "/USD" in symbol and "/USDT" not in symbol:
+            symbol = symbol.replace("/USD", "/USDT")
+            print(f"   [V3002] Mapped Execution Symbol to {symbol}")
 
         try:
             # 1. Load Markets (if not loaded)

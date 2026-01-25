@@ -572,14 +572,19 @@ def check_new_entries():
 
                 # V100: LIVE EXECUTION BRIDGE
                 if TRADING_MODE == "LIVE":
-                    print(f"   [V480] EXECUTING CROSS-MARGIN ORDER: {binance_side.upper()} {abs_qty} {signal['symbol']} (Auto-Borrow)")
-                    # Note: Symbol mapping might be needed if Supabase uses different format than Binance
-                    # Binance usually expects BTCUSDT (futures)
-                    # V180: Strict Binance Futures Symbol Mapping (e.g. BTC/USD -> BTCUSDT)
-                    raw_base = signal['symbol'].split('/')[0]
-                    binance_pair = f"{raw_base}USDT"
+                    # V2904: Side Sanitization (Backport)
+                    sanitized_side = "buy" if "buy" in binance_side.lower() else "sell"
                     
-                    live_trader.execute_market_order(binance_pair, binance_side, abs_qty, leverage=leverage)
+                    print(f"   [V480] EXECUTING CROSS-MARGIN ORDER: {sanitized_side.upper()} {abs_qty} {signal['symbol']} (Auto-Borrow)")
+                    
+                    # V3005: Robust Symbol Mapping (Allows Kraken /USD signals to trade on Binance /USDT)
+                    # We prioritize the engine's internal mapping, but passing clean /USDT helps.
+                    execution_symbol = signal['symbol'].replace("/USD", "/USDT")
+                    if "USDT" not in execution_symbol and "USD" not in execution_symbol:
+                         # Fallback for plain 'BTC' -> 'BTC/USDT' if needed, or leave as is if CCXT handles it
+                         if "/" not in execution_symbol: execution_symbol += "/USDT"
+                    
+                    live_trader.execute_market_order(execution_symbol, sanitized_side, abs_qty, leverage=leverage)
 
 
                 trade_data = {

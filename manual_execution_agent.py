@@ -57,14 +57,24 @@ except Exception as e:
 
 # 3. Execution Logic
 for sig in signals:
-    symbol = sig['symbol']
-    side = sig['signal_type'].upper() # BUY/SELL
+    symbol = sig['symbol'] # V2905: Fixed Scope Error
+    raw_side = sig['signal_type'].upper()
+    side = "BUY" if "BUY" in raw_side else "SELL" if "SELL" in raw_side else None
+    
+    if not side:
+        print(f"   ⚠️ Unknown Signal Type: {raw_side}. Skipping.")
+        continue
+    
     conf = sig['confidence']
     price = sig['price']
     
-    # Map for Kraken->Binance if needed, though usually symbols match enough or need '/USDT'
-    # Assuming standard format like BTC/USDT
-    
+    # V2903: Fix Symbol Mapping (Kraken USD -> Binance USDT) gives access to Linear Futures
+    # If we pass 'LTC/USD', Binance thinks it's Inverse Futures (Contract size 1). 
+    # We want USDT-M (Linear), so we ensure '/USDT'.
+    if "/USD" in symbol and "/USDT" not in symbol:
+        symbol = symbol.replace("/USD", "/USDT")
+        print(f"   🔄 Mapped to {symbol} (USDT-M)")
+
     print(f"\nAnalyzing Candidate: {symbol} ({side}) | Conf: {conf}%")
     
     # Check if we already have a position
@@ -83,19 +93,17 @@ for sig in signals:
         print(f"   🚀 EXECUTING {side} ORDER for {symbol}...")
         
         # Determine Amount (Conservative: 15 USDT worth)
-        # Using a fixed reliable amount for safety in this manual tool
         usdt_amount = 15.0
-        quantity = usdt_amount / price
+        raw_quantity = usdt_amount / price
         
-        # Min quantity precision adjustment would be needed for prod, 
-        # but CCXT often handles basic precision if create_market_order is simple.
-        # For robustness, we try/catch the precision errors.
+        # V2903: Precision Sanitization
+        quantity = binance.amount_to_precision(symbol, raw_quantity)
         
         order = binance.create_order(
             symbol=symbol,
             type='market',
-            side=side.lower(),
-            amount=quantity,
+             side=side.lower(),
+            amount=float(quantity), # Ensure native float
             params={'leverage': 10} # Enforcing user's 10x request
         )
         
