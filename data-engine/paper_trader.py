@@ -129,7 +129,7 @@ def get_bot_params():
             "rsi_buy_threshold": 70, # V470: Aggressive (Was 30)
             "stop_loss_atr_mult": 1.5, 
             "take_profit_atr_mult": 2.5,
-            "default_leverage": 4, # User requested max x4
+            "default_leverage": 10, # V2500: Upgraded to x10
             "margin_mode": "CROSSED",
             "account_risk_pct": 0.02, # Safe default
             "min_confidence": 80, # V2200: Strict filtering (Was 60)
@@ -719,6 +719,7 @@ def monitor_positions():
                     fee_rate = float(params.get('trading_fee_pct', 0.0005))
                     
                     entry_notional = pos['entry_price'] * abs(pos['quantity'])
+                    margin = pos.get('initial_margin') or (pos['entry_price'] * abs(pos['quantity']) / (pos.get('leverage', 10)))
                     exit_notional = current_price * abs(pos['quantity'])
                     
                     total_fees = (entry_notional + exit_notional) * fee_rate
