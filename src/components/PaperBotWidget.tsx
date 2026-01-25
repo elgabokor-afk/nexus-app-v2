@@ -129,7 +129,10 @@ export default function PaperBotWidget({
 
     useEffect(() => {
         fetchPositions();
-        const interval = setInterval(fetchPositions, 2000);
+        // V550: Bandwidth Optimization (Supabase Diet)
+        // We rely on Realtime subscriptions for immediate updates.
+        // Polling is now just a safety net every 30s (reduced from 2s).
+        const interval = setInterval(fetchPositions, 30000);
 
         const channel = supabase.channel('paper_trading_updates')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'paper_positions' }, fetchPositions)
