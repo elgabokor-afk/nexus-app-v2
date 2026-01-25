@@ -104,6 +104,9 @@ def update_wallet(pnl):
     except Exception as e:
         print(f"Error updating wallet: {e}")
 
+from telegram_utils import TelegramAlerts
+tg = TelegramAlerts() # V600
+
 def get_bot_params():
     """Fetch active trading parameters from the Brain."""
     try:
@@ -714,6 +717,43 @@ def monitor_positions():
     except Exception as e:
         print(f"Error monitoring positions: {e}")
 
+def check_live_go_signal():
+    """
+    V600: Convergence Metric.
+    Checks if the last 50 Paper Trades have a Win Rate > 60%.
+    If so, notifies the user via Telegram to switch to LIVE.
+    """
+    try:
+        # Get last 50 closed trades
+        res = supabase.table("paper_positions") \
+            .select("pnl") \
+            .eq("status", "CLOSED") \
+            .order("closed_at", desc=True) \
+            .limit(50) \
+            .execute()
+            
+        trades = res.data
+        if not trades or len(trades) < 50:
+            return
+            
+        wins = [t for t in trades if float(t.get('pnl', 0)) > 0]
+        win_rate = (len(wins) / len(trades)) * 100
+        
+        print(f"   [V600 MONITOR] Current Training Win Rate: {win_rate:.1f}% ({len(wins)}/50)")
+        
+        if win_rate >= 60:
+            # Check if we already notified recently to avoid spam (e.g. within 24h)
+            # For simplicity, we just send it if the threshold is met
+            msg = f"🏆 COSMOS AI SIGNAL: TRAINING GOAL REACHED!\n\n" \
+                  f"El Win Rate en las últimas 50 operaciones simuladas es del {win_rate:.1f}%.\n" \
+                  f"Cosmos ha superado el umbral del 60% y está listo para operar en Binance Futures REAL.\n\n" \
+                  f"🚀 Sugerencia: Cambia TRADING_MODE=LIVE en tu .env para iniciar."
+            tg.send_msg(msg)
+            print("   [V600] Threshold reached! Telegram notification sent.")
+            
+    except Exception as e:
+        print(f"Error checking go signal: {e}")
+
 def main():
     print("--- NEXUS PAPER TRADER STARTED ---")
     
@@ -728,6 +768,9 @@ def main():
         sync_live_status()
         
         check_new_entries()
+        
+        # V600: Periodic Metrics Check
+        check_live_go_signal()
         monitor_positions()
         time.sleep(10) # Run every 10 seconds
 

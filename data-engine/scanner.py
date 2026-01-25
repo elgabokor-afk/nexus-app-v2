@@ -18,6 +18,7 @@ ASSET_BLACKLIST = ['PEPE', 'PEPE/USDT', 'PEPE/USD', 'DOGE', 'DOGE/USDT']
 
 # V310: Import Binance Engine for unified data/execution
 from binance_engine import live_trader
+from smc_engine import smc_engine # V560 SMC Integration
 
 # V410: Global Config Loading
 config_path = os.path.join(parent_dir, "config", "conf_global.json")
@@ -185,7 +186,7 @@ def fetch_fear_greed():
         print(f"Warning: Could not fetch Fear & Greed Index: {e}")
     return 50 # Default Neutral
 
-def analyze_quant_signal(symbol, tech_analysis, sentiment_score=50):
+def analyze_quant_signal(symbol, tech_analysis, df=None, sentiment_score=50):
     """
     Combines Technicals (RSI/EMA/MACD) with Quant Data (Order Book)
     using DYNAMIC WEIGHTS from the Optimizer.
@@ -240,13 +241,21 @@ def analyze_quant_signal(symbol, tech_analysis, sentiment_score=50):
     
     # V8 COSMOS AI PREDICTION
     # Ask the Brain: "What are the odds?"
+    # V560: Smart Money Concepts Analysis
+    smc_details = {}
+    if df is not None:
+        smc_details = smc_engine.analyze(df)
+        if smc_details:
+             print(f"   [SMC] Analysis for {symbol}: {smc_details}")
+
     features = {
         'rsi_value': rsi,
         'imbalance_ratio': imbalance,
         'spread_pct': spread_pct,
         'atr_value': tech_analysis['atr'],
         'macd_line': tech_analysis['macd'],
-        'histogram': tech_analysis['histogram']
+        'histogram': tech_analysis['histogram'],
+        'smc_details': smc_details # V560
     }
     ai_prob = brain.predict_success(features) # Returns 0.0 to 1.0 (e.g., 0.65)
     
@@ -380,36 +389,57 @@ def main():
                 if any(b in symbol.upper() for b in ASSET_BLACKLIST):
                     continue
                 
-                # V410: Multi-Timeframe Confluence (5m & 15m)
-                # We analyze the faster timeframe (5m) for entries, confirmed by 15m trend.
+                # V600: Multi-Timeframe Confluence (5m, 15m, 1h)
+                # We analyze 5m for entry, confirmed by 15m momentum and 1h Trend.
                 df_5m = fetch_data(symbol, timeframe='5m', limit=100)
                 df_15m = fetch_data(symbol, timeframe='15m', limit=100)
+                df_1h = fetch_data(symbol, timeframe='1h', limit=100)
                 
                 techs_5m = analyze_market(df_5m)
                 techs_15m = analyze_market(df_15m)
+                techs_1h = analyze_market(df_1h)
                 
-                if techs_5m and techs_15m:
-                    # Logic: 5m signal MUST align with 15m EMA_200 trend
-                    ma_15m = techs_15m['ema_200']
+                if techs_5m and techs_15m and techs_1h:
+                    # 1. EMA 200 Trend Filter (1h)
+                    ma_1h = techs_1h['ema_200']
                     p_5m = techs_5m['price']
-                    trend_15m = "BULLISH" if p_5m > ma_15m else "BEARISH"
+                    trend_1h = "BULLISH" if p_5m > ma_1h else "BEARISH"
+
+                    # 2. Volume Confirmation (V600)
+                    avg_vol_5m = df_5m['volume'].tail(20).mean()
+                    curr_vol_5m = df_5m.iloc[-1]['volume']
+                    is_high_volume = curr_vol_5m > avg_vol_5m
                     
                     # Upgrade to V4 Analysis with Confluence
-                    quant_signal = analyze_quant_signal(symbol, techs_5m, sentiment_score=fng_index)
+                    quant_signal = analyze_quant_signal(symbol, techs_5m, df=df_5m, sentiment_score=fng_index)
+                    
+                    # V600: Consult Brain with Dynamic Backtesting
+                    should_trade, ai_conf, ai_reason = brain.decide_trade(
+                        symbol=symbol,
+                        signal_type=quant_signal['signal'] if quant_signal else "NEUTRAL",
+                        features=quant_signal if quant_signal else {},
+                        df_5m=df_5m,
+                        min_conf=params.get('min_confidence', 0.90)
+                    )
                     
                     if quant_signal:
-                        # V410: STRENGTHEN FILTER - Confluence check
-                        # If 5m signal is BUY, 15m MUST be BULLISH
-                        if "BUY" in quant_signal['signal'] and trend_15m != "BULLISH":
-                            print(f"   [V410 FILTER] {symbol} 5m BUY rejected: 15m Trend is BEARISH.")
+                        # V600: HARD FILTERS
+                        # A. Trend Alignment (1h)
+                        if "BUY" in quant_signal['signal'] and trend_1h != "BULLISH":
+                            print(f"   [V600 FILTER] {symbol} 5m BUY rejected: 1H Trend is BEARISH.")
                             quant_signal = None
-                        elif "SELL" in quant_signal['signal'] and trend_15m != "BEARISH":
-                            print(f"   [V410 FILTER] {symbol} 5m SELL rejected: 15m Trend is BULLISH.")
+                        elif "SELL" in quant_signal['signal'] and trend_1h != "BEARISH":
+                            print(f"   [V600 FILTER] {symbol} 5m SELL rejected: 1H Trend is BULLISH.")
+                            quant_signal = None
+                        
+                        # B. Volume Confirmation
+                        if quant_signal and not is_high_volume:
+                            print(f"   [V600 FILTER] {symbol} signal rejected: Low Volume Confirmation.")
                             quant_signal = None
 
                     if quant_signal:
                         print(f"[{symbol}] Price: {quant_signal['price']} | RSI: {quant_signal['rsi']} | Imb: {quant_signal['imbalance']}")
-                        print(f"   >>> V410 CONFLUENCE SIGNAL: {quant_signal['signal']} ({quant_signal['confidence']}%) | Trend(15m): {trend_15m}")
+                        print(f"   >>> V600 CONFLUENCE SIGNAL: {quant_signal['signal']} ({quant_signal['confidence']}%) | Trend(1h): {trend_1h} | Vol: OK")
                         
                         # ... (DB Insert Logic) ...
                         # 1. Insert Base Signal

@@ -22,7 +22,7 @@ class BinanceTrader:
             'secret': self.secret,
             'enableRateLimit': True,
             'options': {
-                'defaultType': 'margin', # SPOT MARGIN
+                'defaultType': 'swap', # V600: BINANCE FUTURES (USDT-M)
                 'adjustForTimeDifference': True,
                 'recvWindow': 60000 
             }
@@ -53,15 +53,14 @@ class BinanceTrader:
                 print(f"   [BINANCE] Connectivity error: {e}")
 
     def get_live_balance(self):
-        """Fetch real USDT balance from Binance Margin Wallet."""
+        """Fetch real USDT balance from Binance Futures Wallet."""
         if not self.is_connected: return 0
         try:
-            # V210: Fetching base margin info
-            balance = self.exchange.fetch_balance({'type': 'margin'})
-            # We look at totalMarginEquity which accounts for loans/debt
-            return float(balance['info'].get('totalMarginEquity', balance['total'].get('USDT', 0)))
+            # V600: Fetching swap/futures balance
+            balance = self.exchange.fetch_balance({'type': 'swap'})
+            return float(balance.get('USDT', {}).get('free', balance['total'].get('USDT', 0)))
         except Exception as e:
-            print(f"   [BINANCE] Error fetching margin balance: {e}")
+            print(f"   [BINANCE] Error fetching futures balance: {e}")
             return 0
 
     def get_margin_level(self):
@@ -132,18 +131,13 @@ class BinanceTrader:
                 print("   [BINANCE] Loading market data...")
                 self.exchange.load_markets()
 
-            # V180: Flexible Symbol Resolution
-            if symbol not in self.exchange.markets:
-                found = False
-                for m_id, m_data in self.exchange.markets.items():
-                    if m_data.get('id') == symbol:
-                        symbol = m_id
-                        found = True
-                        break
-                
-                if not found:
-                    print(f"   [BINANCE] ERROR: Symbol {symbol} not found in Binance Margin markets.")
-                    return None
+            # V600: Set Leverage (Hard capped at 5x)
+            target_leverage = min(leverage, 5)
+            try:
+                self.exchange.set_leverage(target_leverage, symbol)
+                print(f"   [BINANCE] Leverage set to {target_leverage}x for {symbol}")
+            except Exception as lv_err:
+                print(f"   [BINANCE] Leverage warning: {lv_err}")
 
             # 2. Precision Handling
             clean_amount = self.exchange.amount_to_precision(symbol, amount)
@@ -153,16 +147,10 @@ class BinanceTrader:
                 print(f"   [BINANCE] ERROR: Amount {clean_amount} is too small.")
                 return None
 
-            # 4. Final Execution (V215: Use MARGIN_BUY for auto-borrowing)
-            print(f"   [BINANCE] EXECUTING MARGIN ORDER (AUTO-BORROW): {side.upper()} {clean_amount} {symbol}")
-            # V440: Explicit Auto-Borrow for Cross Margin
-            params = {'sideEffectType': 'MARGIN_BUY'} 
-            if side.upper() == 'SELL':
-                 # For closing, we AUTO_REPAY
-                 params = {'sideEffectType': 'AUTO_REPAY'}
-            
-            order = self.exchange.create_market_order(symbol, side, clean_amount, params)
-            print(f"   [BINANCE] SUCCESS: Order ID {order.get('id')} executed on Margin.")
+            # 4. Final Execution (V600: Standard Futures Market Order)
+            print(f"   [BINANCE] EXECUTING FUTURES ORDER: {side.upper()} {clean_amount} {symbol}")
+            order = self.exchange.create_market_order(symbol, side, clean_amount)
+            print(f"   [BINANCE] SUCCESS: Order ID {order.get('id')} executed on Futures.")
             return order
         except Exception as e:
             print(f"   [BINANCE] CRITICAL MARGIN ERROR: {e}")
@@ -171,32 +159,27 @@ class BinanceTrader:
 
     def get_open_positions(self):
         """
-        Fetch active positions for Spot Margin.
-        In Margin, a 'position' is an asset with debt or a non-zero balance.
+        Fetch active positions for Binance Futures (swap).
         """
         if not self.is_connected: return []
         try:
-            # For Spot Margin, we check the account balance info
-            balance = self.exchange.fetch_balance({'type': 'margin'})
+            # V600: Fetching real futures positions
+            positions = self.exchange.fetch_positions()
             active_positions = []
             
-            # Map the response to the format reconcile_positions expects
-            # Expects: {'symbol': '...', 'contracts': '...', 'side': 'long'|'short', 'entryPrice': '...'}
-            for asset, data in balance['total'].items():
-                if data > 0 and asset != 'USDT':
-                    # Check if there is debt (Short)
-                    debt = float(balance['info']['userAssets'][0].get('borrowed', 0)) # This needs careful parsing
-                    # Simplification: For the bot's needs, we just report the active asset
+            for pos in positions:
+                contracts = float(pos.get('contracts', 0) or 0)
+                if contracts > 0:
                     active_positions.append({
-                        'symbol': f"{asset}/USDT",
-                        'contracts': data,
-                        'side': 'long', # Simplification for now
-                        'entryPrice': 0, # Cannot easily get entry price from margin balance
-                        'unrealizedPnl': 0
+                        'symbol': pos['symbol'],
+                        'contracts': contracts,
+                        'side': pos['side'],
+                        'entryPrice': float(pos.get('entryPrice', 0) or 0),
+                        'unrealizedPnl': float(pos.get('unrealizedPnl', 0) or 0)
                     })
             return active_positions
         except Exception as e:
-            print(f"   [BINANCE] Error fetching margin positions: {e}")
+            print(f"   [BINANCE] Error fetching futures positions: {e}")
             return []
 
 # Singleton for easy access

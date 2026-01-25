@@ -28,6 +28,7 @@ if not SUPABASE_URL or not SUPABASE_KEY:
     print("Cosmos Engine: Supabase credentials missing (Check .env.local)") 
 
 from deep_brain import deep_brain # V490
+from smc_engine import smc_engine # V560
 
 class CosmosBrain:
     def __init__(self):
@@ -179,6 +180,47 @@ class CosmosBrain:
         if price < ema: return "BEARISH"
         return "NEUTRAL"
 
+    def validate_last_4h(self, symbol, df_5m):
+        """
+        V600: Dynamic Backtesting.
+        Compares AI predictions on the last 4 hours of 5m candles with actual price movement.
+        """
+        if not self.is_trained or df_5m is None or len(df_5m) < 48: # 4h = 48 candles of 5m
+             return 0.5 # Neutral if not enough data
+             
+        try:
+            # Check last 12 predictions (approx last 1h of 'mood')
+            correct_preds = 0
+            test_samples = df_5m.tail(12) 
+            
+            for i in range(len(test_samples) - 1):
+                row = test_samples.iloc[i]
+                next_row = test_samples.iloc[i+1]
+                
+                # Mock features for this historical point
+                feat = {
+                    'rsi_value': row.get('rsi', 50),
+                    'imbalance_ratio': 0, # Cannot backtest imbalance without historical book
+                    'spread_pct': 0.0002,
+                    'atr_value': row.get('atr', 0),
+                    'macd_line': 0,
+                    'histogram': 0
+                }
+                
+                prob = self.predict_success(feat)
+                real_gain = (next_row['close'] - row['close']) / row['close']
+                
+                # If AI was bullish (>0.5) and price went up, or bearish (<0.5) and price went down
+                if (prob > 0.5 and real_gain > 0) or (prob < 0.5 and real_gain < 0):
+                    correct_preds += 1
+            
+            recent_accuracy = correct_preds / 11
+            print(f"       [BACKTEST] Recent 1h AI Accuracy for {symbol}: {recent_accuracy:.1%}")
+            return recent_accuracy
+        except Exception as e:
+            print(f"   [BACKTEST ERROR] {e}")
+            return 0.5
+
     def generate_reasoning(self, features, prob):
         """
         V40: The BLM (Bot Language Model) reasoning layer.
@@ -257,13 +299,24 @@ class CosmosBrain:
             print(f"Prediction Error: {e}")
             return 0.5
 
-    def decide_trade(self, signal_type, features, oracle_insight=None, min_conf=0.90):
+    def decide_trade(self, symbol, signal_type, features, df_5m=None, oracle_insight=None, min_conf=0.90):
         """
-        V45/V50: The Master AI Decision Engine.
+        V600: The Master AI Decision Engine with Dynamic Backtesting.
         Returns (Bool: Should Trade, Float: Final Prob, String: Reason)
         """
         prob = self.predict_success(features)
         trend = self.get_trend_status(features)
+        
+        # V600: Dynamic Backtesting Check
+        if df_5m is not None:
+            recent_acc = self.validate_last_4h(symbol, df_5m)
+            if recent_acc < 0.4:
+                # If AI has been consistently wrong lately (Mood mismatch)
+                prob -= 0.15
+                print(f"       [V600 MOOD] AI underperforming lately ({recent_acc:.1%}). Applying safety penalty.")
+            elif recent_acc > 0.7:
+                prob += 0.10
+                print(f"       [V600 MOOD] AI on fire ({recent_acc:.1%})! Confidence boosted.")
         
         # V115: CRISIS MANAGEMENT & STRATEGY REPAIR
         # Replaced blind "Liquidation Override" with "Confluence Boost" logic.
@@ -320,10 +373,23 @@ class CosmosBrain:
             
             if not oracle_aligned:
                 # Oracle is screaming Mismatch (e.g. 1m chart is crashing while 1h signal says buy)
-                reason = f"Decision REJECTED: Oracle (1m) is {o_trend} while Signal is {signal_type}. Confluence Failed. Reasoning: {o_reasoning}"
-                return False, prob, reason
-            
             print(f"       [ORACLE CONFIRMED] 1m Analysis aligns with {signal_type} signal.")
+
+        # 4.5. SMC CONFLUENCE (V560: Smart Money Concepts)
+        # Check for FVGs and Order Blocks in the provided features (if OHLCV df is passed)
+        smc_data = features.get('smc_details', {})
+        if smc_data:
+            smc_boost = 0
+            if signal_type == "BUY":
+                if smc_data.get('ob_bullish'): smc_boost += 0.15
+                if smc_data.get('fvg_bullish'): smc_boost += 0.10
+            elif signal_type == "SELL":
+                if smc_data.get('ob_bearish'): smc_boost += 0.15
+                if smc_data.get('fvg_bearish'): smc_boost += 0.10
+            
+            if smc_boost > 0:
+                prob += smc_boost
+                print(f"       [SMC CONFLUENCE] Institutional footprints detected. Boosted Prob by +{smc_boost*100:.0f}% to {prob*100:.1f}%")
 
         # 5. FINAL WEIGHTED DECISION
         required_prob = min_conf

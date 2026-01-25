@@ -2,18 +2,21 @@
     "paper_trade_enabled": true,
     "analysis_timeframes": [
         "5m",
-        "15m"
+        "15m",
+        "1h"
     ],
     "priority_assets": [
         "BTC/USDT",
-        "SOL/USDT"
+        "ETH/USDT"
     ],
     "trading_pairs": [
         "BTC/USDT",
+        "ETH/USDT",
         "SOL/USDT",
-        "ETH/USDT"
+        "BNB/USDT",
+        "XRP/USDT"
     ],
-    "connector_type": "binance_margin",
+    "connector_type": "binance_futures",
     "margin_mode": "CROSSED",
-    "leverage_limit": 3
+    "leverage_limit": 5
 }

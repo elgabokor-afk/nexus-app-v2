@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { TrendingUp, TrendingDown, Zap, Activity, AlertCircle, RefreshCw, Layers } from 'lucide-react';
+import LearningCurve from './LearningCurve'; // V600
 
 interface Position {
     id: number;
@@ -156,6 +157,11 @@ export default function PaperBotWidget({
 
     return (
         <div className="flex flex-col h-full">
+            {/* V600: Learning Curve Monitor */}
+            <div className="px-6 pt-6">
+                <LearningCurve />
+            </div>
+
             {/* WALLET SUMMARY */}
             <div className="p-6 border-b border-white/5 bg-white/[0.01]">
                 <div className="grid grid-cols-2 gap-4">
