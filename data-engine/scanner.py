@@ -32,7 +32,7 @@ PRIORITY_ASSETS = GLOBAL_CONFIG.get("priority_assets", ["BTC/USDT", "SOL/USDT"])
 ANALYSIS_TIMEFRAMES = GLOBAL_CONFIG.get("analysis_timeframes", ["5m", "15m"])
 SYMBOLS = GLOBAL_CONFIG.get("trading_pairs", ["BTC/USDT", "SOL/USDT", "ETH/USDT"])
 
-print("--- BINANCE DATA ENGINE ACTIVE (V310 Migration) ---")
+print("--- KRAKEN DATA ENGINE ACTIVE (V2600 Priority) ---")
 
 def calculate_rsi(series, period=14):
     delta = series.diff()

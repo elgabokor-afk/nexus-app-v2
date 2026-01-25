@@ -75,40 +75,53 @@ class BinanceTrader:
             print(f"   [BINANCE] Error fetching margin level: {e}")
             return 999.0
 
-    # V310: MARKET DATA CAPABILITIES
+    def _map_symbol_to_kraken(self, symbol):
+        """Standardizes symbols for Kraken (USDT -> USD)."""
+        if not symbol: return symbol
+        return symbol.replace("/USDT", "/USD")
+
+    # V2600: MARKET DATA CAPABILITIES (Kraken Primary)
     def fetch_ohlcv(self, symbol, timeframe='1h', limit=100):
-        """Fetch historical candle data (V311: with Kraken Fallback)."""
+        """Fetch historical candle data (V2600: Kraken Primary)."""
+        kraken_symbol = self._map_symbol_to_kraken(symbol)
         try:
-            return self.exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
+            # Try Kraken First
+            return self.fallback_exchange.fetch_ohlcv(kraken_symbol, timeframe, limit=limit)
         except Exception as e:
-            if "451" in str(e):
-                print(f"   [V311 FALLBACK] Binance Blocked (451). Trying Kraken for {symbol}...")
-                # Kraken uses /USD instead of /USDT for some pairs, but CCXT handles it well
-                return self.fallback_exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
-            print(f"   [BINANCE] Error fetching OHLCV for {symbol}: {e}")
-            return []
+            print(f"   [KRAKEN] Fetch OHLCV failed for {kraken_symbol}: {e}. Falling back to Binance...")
+            try:
+                return self.exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
+            except Exception as b_err:
+                print(f"   [BINANCE] Fallback Fetch OHLCV failed for {symbol}: {b_err}")
+                return []
 
     def fetch_ticker(self, symbol):
-        """Fetch real-time price info (V311: with Kraken Fallback)."""
+        """Fetch real-time price info (V2600: Kraken Primary)."""
+        kraken_symbol = self._map_symbol_to_kraken(symbol)
         try:
-            return self.exchange.fetch_ticker(symbol)
+            # Try Kraken First
+            return self.fallback_exchange.fetch_ticker(kraken_symbol)
         except Exception as e:
-            if "451" in str(e):
-                print(f"   [V311 FALLBACK] Binance Blocked (451). Trying Kraken price for {symbol}...")
-                return self.fallback_exchange.fetch_ticker(symbol)
-            print(f"   [BINANCE] Error fetching ticker for {symbol}: {e}")
-            return None
+            print(f"   [KRAKEN] Fetch Ticker failed for {kraken_symbol}: {e}. Falling back to Binance...")
+            try:
+                return self.exchange.fetch_ticker(symbol)
+            except Exception as b_err:
+                print(f"   [BINANCE] Fallback Fetch Ticker failed for {symbol}: {b_err}")
+                return None
 
     def fetch_order_book(self, symbol, limit=50):
-        """Fetch L2 Order Book (V311: with Kraken Fallback)."""
+        """Fetch L2 Order Book (V2600: Kraken Primary)."""
+        kraken_symbol = self._map_symbol_to_kraken(symbol)
         try:
-            return self.exchange.fetch_order_book(symbol, limit=limit)
+            # Try Kraken First
+            return self.fallback_exchange.fetch_order_book(kraken_symbol, limit=limit)
         except Exception as e:
-            if "451" in str(e):
-                print(f"   [V311 FALLBACK] Binance Blocked (451). Trying Kraken books for {symbol}...")
-                return self.fallback_exchange.fetch_order_book(symbol, limit=limit)
-            print(f"   [BINANCE] Error fetching order book for {symbol}: {e}")
-            return None
+            print(f"   [KRAKEN] Fetch Order Book failed for {kraken_symbol}: {e}. Falling back to Binance...")
+            try:
+                return self.exchange.fetch_order_book(symbol, limit=limit)
+            except Exception as b_err:
+                print(f"   [BINANCE] Fallback Fetch Order Book failed for {symbol}: {b_err}")
+                return None
 
     def execute_market_order(self, symbol, side, amount, leverage=1):
         """
