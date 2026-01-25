@@ -29,6 +29,8 @@ if not SUPABASE_URL or not SUPABASE_KEY:
 
 from deep_brain import deep_brain # V490
 from smc_engine import smc_engine # V560
+from deepseek_engine import deepseek_engine # V700
+from openai_engine import openai_engine # V800
 
 class CosmosBrain:
     def __init__(self):
@@ -221,11 +223,22 @@ class CosmosBrain:
             print(f"   [BACKTEST ERROR] {e}")
             return 0.5
 
-    def generate_reasoning(self, features, prob):
+    def generate_reasoning(self, symbol, signal_type, features, prob):
         """
-        V40: The BLM (Bot Language Model) reasoning layer.
-        Converts technical data into high-level strategic thoughts.
+        V800: Master Reasoning Layer.
+        Prioritizes OpenAI (GPT-4o), then DeepSeek, then Local BLM logic.
         """
+        # 1. Primary: OpenAI (V800)
+        openai_reason = openai_engine.generate_trade_narrative(symbol, signal_type, features)
+        if openai_reason:
+            return f"[GPT] {openai_reason}"
+
+        # 2. Secondary: DeepSeek (V700)
+        deep_reason = deepseek_engine.generate_deep_reasoning(symbol, signal_type, features)
+        if deep_reason:
+            return f"[DS] {deep_reason}"
+
+        # 3. Fallback: Local Heuristic
         rsi = features.get('rsi_value', 50)
         imb = features.get('imbalance_ratio', 0)
         macd_h = features.get('histogram', 0)
@@ -402,7 +415,7 @@ class CosmosBrain:
             
         should_trade = prob >= required_prob
         
-        reasoning = self.generate_reasoning(features, prob)
+        reasoning = self.generate_reasoning(symbol, signal_type, features, prob) # V700
         final_reason = f"AI {'DECIDED TO TRADE' if should_trade else 'REJECTED'}: Confidence: {prob*100:.1f}%. Target: {required_prob*100:.1f}%. Context: {reasoning}"
         
         return should_trade, prob, final_reason
@@ -485,7 +498,7 @@ class CosmosBrain:
                 "score": round(score, 2),
                 "prob": prob,
                 "trend": trend,
-                "reasoning": self.generate_reasoning(features, prob)
+                "reasoning": self.generate_reasoning(symbol, sig_type, features, prob) # V700
             })
             
         return sorted(ranked, key=lambda x: x['score'], reverse=True)
