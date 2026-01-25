@@ -25,11 +25,14 @@ try:
         'enableRateLimit': True,
         'options': {
             'defaultType': 'swap', # Futures
-            'adjustForTimeDifference': True
+            'adjustForTimeDifference': True,
+            'recvWindow': 60000 # V2901: Max tolerance for clock drift
         }
     })
-    binance.load_markets()
-    print("✅ Binance Connected.")
+    
+    # V2901: Force Time Sync
+    offset = binance.load_time_difference()
+    print(f"✅ Binance Connected. Time Offset: {offset}ms")
 except Exception as e:
     print(f"❌ Binance Connection Failed: {e}")
     exit()
@@ -39,11 +42,10 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 # 2. Fetch Active Signals Analysis
 print("\nScanning 'market_signals' for opportunities...")
 try:
-    # Get signals from last 6 hours to ensure relevance
     response = supabase.table("market_signals") \
         .select("*") \
         .gt("confidence", 70) \
-        .order("created_at", desc=True) \
+        .order("timestamp", desc=True) \
         .limit(20) \
         .execute()
     
