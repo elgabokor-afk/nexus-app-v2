@@ -13,7 +13,17 @@ load_dotenv(dotenv_path=os.path.join(parent_dir, '.env.local'))
 
 class RedisEngine:
     def __init__(self):
-        self.redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
+        # V1101: HA Zero-Config - Auto-detect Railway Internal Redis
+        self.redis_url = os.getenv("REDIS_URL")
+        if not self.redis_url:
+            host = os.getenv("REDISHOST")
+            port = os.getenv("REDISPORT")
+            user = os.getenv("REDISUSER", "default")
+            pw = os.getenv("REDISPASSWORD")
+            if host and port and pw:
+                self.redis_url = f"redis://{user}:{pw}@{host}:{port}"
+            else:
+                self.redis_url = "redis://localhost:6379"
         try:
             self.client = redis.from_url(self.redis_url, decode_responses=True)
             self.client.ping()
