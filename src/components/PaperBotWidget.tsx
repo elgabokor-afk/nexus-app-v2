@@ -80,54 +80,10 @@ export default function PaperBotWidget({
         }
     };
 
-    useEffect(() => {
-        const openSymbols = positions
-            .filter(p => p.status === 'OPEN')
-            .map(p => p.symbol.toUpperCase())
-            .filter((v, i, a) => a.indexOf(v) === i);
-
-        if (openSymbols.length === 0) return;
-
-        const ws = new WebSocket('wss://ws.kraken.com');
-
-        ws.onopen = () => {
-            const payload = {
-                event: 'subscribe',
-                pair: openSymbols,
-                subscription: { name: 'ticker' }
-            };
-            ws.send(JSON.stringify(payload));
-        };
-
-        ws.onmessage = (event) => {
-            try {
-                const data = JSON.parse(event.data);
-                if (Array.isArray(data)) {
-                    const ticker = data[1];
-                    let pair = data[3];
-
-                    if (pair) {
-                        pair = pair.toUpperCase().replace('XBT', 'BTC').replace('XDG', 'DOGE');
-                    }
-
-                    if (ticker && ticker.c && pair) {
-                        const currentPrice = parseFloat(ticker.c[0]);
-                        // Normalize the pair for matching (e.g., BTC/USD -> BTC/USDT)
-                        const usdtPair = pair.includes('/USD') ? pair.replace('/USD', '/USDT') : pair;
-                        setPrices(prev => ({
-                            ...prev,
-                            [pair]: currentPrice,
-                            [usdtPair]: currentPrice
-                        }));
-                    }
-                }
-            } catch (e) { }
-        };
-
-        return () => {
-            ws.close();
-        };
-    }, [positions]);
+    // V1100: REMOVED Direct Kraken WS.
+    // We now rely 100% on the Redis Bridge (useLiveStream) to receive 
+    // unified price updates synced with the backend scanner.
+    // This ensures "Mirror Mode" - what the bot sees is what you see.
 
     const { lastMessage } = useLiveStream(['live_positions', 'live_prices']);
 
@@ -171,7 +127,7 @@ export default function PaperBotWidget({
         <div className="flex flex-col h-full">
             {/* V600: Learning Curve Monitor */}
             <div className="px-6 pt-6">
-                <LearningCurve />
+                <LearningCurve data={[]} />
             </div>
 
             {/* WALLET SUMMARY */}
