@@ -339,7 +339,7 @@ def main():
             fng_index = fetch_fear_greed()
             
             # V12.0: RISK GUARD CHECK
-            params = get_bot_params()
+            params = get_dynamic_weights()
             active_positions = get_active_position_count()
             
             # Max Positions Limit
