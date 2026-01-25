@@ -222,7 +222,9 @@ def archive_zombies():
 
 def sync_live_status():
     """V145: REAL-TIME SYNC & LEARNING (Detect External Closures/Liqs)"""
-    if TRADING_MODE != "LIVE": return
+    # V250: DISABLED BY USER REQUEST (Trust Dashboard Signals)
+    # if TRADING_MODE != "LIVE": return
+    return # Force Disable Reality Check
 
     try:
         # 1. Get Live Positions
