@@ -1,7 +1,8 @@
 'use client';
 
 import { createChart, ColorType, ISeriesApi, AreaSeries } from 'lightweight-charts';
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { useLiveStream } from '@/hooks/useLiveStream'; // V900
 
 interface ChartProps {
     data: { time: string | number; value: number }[];
@@ -27,6 +28,19 @@ export const ChartComponent: React.FC<ChartProps> = (props) => {
     } = props;
 
     const chartContainerRef = useRef<HTMLDivElement>(null);
+    const seriesRef = useRef<ISeriesApi<"Area"> | null>(null);
+    const { lastMessage } = useLiveStream(["live_prices"]);
+
+    useEffect(() => {
+        if (lastMessage && lastMessage.channel === "live_prices" && seriesRef.current) {
+            const { price, time } = lastMessage.data;
+            // Append new point
+            seriesRef.current.update({
+                time: time,
+                value: price
+            });
+        }
+    }, [lastMessage]);
 
     useEffect(() => {
         if (!chartContainerRef.current) return;
@@ -56,11 +70,8 @@ export const ChartComponent: React.FC<ChartProps> = (props) => {
             bottomColor: areaBottomColor,
         });
 
-        // Format data for chart
-        // Note: Lightweight charts expects time as string 'yyyy-mm-dd' or unix timestamp
-        // For this MVP demo, we assume data is formatted correctly or we might need to map it.
-        // If data comes as full timestamp strings, we might need to convert.
-        // For simplicity, let's assume the parent passes correct data or we just pass it through.
+        seriesRef.current = newSeries;
+
         if (data && data.length > 0) {
             newSeries.setData(data as any);
         }
@@ -71,6 +82,7 @@ export const ChartComponent: React.FC<ChartProps> = (props) => {
         return () => {
             resizeObserver.disconnect();
             chart.remove();
+            seriesRef.current = null;
         };
     }, [data, backgroundColor, lineColor, textColor, areaTopColor, areaBottomColor]);
 

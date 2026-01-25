@@ -19,6 +19,7 @@ ASSET_BLACKLIST = ['PEPE', 'PEPE/USDT', 'PEPE/USD', 'DOGE', 'DOGE/USDT']
 # V310: Import Binance Engine for unified data/execution
 from binance_engine import live_trader
 from smc_engine import smc_engine # V560 SMC Integration
+from redis_engine import redis_engine # V900 Real-Time
 
 # V410: Global Config Loading
 config_path = os.path.join(parent_dir, "config", "conf_global.json")
@@ -400,6 +401,13 @@ def main():
                 techs_1h = analyze_market(df_1h)
                 
                 if techs_5m and techs_15m and techs_1h:
+                    # V900: Broadcast live price to Redis for UI charts
+                    redis_engine.publish("live_prices", {
+                        "symbol": symbol,
+                        "price": techs_5m['price'],
+                        "time": now.timestamp()
+                    })
+                    
                     # 1. EMA 200 Trend Filter (1h)
                     ma_1h = techs_1h['ema_200']
                     p_5m = techs_5m['price']

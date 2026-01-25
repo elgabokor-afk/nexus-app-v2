@@ -10,6 +10,8 @@ load_dotenv(dotenv_path='../.env.local')
 url: str = os.environ.get("NEXT_PUBLIC_SUPABASE_URL")
 key: str = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
 
+from redis_engine import redis_engine # V900
+
 client = None
 
 if url and key:
@@ -24,10 +26,59 @@ if url and key:
     }
     # We can use simple requests or the postgrest-py lib.
     # Actually, requests is easiest and most robust without build tools.
-    import requests
+import requests
     client = requests.Session()
     client.headers.update(headers)
     client.base_url = base_url
+
+import threading
+import queue
+import time
+
+class SupabaseBatchWriter:
+    def __init__(self, flush_interval=0.5, batch_size=10):
+        self.queue = queue.Queue()
+        self.flush_interval = flush_interval
+        self.batch_size = batch_size
+        self.stop_event = threading.Event()
+        self.thread = threading.Thread(target=self._worker, daemon=True)
+        self.thread.start()
+
+    def add_to_batch(self, table, data):
+        self.queue.put((table, data))
+
+    def _worker(self):
+        while not self.stop_event.is_set():
+            batch = []
+            start_time = time.time()
+            
+            # Collect batch
+            while len(batch) < self.batch_size and (time.time() - start_time) < self.flush_interval:
+                try:
+                    item = self.queue.get(timeout=0.1)
+                    batch.append(item)
+                except queue.Empty:
+                    break
+            
+            if batch:
+                # Group by table
+                grouped = {}
+                for table, data in batch:
+                    if table not in grouped: grouped[table] = []
+                    grouped[table].append(data)
+                
+                # Flush to Supabase
+                for table, items in grouped.items():
+                    try:
+                        url = f"{client.base_url}/{table}"
+                        # Simple POST for multiple items is supported by Supabase (array of objects)
+                        client.post(url, json=items)
+                    except Exception as e:
+                        print(f"   [DB BATCH ERROR] {e}")
+            
+            time.sleep(0.01)
+
+batch_writer = SupabaseBatchWriter()
 
 def insert_signal(symbol, price, rsi, signal_type, confidence, stop_loss=0, take_profit=0, atr_value=0, volume_ratio=0):
     if not client:
@@ -46,23 +97,12 @@ def insert_signal(symbol, price, rsi, signal_type, confidence, stop_loss=0, take
     }
     
     try:
-        # POST to /market_signals
-        # POST to /market_signals
-        # Prefer=return=representation header tells Supabase to return the created object
-        url = f"{client.base_url}/market_signals"
-        client.headers.update({"Prefer": "return=representation"})
-        
-        resp = client.post(url, json=data)
-        
-        if resp.status_code in [200, 201]:
-            result = resp.json()
-            if result and len(result) > 0:
-                print(f"   >>> DB Insert: {symbol} Signal Saved (ID: {result[0]['id']})")
-                return result[0]['id']
-            return None
-        else:
-             print(f"   !!! DB Error: {resp.status_code} - {resp.text}")
-             return None
+        # V900: INSTANT BROADCAST TO REDIS (Latency < 10ms)
+        redis_engine.publish("live_signals", data)
+
+        # Queue for Supabase Batching (persistence)
+        batch_writer.add_to_batch("market_signals", data)
+        return "queued_v9" # Return a placeholder as we don't have the ID yet
 
     except Exception as e:
         print(f"   !!! DB Error: {e}")
@@ -88,12 +128,11 @@ def insert_analytics(signal_id, ema_200, rsi_value, atr_value, imbalance_ratio, 
     }
     
     try:
-        url = f"{client.base_url}/analytics_signals"
-        resp = client.post(url, json=data)
-        if resp.status_code in [200, 201]:
-             print(f"   >>> DB Analytics: Extended Metrics Saved for Signal #{signal_id}")
-        else:
-             print(f"   !!! DB Analytics Fail: {resp.status_code} - {resp.text}")
+        # V900: Broadcast analytics
+        redis_engine.publish("live_analytics", data)
+        
+        # Queue for Supabase
+        batch_writer.add_to_batch("analytics_signals", data)
     except Exception as e:
          print(f"   !!! DB Analytics Error: {e}")
 

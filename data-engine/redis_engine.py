@@ -1,0 +1,52 @@
+
+import os
+import redis
+import json
+from dotenv import load_dotenv
+
+# Load env from parent directory
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+load_dotenv(dotenv_path=os.path.join(parent_dir, '.env.local'))
+
+class RedisEngine:
+    def __init__(self):
+        self.redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
+        try:
+            self.client = redis.from_url(self.redis_url, decode_responses=True)
+            self.client.ping()
+            print(f"   [REDIS] Connected to: {self.redis_url}")
+        except Exception as e:
+            print(f"   [REDIS] Error connecting: {e}")
+            self.client = None
+
+    def publish(self, channel, data):
+        """Publish message to a specific channel."""
+        if not self.client:
+            return False
+        try:
+            message = json.dumps(data)
+            self.client.publish(channel, message)
+            return True
+        except Exception as e:
+            print(f"   [REDIS] Publish Error on {channel}: {e}")
+            return False
+
+    def subscribe(self, channels):
+        """Generator that yields messages from subscribed channels."""
+        if not self.client:
+            return
+        
+        pubsub = self.client.pubsub()
+        pubsub.subscribe(channels)
+        
+        for message in pubsub.listen():
+            if message['type'] == 'message':
+                yield message['channel'], json.loads(message['data'])
+
+redis_engine = RedisEngine()
+
+if __name__ == "__main__":
+    # Test publishing
+    redis_engine.publish("test_channel", {"status": "operational", "version": "V900"})
+    print("Test message published to 'test_channel'")
