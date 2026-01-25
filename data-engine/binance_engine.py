@@ -42,8 +42,9 @@ class BinanceTrader:
         if self.api_key and self.secret:
             try:
                 # Explicitly sync time to prevent timestamp errors
-                time_offset = self.exchange.load_time_difference()
-                print(f"   [BINANCE] Time Sync Active (Offset: {time_offset}ms)")
+                # V2700: Removed blocking call. CCXT 'adjustForTimeDifference': True handles this lazily.
+                # time_offset = self.exchange.load_time_difference()
+                # print(f"   [BINANCE] Time Sync Active (Offset: {time_offset}ms)")
                 
                 # Test connectivity by fetching balance
                 self.exchange.fetch_balance()
