@@ -1,1 +1,1 @@
-worker: bash start_services.sh
+web: bash start_services.sh
