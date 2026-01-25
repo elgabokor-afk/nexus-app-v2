@@ -1,7 +1,7 @@
 
 "use client";
 import React, { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabaseClient';
 import { Target, TrendingUp, Zap, AlertCircle } from 'lucide-react';
 
 export default function LearningCurve() {
@@ -18,14 +18,14 @@ export default function LearningCurve() {
                 .limit(50);
 
             if (data && data.length > 0) {
-                const wins = data.filter(t => (t.pnl || 0) > 0).length;
+                const wins = data.filter((t: any) => (t.pnl || 0) > 0).length;
                 const wr = (wins / data.length) * 100;
                 setStats(s => ({ ...s, winRate: wr, count: data.length }));
 
                 // Create a rolling win rate for the history (simplified)
-                const rolling = data.map((t, i, arr) => {
+                const rolling = data.map((t: any, i: number, arr: any[]) => {
                     const slice = arr.slice(i, i + 10);
-                    return (slice.filter(x => x.pnl > 0).length / slice.length) * 100;
+                    return (slice.filter((x: any) => x.pnl > 0).length / slice.length) * 100;
                 }).reverse();
                 setHistory(rolling);
             }
