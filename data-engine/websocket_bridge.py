@@ -6,7 +6,17 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from redis_engine import redis_engine
 from dotenv import load_dotenv
 
-app = FastAPI(title="Nexus WebSocket Bridge")
+# FastAPI initialized at bottom with lifespan
+
+# V1102: Enable CORS for Vercel Connectivity
+from fastapi.middleware.cors import CORSMiddleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Store active connections
 class ConnectionManager:
@@ -74,9 +84,17 @@ async def redis_listener():
             await manager.broadcast(payload)
         await asyncio.sleep(0.01) # Low latency check
 
-@app.on_event("startup")
-async def startup_event():
+# V1201: Modern Lifespan Handler (Fixes DeprecationWarning)
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Start Redis Listener
     asyncio.create_task(redis_listener())
+    yield
+    # Shutdown logic (if any) goes here
+
+app = FastAPI(title="Nexus WebSocket Bridge", lifespan=lifespan)
 
 if __name__ == "__main__":
     import uvicorn

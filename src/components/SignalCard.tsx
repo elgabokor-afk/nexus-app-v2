@@ -131,7 +131,7 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
                         <div className="flex items-center gap-2 mt-0.5">
                             <div className="flex-1 h-1 bg-white/5 rounded-full overflow-hidden">
                                 <div
-                                    className={`h-full ${isBuy ? 'bg-[#00ffa3]' : isSell ? 'bg-[#ff4d4d]' : 'bg-gray-600'}`}
+                                    className={`h-full ${isBuy ? 'bg-[#00ffa3]' : isSell ? 'bg-[#ff4d4d]' : 'bg-gray-600'} transition-all duration-1000 ease-out`}
                                     style={{ width: `${confidence}%` }}
                                 ></div>
                             </div>

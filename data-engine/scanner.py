@@ -421,14 +421,40 @@ def main():
                     # Upgrade to V4 Analysis with Confluence
                     quant_signal = analyze_quant_signal(symbol, techs_5m, df=df_5m, sentiment_score=fng_index)
                     
-                    # V600: Consult Brain with Dynamic Backtesting
-                    should_trade, ai_conf, ai_reason = brain.decide_trade(
-                        symbol=symbol,
-                        signal_type=quant_signal['signal'] if quant_signal else "NEUTRAL",
-                        features=quant_signal if quant_signal else {},
-                        df_5m=df_5m,
-                        min_conf=params.get('min_confidence', 0.90)
-                    )
+                    # V1300: ENTERPRISE FAILOVER SYSTEM
+                    # Circuit Breaker pattern for Cosmos AI
+                    try:
+                        should_trade, ai_conf, ai_reason = brain.decide_trade(
+                            symbol=symbol,
+                            signal_type=quant_signal['signal'] if quant_signal else "NEUTRAL",
+                            features=quant_signal if quant_signal else {},
+                            df_5m=df_5m,
+                            min_conf=params.get('min_confidence', 0.90)
+                        )
+                    except Exception as e:
+                        # V1300: SAFE MODE ACTIVATION
+                        print(f"   [CRITICAL] Cosmos AI Unreachable: {e}. Degrading to SAFE MODE.")
+                        
+                        # Log Incident
+                        redis_engine.publish("live_analytics", {
+                            "symbol": symbol,
+                            "event": "COSMOS_FAILOVER",
+                            "message": str(e)
+                        })
+                        
+                        # Fallback Logic: Strict RSI Limits ONLY
+                        if quant_signal:
+                            rsi = quant_signal['rsi']
+                            if ("BUY" in quant_signal['signal'] and rsi < 25) or \
+                               ("SELL" in quant_signal['signal'] and rsi > 75):
+                                should_trade = True
+                                ai_conf = 50 # Neutral confidence
+                                ai_reason = f"SAFE MODE: Strict RSI {rsi:.2f} Trigger"
+                            else:
+                                should_trade = False
+                                ai_reason = "SAFE MODE: Signal rejected (RSI not extreme)"
+                        else:
+                            should_trade = False
                     
                     if quant_signal:
                         # V600: HARD FILTERS

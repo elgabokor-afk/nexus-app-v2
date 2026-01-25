@@ -29,7 +29,10 @@ class RedisEngine:
             self.client.ping()
             print(f"   [REDIS] Connected to: {self.redis_url}")
         except Exception as e:
-            print(f"   [REDIS] Error connecting: {e}")
+            # V1201: Local Fallback Mode
+            # If we can't reach the internal Railway URL (DNS Error), we shouldn't crash.
+            print(f"   [REDIS] Connection Failed ({e}). Switching to OFFLINE MODE.")
+            print(f"   [REDIS] Note: 'Mirror' features (UI updates) will be disabled locally.")
             self.client = None
 
     def publish(self, channel, data):
