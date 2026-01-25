@@ -15,18 +15,12 @@ from redis_engine import redis_engine # V900
 client = None
 
 if url and key:
-    # Construct the REST endpoint directly for Postgrest
-    # Supabase URL format: https://xyz.supabase.co
-    # Postgrest endpoint: https://xyz.supabase.co/rest/v1
     base_url = f"{url}/rest/v1"
     headers = {
         "apikey": key,
         "Authorization": f"Bearer {key}",
         "Content-Type": "application/json"
     }
-    # We can use simple requests or the postgrest-py lib.
-    # Actually, requests is easiest and most robust without build tools.
-import requests
     client = requests.Session()
     client.headers.update(headers)
     client.base_url = base_url
