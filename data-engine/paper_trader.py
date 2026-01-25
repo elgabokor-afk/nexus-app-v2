@@ -769,10 +769,13 @@ def check_live_go_signal():
     If so, notifies the user via Telegram to switch to LIVE.
     """
     try:
-        # Get last 50 closed trades
+        # Get last 50 closed trades (Excluding Admin Purges)
         res = supabase.table("paper_positions") \
             .select("pnl") \
             .eq("status", "CLOSED") \
+            .neq("exit_reason", "FORCE_PURGE_V1500") \
+            .neq("exit_reason", "ZOMBIE_AUTO_ARCHIVE") \
+            .not_.is_("pnl", "null") \
             .order("closed_at", desc=True) \
             .limit(50) \
             .execute()
