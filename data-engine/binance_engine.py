@@ -131,8 +131,8 @@ class BinanceTrader:
                 print("   [BINANCE] Loading market data...")
                 self.exchange.load_markets()
 
-            # V600: Set Leverage (Hard capped at 5x)
-            target_leverage = min(leverage, 5)
+            # V2500: Leverage Upgrade (Cap raised to 10x)
+            target_leverage = min(leverage, 10)
             try:
                 self.exchange.set_leverage(target_leverage, symbol)
                 print(f"   [BINANCE] Leverage set to {target_leverage}x for {symbol}")
