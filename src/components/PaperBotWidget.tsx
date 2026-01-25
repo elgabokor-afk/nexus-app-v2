@@ -336,8 +336,8 @@ export default function PaperBotWidget({
                                                     <div>
                                                         <div className="flex items-center gap-2">
                                                             <h4 className="text-sm font-black tracking-tight text-white">{pos.symbol}</h4>
-                                                            <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${pos.quantity >= 0 ? 'bg-[#00ffa3]/10 text-[#00ffa3]' : 'bg-red-500/10 text-red-500'}`}>
-                                                                {pos.quantity >= 0 ? 'LONG' : 'SHORT'}
+                                                            <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${pos.signal_type?.includes('BUY') ? 'bg-[#00ffa3]/10 text-[#00ffa3]' : 'bg-red-500/10 text-red-500'}`}>
+                                                                {pos.signal_type?.includes('BUY') ? 'LONG' : 'SHORT'}
                                                             </span>
                                                         </div>
                                                         <div className="flex gap-2 mt-1">

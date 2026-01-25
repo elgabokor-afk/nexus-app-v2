@@ -603,8 +603,15 @@ def check_new_entries():
                     "strategy_version": params.get('strategy_version', 1)
                 }
                 
+                
+                # Educational Log for User Clarity
+                if binance_side == 'sell':
+                    print(f"       [INFO] SHORT POSITION: Profit Target ({bot_tp:.4f}) is BELOW Entry ({entry}). This is CORRECT.")
+                else:
+                    print(f"       [INFO] LONG POSITION: Profit Target ({bot_tp:.4f}) is ABOVE Entry ({entry}).")
+
                 supabase.table("paper_positions").insert(trade_data).execute()
-                print(f"--- TRADE OPENED: {signal['symbol']} ({leverage}x) | Liq: {liq_price:.2f} ---")
+                print(f"--- TRADE OPENED: {signal['symbol']} ({leverage}x) | Type: {binance_side.upper()} | Liq: {liq_price:.2f} ---")
                 
                 # V1100: HA Broadcast to live_positions
                 redis_engine.publish("live_positions", {
