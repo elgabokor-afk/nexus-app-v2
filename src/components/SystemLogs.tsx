@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { AlertCircle, Terminal, X, RefreshCw, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { useLiveStream } from '@/hooks/useLiveStream'; // V1400
 
 interface Log {
     id: number;
@@ -30,25 +31,17 @@ export default function SystemLogs({ onClose, embedded = false }: { onClose?: ()
 
     useEffect(() => {
         fetchLogs();
-
-        // REALTIME SUBSCRIPTION
-        const channel = supabase.channel('system_logs_stream')
-            .on(
-                'postgres_changes',
-                { event: 'INSERT', schema: 'public', table: 'error_logs' },
-                (payload: any) => {
-                    if (payload && payload.new) {
-                        const newLog = payload.new as Log;
-                        setLogs(prev => [newLog, ...prev].slice(0, 100));
-                    }
-                }
-            )
-            .subscribe();
-
-        return () => {
-            supabase.removeChannel(channel);
-        };
     }, []);
+
+    // V1400: High-Speed WebSockets for Logs
+    const { lastMessage } = useLiveStream(['live_logs']);
+
+    useEffect(() => {
+        if (lastMessage?.channel === 'live_logs') {
+            const newLog = lastMessage.data;
+            setLogs(prev => [newLog, ...prev].slice(0, 100));
+        }
+    }, [lastMessage]);
 
     const wrapperClasses = embedded
         ? "w-full h-full flex flex-col bg-transparent"

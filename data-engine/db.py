@@ -141,14 +141,18 @@ def log_error(service, message, error_level="ERROR", stack_trace=None, metadata=
     data = {
         "service": service,
         "message": str(message),
-        "error_level": error_level
+        "error_level": error_level,
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
     
     try:
-        url = f"{client.base_url}/error_logs"
-        resp = client.post(url, json=data)
-        if resp.status_code not in [200, 201]:
-             print(f"   !!! Log Error Fail: {resp.status_code}")
+        # V1400: High-Performance Logging
+        # 1. Broadcast instantly to UI
+        redis_engine.publish("live_logs", data)
+        
+        # 2. Queue for persistence (No blocking HTTP)
+        batch_writer.add_to_batch("error_logs", data)
+        
     except Exception as e:
         print(f"   !!! Logging Failed: {e}")
 

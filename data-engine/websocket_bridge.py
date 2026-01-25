@@ -10,8 +10,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# V1100: Extended Channels for HA Dashboard
-CHANNELS = ["live_signals", "live_analytics", "live_prices", "live_positions"]
+# V1100: Extended Channels for HA Dashboard (Updated V1400)
+CHANNELS = ["live_signals", "live_analytics", "live_prices", "live_positions", "live_logs"]
 
 async def redis_listener():
     """Listens to Redis and broadcasts to all WS clients."""
