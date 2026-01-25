@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from optimizer import run_optimization # V6 Engine
 from datetime import datetime, timedelta, timezone
 import json # V405
+from redis_engine import redis_engine # V1100: HA Broadcasts
 
 # Load environment variables
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -586,6 +587,12 @@ def check_new_entries():
                 supabase.table("paper_positions").insert(trade_data).execute()
                 print(f"--- TRADE OPENED: {signal['symbol']} ({leverage}x) | Liq: {liq_price:.2f} ---")
                 
+                # V1100: HA Broadcast to live_positions
+                redis_engine.publish("live_positions", {
+                    "type": "OPEN",
+                    "data": trade_data
+                })
+                
     except Exception as e:
         print(f"Error checking entries: {e}")
 
@@ -709,6 +716,18 @@ def monitor_positions():
                     
                 # V3: Update Wallet Balance
                 update_wallet(pnl)
+                
+                # V1100: HA Broadcast closure
+                redis_engine.publish("live_positions", {
+                    "type": "CLOSED",
+                    "data": {
+                        "id": pos['id'],
+                        "symbol": pos['symbol'],
+                        "pnl": pnl,
+                        "exit_price": current_price,
+                        "exit_reason": exit_reason
+                    }
+                })
                 
                 # V6: RUN SELF-OPTIMIZATION
                 print("   >>> Triggering AI Optimization...")

@@ -72,7 +72,10 @@ class SupabaseBatchWriter:
             
             time.sleep(0.01)
 
-batch_writer = SupabaseBatchWriter()
+# V1100: HA PRO LAYER
+# Live data goes to Redis instantly.
+# Legal/Historical sync to Supabase every 30 seconds to minimize I/O and costs.
+batch_writer = SupabaseBatchWriter(flush_interval=30.0, batch_size=50)
 
 def insert_signal(symbol, price, rsi, signal_type, confidence, stop_loss=0, take_profit=0, atr_value=0, volume_ratio=0):
     if not client:

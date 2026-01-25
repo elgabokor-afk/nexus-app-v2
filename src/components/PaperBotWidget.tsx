@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { TrendingUp, TrendingDown, Zap, Activity, AlertCircle, RefreshCw, Layers } from 'lucide-react';
 import LearningCurve from './LearningCurve'; // V600
+import { useLiveStream } from '@/hooks/useLiveStream'; // V1100
 
 interface Position {
     id: number;
@@ -128,22 +129,33 @@ export default function PaperBotWidget({
         };
     }, [positions]);
 
+    const { lastMessage } = useLiveStream(['live_positions', 'live_prices']);
+
+    useEffect(() => {
+        if (!lastMessage) return;
+
+        if (lastMessage.channel === 'live_positions') {
+            const { type, data } = lastMessage.data;
+            if (type === 'OPEN') {
+                setPositions(prev => [data, ...prev]);
+            } else if (type === 'CLOSED') {
+                setPositions(prev => prev.map(p =>
+                    p.id === data.id ? { ...p, status: 'CLOSED', ...data } : p
+                ));
+            }
+        }
+
+        if (lastMessage.channel === 'live_prices') {
+            const { symbol, price } = lastMessage.data;
+            setPrices(prev => ({ ...prev, [symbol]: price }));
+        }
+    }, [lastMessage]);
+
     useEffect(() => {
         fetchPositions();
-        // V550: Bandwidth Optimization (Supabase Diet)
-        // We rely on Realtime subscriptions for immediate updates.
-        // Polling is now just a safety net every 30s (reduced from 2s).
-        const interval = setInterval(fetchPositions, 30000);
-
-        const channel = supabase.channel('paper_trading_updates')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'paper_positions' }, fetchPositions)
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'bot_wallet' }, fetchPositions)
-            .subscribe();
-
-        return () => {
-            clearInterval(interval);
-            supabase.removeChannel(channel);
-        };
+        // V1100: HA Polling is now just a background sync every 60s
+        const interval = setInterval(fetchPositions, 60000);
+        return () => clearInterval(interval);
     }, [fetchPositions]);
 
     const stats = {

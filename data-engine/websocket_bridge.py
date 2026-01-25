@@ -46,7 +46,8 @@ async def redis_listener():
     """Listens to Redis and broadcasts to all WS clients."""
     print("   [WS BRIDGE] Redis Listener Started...")
     # Channels to listen to
-    channels = ["live_signals", "live_analytics", "live_prices"]
+    # V1100: Extended Channels for HA Dashboard
+    channels = ["live_signals", "live_analytics", "live_prices", "live_positions"]
     
     # We use a non-blocking loop for redis subscription in asgi
     # In a real production app, we might use aioredis, but redis-py pubsub.listen() is fine in a thread/task

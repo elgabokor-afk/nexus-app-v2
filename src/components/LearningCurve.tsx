@@ -3,10 +3,28 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { Target, TrendingUp, Zap, AlertCircle } from 'lucide-react';
+import { useLiveStream } from '@/hooks/useLiveStream'; // V1100
 
 export default function LearningCurve() {
     const [stats, setStats] = useState({ winRate: 0, count: 0, target: 60, sampleSize: 50 });
     const [history, setHistory] = useState<number[]>([]);
+
+    const { lastMessage } = useLiveStream(['live_positions']);
+
+    useEffect(() => {
+        if (lastMessage?.channel === 'live_positions' && lastMessage.data.type === 'CLOSED') {
+            const closedTrade = lastMessage.data.data;
+            setStats(prev => {
+                const isWin = closedTrade.pnl > 0;
+                const newCount = prev.count + 1;
+                // Calculate new rolling WR (approximate for UI)
+                const newWR = ((prev.winRate * prev.count) + (isWin ? 100 : 0)) / newCount;
+                return { ...prev, winRate: newWR, count: newCount };
+            });
+            // Update history sparkline
+            setHistory(prev => [...prev.slice(1), (closedTrade.pnl > 0 ? 100 : 0)]);
+        }
+    }, [lastMessage]);
 
     useEffect(() => {
         const fetchStats = async () => {
@@ -22,7 +40,6 @@ export default function LearningCurve() {
                 const wr = (wins / data.length) * 100;
                 setStats(s => ({ ...s, winRate: wr, count: data.length }));
 
-                // Create a rolling win rate for the history (simplified)
                 const rolling = data.map((t: any, i: number, arr: any[]) => {
                     const slice = arr.slice(i, i + 10);
                     return (slice.filter((x: any) => x.pnl > 0).length / slice.length) * 100;
@@ -32,11 +49,8 @@ export default function LearningCurve() {
         };
 
         fetchStats();
-        const sub = supabase.channel('learning_sync')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'paper_positions' }, fetchStats)
-            .subscribe();
-
-        return () => { supabase.removeChannel(sub); };
+        // V1100: Mirror Logic - Fetch initial from DB, then rely on WS stream.
+        // We removed the supabase subscription here to prioritize the HA WS bridge.
     }, []);
 
     const isReady = stats.winRate >= stats.target && stats.count >= stats.sampleSize;
