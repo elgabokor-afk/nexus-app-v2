@@ -13,7 +13,7 @@ class ConnectionManager:
     def __init__(self):
         self.active_connections: list[WebSocket] = []
 
-    async contract(self, websocket: WebSocket):
+    async def contract(self, websocket: WebSocket):
         await websocket.accept()
         self.active_connections.append(websocket)
         print(f"   [WS] New Connection. Active: {len(self.active_connections)}")
