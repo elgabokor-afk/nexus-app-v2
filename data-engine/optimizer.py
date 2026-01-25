@@ -41,11 +41,18 @@ def update_params(updates):
         print(f"   >>> V6 OPTIMIZER: Parameters Updated: {updates}")
         
         # Log action
-        supabase.table("error_logs").insert({
-            "service": "OPTIMIZER",
-            "error_level": "INFO",
-            "message": f"Strategy Adapted: {updates}"
-        }).execute()
+        # Log action
+        try:
+            supabase.table("error_logs").insert({
+                "service": "OPTIMIZER",
+                "error_level": "INFO",
+                "message": f"Strategy Adapted: {updates}"
+            }).execute()
+        except Exception as log_err:
+            if "PGRST205" in str(log_err) or "404" in str(log_err):
+                 print(f"   [WARN] 'error_logs' table missing. Skipping log.")
+            else:
+                 print(f"   [WARN] Failed to write log: {log_err}")
         
     except Exception as e:
         print(f"Optimizer Update Error: {e}")
