@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import numpy as np
+from datetime import datetime, timezone
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
@@ -504,7 +505,29 @@ class CosmosBrain:
             
         return sorted(ranked, key=lambda x: x['score'], reverse=True)
 
-# Singleton Instance for easy import
+    def save_signal_to_db(self, signal_data):
+        """V500: Writes valid signals to the Strict Schema 'signals' table."""
+        try:
+            db_record = {
+                "pair": signal_data.get('symbol'),
+                "direction": "LONG" if "BUY" in signal_data.get('signal_type', '') else "SHORT",
+                "entry_price": signal_data.get('price'),
+                "tp_price": signal_data.get('take_profit'),
+                "sl_price": signal_data.get('stop_loss'),
+                "ai_confidence": signal_data.get('confidence'),
+                "risk_level": "HIGH" if signal_data.get('confidence', 0) < 80 else "MID",
+                "status": "ACTIVE",
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            res = self.supabase.table("signals").insert(db_record).execute()
+            if res.data:
+                print(f"   [DB] Signal Saved: ID {res.data[0]['id']}")
+                return res.data[0]['id']
+        except Exception as e:
+            print(f"   [DB ERROR] Failed to save signal: {e}")
+        return None
+
+# Singleton Instance
 brain = CosmosBrain()
 
 

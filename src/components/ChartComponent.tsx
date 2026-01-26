@@ -17,7 +17,7 @@ interface ChartProps {
 
 export const ChartComponent: React.FC<ChartProps> = (props) => {
     const {
-        data,
+        data = [], // Defensive default
         colors: {
             backgroundColor = 'transparent',
             lineColor = '#00ffa3',

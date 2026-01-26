@@ -32,8 +32,8 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
     const isSell = signal_type.includes('SELL');
     const isHot = confidence >= 90;
 
-    const coin = symbol.split('/')[0];
-    const logoUrl = `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${coin.toLowerCase()}.png`;
+    const coin = symbol ? symbol.split('/')[0] : 'BTC';
+    const logoUrl = coin ? `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${coin.toLowerCase()}.png` : '';
 
     let borderColor = 'border-white/5';
     let textColor = 'text-gray-400';

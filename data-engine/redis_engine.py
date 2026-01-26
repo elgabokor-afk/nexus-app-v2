@@ -22,8 +22,10 @@ class RedisEngine:
             pw = os.getenv("REDISPASSWORD")
             if host and port and pw:
                 self.redis_url = f"redis://{user}:{pw}@{host}:{port}"
+                print(f"   [REDIS] Railway Internal URL detected: redis://***:***@{host}:{port}")
             else:
                 self.redis_url = "redis://localhost:6379"
+                print("   [REDIS] Localhost fallback selected.")
         try:
             self.client = redis.from_url(self.redis_url, decode_responses=True)
             self.client.ping()

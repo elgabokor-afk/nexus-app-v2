@@ -22,6 +22,9 @@ declare global {
 export const SmartChart: React.FC<SmartChartProps> = ({ symbol, signalData }) => {
     const containerRef = useRef<HTMLDivElement>(null);
 
+    // Defensive: Return placeholder if no symbol
+    if (!symbol) return <div className="w-full h-full flex items-center justify-center text-gray-700 text-xs">Waiting for Signal...</div>;
+
     useEffect(() => {
         // Dynamic Translation of Symbols (Standardizing for TV)
         // BTC/USD -> KRAKEN:XBTUSD

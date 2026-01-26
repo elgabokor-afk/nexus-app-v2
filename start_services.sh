@@ -3,8 +3,8 @@
 # Navigate to data-engine directory
 cd data-engine
 
-# Start the scanner in the background
-python scanner.py &
+# Start the Cosmos Worker (Scanner + AI)
+python cosmos_worker.py &
 
 # Start the paper trader in the background
 python paper_trader.py &
