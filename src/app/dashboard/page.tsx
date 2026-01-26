@@ -408,8 +408,8 @@ export default function Dashboard() {
                                         </div>
                                     ) : (
                                         <>
-                                            {/* V1300: HOT SIGNALS (100% Confidence) */}
-                                            {uniqueSignals.filter(s => s.confidence === 100).length > 0 && (
+                                            {/* V1300: HOT SIGNALS (90%+ Confidence) */}
+                                            {uniqueSignals.filter(s => s.confidence >= 90).length > 0 && (
                                                 <div className="mb-4 space-y-3">
                                                     <div className="flex items-center gap-2 px-1">
                                                         <div className="text-orange-500 animate-fire">
@@ -420,7 +420,7 @@ export default function Dashboard() {
                                                         <span className="text-[10px] font-black text-orange-500 uppercase tracking-widest animate-pulse">HOT ZONE - ELITE SIGNALS</span>
                                                     </div>
 
-                                                    {uniqueSignals.filter(s => s.confidence === 100).map((signal) => (
+                                                    {uniqueSignals.filter(s => s.confidence >= 90).map((signal) => (
                                                         <div key={signal.id} className="relative group/hot">
                                                             <div className="absolute -inset-1 bg-gradient-to-r from-orange-600 to-red-600 rounded-3xl blur opacity-20 group-hover/hot:opacity-50 transition duration-500 animate-fire"></div>
                                                             <SignalCard
@@ -438,8 +438,8 @@ export default function Dashboard() {
                                                 </div>
                                             )}
 
-                                            {/* REGULAR SIGNALS (<100% Confidence) */}
-                                            {uniqueSignals.filter(s => s.confidence < 100).map((signal) => (
+                                            {/* REGULAR SIGNALS (<90% Confidence) */}
+                                            {uniqueSignals.filter(s => s.confidence < 90).map((signal) => (
                                                 <SignalCard
                                                     key={signal.id}
                                                     {...signal}
