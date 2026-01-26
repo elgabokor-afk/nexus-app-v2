@@ -8,6 +8,7 @@ import { Zap, Activity, LogOut, User, TrendingUp } from 'lucide-react';
 import PaperBotWidget from '@/components/PaperBotWidget';
 import OracleMonitor from '@/components/OracleMonitor';
 import PortfolioHub from '@/components/PortfolioHub';
+import AIChatModal from '@/components/AIChatModal'; // V1600
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 
@@ -48,6 +49,7 @@ export default function Dashboard() {
     const [signals, setSignals] = useState<Signal[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedSignal, setSelectedSignal] = useState<Signal | null>(null);
+    const [activeChatSignal, setActiveChatSignal] = useState<Signal | null>(null); // V1600
     const [customSymbol, setCustomSymbol] = useState<string | null>(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true); // Default open on desktop
     const [mounted, setMounted] = useState(false);
@@ -69,6 +71,11 @@ export default function Dashboard() {
             const chartElement = document.getElementById('main-chart-area');
             chartElement?.scrollIntoView({ behavior: 'smooth' });
         }
+    };
+
+    // V1600: Open AI Chat
+    const handleConsultAI = (signal: any) => {
+        setActiveChatSignal(signal);
     };
 
     const fetchSignals = async () => {
@@ -394,6 +401,7 @@ export default function Dashboard() {
                                                                 imbalance={signal.analytics_signals?.[0]?.imbalance_ratio}
                                                                 depth_score={signal.analytics_signals?.[0]?.depth_score}
                                                                 onViewChart={handleViewChart}
+                                                                onConsultAI={handleConsultAI}
                                                                 compact={true}
                                                             />
                                                         </div>
@@ -411,6 +419,7 @@ export default function Dashboard() {
                                                     imbalance={signal.analytics_signals?.[0]?.imbalance_ratio}
                                                     depth_score={signal.analytics_signals?.[0]?.depth_score}
                                                     onViewChart={handleViewChart}
+                                                    onConsultAI={handleConsultAI}
                                                     compact={true}
                                                 />
                                             ))}
@@ -482,7 +491,14 @@ export default function Dashboard() {
                     )}
                 </main>
             </div>
+            {/* V1600: AI Modal */}
+            {activeChatSignal && (
+                <AIChatModal
+                    signal={activeChatSignal}
+                    isOpen={!!activeChatSignal}
+                    onClose={() => setActiveChatSignal(null)}
+                />
+            )}
         </div>
     );
 }
-

@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { ArrowUpRight, ArrowDownRight, Activity } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, Activity, Brain } from 'lucide-react';
 
 interface SignalProps {
     symbol: string;
@@ -15,12 +16,14 @@ interface SignalProps {
     imbalance?: number;
     depth_score?: number;
     onViewChart?: (symbol: string) => void;
+    onConsultAI?: (signal: any) => void;
 }
 
 const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
-    symbol, price, rsi, signal_type, confidence, timestamp, stop_loss, take_profit, atr_value, volume_ratio, imbalance, depth_score, onViewChart, compact = false
+    symbol, price, rsi, signal_type, confidence, timestamp, stop_loss, take_profit, atr_value, volume_ratio, imbalance, depth_score, onViewChart, onConsultAI, compact = false
 }) => {
-    // ... (logic)
+
+    // Logic must be INSIDE the component
     const isBuy = signal_type.includes('BUY');
     const isSell = signal_type.includes('SELL');
     const isNeutral = !isBuy && !isSell;
@@ -31,18 +34,15 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
     let borderColor = 'border-gray-800';
     let textColor = 'text-gray-400';
     let actionText = 'WAITING';
-    let reasoning = "";
 
     if (isBuy) {
         borderColor = 'border-[#00ffa3]';
         textColor = 'text-[#00ffa3]';
         actionText = 'LONG';
-        reasoning = rsi < 30 ? "Strong RSI Reversal" : "Trend Continuation";
     } else if (isSell) {
         borderColor = 'border-[#ff4d4d]';
         textColor = 'text-[#ff4d4d]';
         actionText = 'SHORT';
-        reasoning = rsi > 70 ? "Overbought Correction" : "Momentum Shift";
     }
 
     const formatPrice = (p: number | undefined) =>
@@ -59,6 +59,19 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
                 bg-gradient-to-br from-white/[0.03] to-transparent
             `}
         >
+            {/* V1600: Consult AI Button (Absolute Top-Right) */}
+            <div className="absolute top-4 right-4 z-20 flex gap-2">
+                {onConsultAI && (
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onConsultAI({ symbol, price, confidence, signal_type, rsi, stop_loss, take_profit }); }}
+                        className="p-1.5 rounded-lg bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 hover:text-purple-300 transition-colors backdrop-blur-md border border-purple-500/20"
+                        title="Consult AI Expert"
+                    >
+                        <Brain size={compact ? 14 : 16} />
+                    </button>
+                )}
+            </div>
+
             {/* Header / Main Info */}
             <div className={`${compact ? 'flex justify-between items-start' : 'p-6 flex justify-between items-start'}`}>
                 <div className="flex items-center gap-4">
@@ -100,7 +113,7 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
                     </div>
                 </div>
 
-                <div className="text-right">
+                <div className="text-right pr-8">
                     <p className={`${compact ? 'text-sm' : 'text-2xl'} font-mono font-bold text-white tracking-tighter`}>
                         {formatPrice(price)}
                     </p>
@@ -201,6 +214,5 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
         </div>
     );
 };
-
 
 export default SignalCard;
