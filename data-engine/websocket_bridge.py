@@ -76,6 +76,22 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
+# V1800: AI Chat Endpoint
+from pydantic import BaseModel
+from cosmos_agent import cosmos_agent
+
+class ChatRequest(BaseModel):
+    message: str
+    signalContext: dict
+
+@app.post("/chat")
+async def chat_endpoint(request: ChatRequest):
+    """
+    V1800: Direct interface to Cosmos AI Agent.
+    """
+    response = cosmos_agent.analyze_signal(request.message, request.signalContext)
+    return response
+
 @app.websocket("/ws/live")
 async def websocket_endpoint(websocket: WebSocket):
     await manager.contract(websocket)
@@ -90,4 +106,5 @@ if __name__ == "__main__":
     import uvicorn
     # Use 0.0.0.0 for Railway/Vercel connectivity
     port = int(os.getenv("PORT", 8000))
+    print(f"   [BRIDGE] Starting on Port {port}...")
     uvicorn.run(app, host="0.0.0.0", port=port)

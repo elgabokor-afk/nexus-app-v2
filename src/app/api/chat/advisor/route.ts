@@ -1,68 +1,41 @@
 
 import { NextResponse } from 'next/server';
 
-// V1600: Simulated "Deep Brain" Expert
-// In a production env with API Keys, this would call OpenAI/Anthropic.
-// For now, we simulate a sophisticated analysis based on the signal data.
+// V1800: Proxy to Cosmos AI (Python Engine)
+// The "Brain" has moved to data-engine/cosmos_agent.py
 
 export async function POST(req: Request) {
     try {
-        const { message, signalContext } = await req.json();
+        const body = await req.json();
 
-        // mimic network latency for realism
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        // 1. Forward request to Python Service (Localhost default)
+        const pythonUrl = process.env.PYTHON_API_URL || 'http://127.0.0.1:8000';
 
-        let advice = "";
-        const s = signalContext;
+        try {
+            const res = await fetch(`${pythonUrl}/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
 
-        // 1. Context Awareness Logic
-        if (s.confidence === 100) {
-            advice = `This is a **High-Conviction Play**. The **${s.symbol}** signal has achieved a perfect **100% Confidence Score**, which is rare. 
+            if (!res.ok) throw new Error(`Cosmos Error: ${res.statusText}`);
 
-**My Analysis:**
-- **Trend**: The underlying trend is strongly **${s.signal_type.includes('BUY') ? 'BULLISH' : 'BEARISH'}**.
-- **Timing**: RSI is at ${s.rsi.toFixed(1)}, suggesting decent momentum.
-- **Risk**: While confidence is maxed, always use a **Stop Loss**.
+            const data = await res.json();
+            return NextResponse.json(data);
 
-**Recommendation**: This aligns with an aggressive entry strategy. Closely monitor for a breakout above ${s.price}.`;
-        } else if (s.confidence > 80) {
-            advice = `The setup for **${s.symbol}** looks solid with **${s.confidence}% Confidence**.
-
-**Key Metrics:**
-- **RSI**: ${s.rsi.toFixed(1)} (Neutral-Bullish)
-- **Signal**: ${s.signal_type}
-- **Volatility**: Average True Range is stable.
-
-It's a good trade, but keep your position size moderate. It doesn't have the "perfect storm" indicators of a 100% signal, but the math favors this direction.`;
-        } else {
-            advice = `Exercise caution with **${s.symbol}** (Confidence: ${s.confidence}%).
-
-The indicators are mixed. The algorithm sees potential, but there is significant noise in the price action. 
-**Strategy**: If you enter, use a **tight stop loss** and take profit quickly. Do not hold this swing for too long.`;
+        } catch (fetchError) {
+            console.error("Cosmos Bridge Error:", fetchError);
+            // Fallback response if Python is offline
+            return NextResponse.json({
+                reply: "⚠️ One moment - The Neural Link (Python Engine) is offline. Please start `websocket_bridge.py`.",
+                agent: "System Monitor"
+            });
         }
-
-        // 2. Handle specific user questions (Simple Keyword Matching for V1)
-        const lowerMsg = message.toLowerCase();
-        if (lowerMsg.includes("risk") || lowerMsg.includes("safe")) {
-            advice = `**Risk Assessment**:
-Based on the current volatility (${s.symbol}), the risk factor is **${s.confidence > 90 ? 'LOW' : 'MODERATE'}**.
-Suggest setting Stop Loss at **$${(s.price * 0.98).toFixed(2)}** (-2%).`;
-        } else if (lowerMsg.includes("target") || lowerMsg.includes("profit")) {
-            advice = `**Profit Targets**:
-1. Conservative: **$${(s.price * 1.015).toFixed(2)}** (Scalp)
-2. Extended: **$${(s.price * 1.04).toFixed(2)}** (Swing)
-Manage your greed—take partial profits at target 1.`;
-        }
-
-        return NextResponse.json({
-            reply: advice,
-            agent: "Nexus Prime (v9.0)"
-        });
 
     } catch (error) {
-        console.error("AI Advisor Error:", error);
+        console.error("API Route Error:", error);
         return NextResponse.json(
-            { error: "Neural Link Unstable. Try again." },
+            { error: "Internal Relay Error" },
             { status: 500 }
         );
     }
