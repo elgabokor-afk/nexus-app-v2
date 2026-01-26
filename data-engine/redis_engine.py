@@ -27,14 +27,16 @@ class RedisEngine:
                 self.redis_url = "redis://localhost:6379"
                 print("   [REDIS] Localhost fallback selected.")
         try:
-            self.client = redis.from_url(self.redis_url, decode_responses=True)
+            self.client = redis.from_url(self.redis_url, decode_responses=True, socket_connect_timeout=5)
             self.client.ping()
             print(f"   [REDIS] Connected to: {self.redis_url}")
         except Exception as e:
-            # V1201: Local Fallback Mode
-            # If we can't reach the internal Railway URL (DNS Error), we shouldn't crash.
+            # V1501: Enhanced Diagnostics for Internal vs External
+            if ".railway.internal" in self.redis_url:
+                print(f"   [REDIS] CRITICAL: You are trying to use an INTERNAL Railway URL from OUTSIDE Railway.")
+                print(f"   [REDIS] FIX: In your .env.local / Vercel, change REDIS_URL to the PUBLIC connection string.")
+            
             print(f"   [REDIS] Connection Failed ({e}). Switching to OFFLINE MODE.")
-            print(f"   [REDIS] Note: 'Mirror' features (UI updates) will be disabled locally.")
             self.client = None
 
     def publish(self, channel, data):

@@ -19,5 +19,5 @@
     "connector_type": "binance_futures",
     "margin_mode": "CROSSED",
     "leverage_limit": 5,
-    "max_daily_positions": 5
+    "max_daily_positions": 20
 }
