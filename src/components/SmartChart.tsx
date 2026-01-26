@@ -31,14 +31,15 @@ export const SmartChart: React.FC<SmartChartProps> = ({ symbol, signalData }) =>
         // ETH/USD -> KRAKEN:ETHUSD
         // if no slash, assume crypto
 
-        let tvSymbol = "KRAKEN:BTCUSD"; // Default
+        let tvSymbol = "BINANCE:BTCUSDT"; // Default to Binance
 
         if (symbol) {
             let clean = symbol.replace('/', '');
-            if (clean.startsWith('BTC')) clean = clean.replace('BTC', 'XBT');
-            if (clean.endsWith('USDT')) clean = clean.replace('USDT', 'USDT');
-
-            tvSymbol = `KRAKEN:${clean}`;
+            // Standardize for Binance (e.g., BTCUSD -> BTCUSDT, BTC/USD -> BTCUSDT)
+            if (clean.endsWith('USD') && !clean.endsWith('USDT')) {
+                clean = clean.replace('USD', 'USDT');
+            }
+            tvSymbol = `BINANCE:${clean}`;
         }
 
         const script = document.createElement('script');
