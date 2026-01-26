@@ -656,11 +656,10 @@ def check_new_entries():
             supabase.table("paper_trades").insert(trade_data_strict).execute()
             print(f"--- PAPER TRADE OPENED: {signal_symbol} ---")
 
-            # Keep legacy table for compatibility with 'monitor_positions' or update generic 'paper_positions' insert
-            # Adapting existing 'trade_data' variable to match 'paper_positions' schema as fallback
-            # or we just rely on 'paper_trades' if we update monitor_positions.
-            # For safety, I will maintain 'paper_positions' update so the rest of the code works, 
-            # but I added the critical insert above.
+            # Keep legacy table for compatibility with 'monitor_positions' and FRONTEND Dashboard
+            # The dashboard listens to 'paper_positions', so this is CRITICAL for UI to work.
+            supabase.table("paper_positions").insert(trade_data).execute()
+            
             print(f"--- TRADE OPENED: {signal['symbol']} ({leverage}x) | Type: {binance_side.upper()} | Liq: {liq_price:.2f} ---")
             
             # V1100: HA Broadcast to live_positions
