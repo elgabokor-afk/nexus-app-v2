@@ -102,13 +102,13 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
                     </div>
                 </div>
             ) : (
-                /* FULL MODE LAYOUT (Spacious) */
+                /* FULL MODE LAYOUT (Signal Pulse Replica) */
                 <>
-                    {/* Header */}
-                    <div className="p-6 flex justify-between items-start">
+                    {/* 1. Header Row (Icon, Symbol, Confidence, Price) */}
+                    <div className="p-6 pb-2 flex justify-between items-start">
                         <div className="flex items-center gap-4">
                             <div className="relative">
-                                <div className="w-14 h-14 flex items-center justify-center rounded-2xl p-1 overflow-hidden bg-white/[0.05] border border-white/10">
+                                <div className="w-12 h-12 flex items-center justify-center rounded-2xl p-1 overflow-hidden bg-white/[0.05] border border-white/10">
                                     <img src={logoUrl} alt={coin} className="w-full h-full object-contain" />
                                 </div>
                                 {confidence > 85 && (
@@ -116,66 +116,76 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
                                 )}
                             </div>
                             <div>
-                                <h3 className="text-xl font-bold font-sans text-white tracking-tight">{symbol}</h3>
-                                <div className="flex items-center gap-2 mt-0.5">
+                                <h3 className="text-lg font-bold font-sans text-white tracking-tight leading-none">{symbol}</h3>
+                                <div className="flex items-center gap-2 mt-1">
                                     <span className={`text-[10px] font-black tracking-widest uppercase ${textColor}`}>{actionText}</span>
-                                    <span className="text-[10px] text-white/20 font-mono">•</span>
-                                    <span className="text-[10px] text-gray-500 font-medium">{confidence}% Conf.</span>
+                                    {/* Confidence Bar Inline */}
+                                    <div className="w-16 h-1 bg-white/10 rounded-full overflow-hidden ml-1">
+                                        <div className={`h-full ${isBuy ? 'bg-[#00ffa3]' : 'bg-[#ff4d4d]'}`} style={{ width: `${confidence}%` }}></div>
+                                    </div>
+                                    <span className="text-[9px] text-gray-500 font-mono">{confidence}%</span>
                                 </div>
                             </div>
                         </div>
 
                         <div className="text-right">
-                            <p className="text-2xl font-mono font-bold text-white tracking-tighter">{formatPrice(price)}</p>
-                            <div className="flex items-center justify-end gap-1.5 mt-1">
-                                <Activity size={12} className={rsi < 30 || rsi > 70 ? textColor : 'text-gray-600'} />
-                                <span className={`text-[10px] font-mono ${rsi < 30 || rsi > 70 ? 'text-white' : 'text-gray-500'}`}>RSI: {rsi}</span>
+                            <p className="text-xl font-mono font-bold text-white tracking-tighter">{formatPrice(price)}</p>
+                            <div className="flex items-center justify-end gap-1.5 mt-0.5">
+                                <Activity size={10} className={rsi < 30 || rsi > 70 ? textColor : 'text-gray-600'} />
+                                <span className={`text-[9px] font-mono ${rsi < 30 || rsi > 70 ? 'text-white' : 'text-gray-500'}`}>RSI: {rsi.toFixed(1)}</span>
                             </div>
                         </div>
                     </div>
 
-                    {/* Stats Grid */}
-                    <div className="px-6 pb-6">
+                    {/* 2. Middle Row: Metrics (Vol, ATR, SPREAD/TREND) */}
+                    <div className="px-6 py-4">
                         <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 flex items-center justify-between">
                             <div className="space-y-1">
-                                <p className="text-[9px] uppercase tracking-widest text-gray-500 font-bold">Vol</p>
-                                <p className="text-xs font-medium text-white">{(volume_ratio || 0).toFixed(2)}x</p>
+                                <p className="text-[8px] uppercase tracking-widest text-gray-500 font-bold">Vol Pressure</p>
+                                <p className="text-[10px] font-medium text-white">{(volume_ratio || 0).toFixed(2)}x</p>
                             </div>
                             <div className="h-6 w-px bg-white/5"></div>
-                            <div className="space-y-1">
-                                <p className="text-[9px] uppercase tracking-widest text-gray-500 font-bold">ATR</p>
-                                <p className="text-xs font-medium text-white">{(atr_value || 0).toFixed(2)}</p>
+                            <div className="space-y-1 text-center">
+                                <p className="text-[8px] uppercase tracking-widest text-gray-500 font-bold">ATR Risk</p>
+                                <p className="text-[10px] font-medium text-white">{(atr_value || 0).toFixed(2)}</p>
                             </div>
                             <div className="h-6 w-px bg-white/5"></div>
                             <div className="space-y-1 text-right">
-                                <p className="text-[9px] uppercase tracking-widest text-[#00ffa3] font-bold">TP</p>
-                                <p className="text-xs font-mono text-white font-bold">{formatPrice(take_profit)}</p>
+                                <p className="text-[8px] uppercase tracking-widest text-gray-500 font-bold">Status</p>
+                                <p className={`text-[10px] font-bold ${textColor}`}>{confidence > 80 ? 'STRONG' : 'WEAK'}</p>
                             </div>
                         </div>
                     </div>
 
-                    {/* Footer Actions (New Row) */}
-                    <div className="p-4 bg-black/40 border-t border-white/5 flex gap-3">
-                        <button
-                            onClick={() => onViewChart && onViewChart(symbol)}
-                            className={`
-                                flex-1 py-3 rounded-xl font-black text-[10px] tracking-[0.2em] uppercase
-                                transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]
-                                ${isBuy ? 'bg-[#00ffa3] text-black hover:bg-white' : 'bg-[#ff4d4d] text-white hover:bg-white hover:text-black'}
-                            `}
-                        >
-                            Analyze
-                        </button>
+                    {/* 3. Bottom Row: Target Stop & Target Profit (The "Pulse" Look) */}
+                    <div className="px-6 pb-2 grid grid-cols-2 gap-8">
+                        <div>
+                            <p className="text-[9px] uppercase tracking-widest text-gray-500 font-bold mb-1">Target Stop</p>
+                            <p className="text-base font-mono text-gray-300 font-bold">{formatPrice(stop_loss)}</p>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-[9px] uppercase tracking-widest text-[#00ffa3] font-bold mb-1">Target Profit</p>
+                            <p className="text-base font-mono text-white font-bold">{formatPrice(take_profit)}</p>
+                        </div>
+                    </div>
 
+                    {/* 4. Footer: Action Bar (AI & Analyze) */}
+                    <div className="mt-4 p-4 border-t border-white/5 bg-black/40 flex gap-2">
                         {onConsultAI && (
                             <button
                                 onClick={(e) => { e.stopPropagation(); onConsultAI({ symbol, price, confidence, signal_type, rsi, stop_loss, take_profit }); }}
-                                className="px-4 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20 hover:bg-purple-500 hover:text-white transition-all flex items-center gap-2 group/ai"
+                                className="flex-1 py-2 rounded-lg bg-purple-500/10 text-purple-400 border border-purple-500/20 hover:bg-purple-500 hover:text-white transition-all flex items-center justify-center gap-2 group/ai active:scale-95"
                             >
-                                <Brain size={16} className="group-hover/ai:animate-pulse" />
-                                <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-wider">Ask AI</span>
+                                <Brain size={14} className="group-hover/ai:animate-bounce" />
+                                <span className="text-[10px] font-bold uppercase tracking-wider">Consult Nexus</span>
                             </button>
                         )}
+                        <button
+                            onClick={() => onViewChart && onViewChart(symbol)}
+                            className="px-4 py-2 rounded-lg bg-white/5 text-gray-400 hover:bg-white hover:text-black hover:font-bold transition-all active:scale-95"
+                        >
+                            <BarChart2 size={16} />
+                        </button>
                     </div>
                 </>
             )}
