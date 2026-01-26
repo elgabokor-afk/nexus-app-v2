@@ -391,58 +391,58 @@ def check_new_entries():
                  print(f"       [SKIPPED] {signal['symbol']} Low Confidence: {signal_conf}% < {min_conf}%")
                  continue
 
-                # V500: Strict Schema - Schema Mapping
-                # signals table -> code logic
-                signal_symbol = signal['pair']
-                signal_type = "BUY" if "LONG" in signal.get('direction', '') else "SELL"
-                signal_conf = float(signal.get('ai_confidence', 0))
-                
-                # Check duplication
-                existing = supabase.table("paper_trades") \
-                    .select("id") \
-                    .eq("signal_id", signal['id']) \
-                    .execute()
+            # V500: Strict Schema - Schema Mapping
+            # signals table -> code logic
+            signal_symbol = signal['pair']
+            signal_type = "BUY" if "LONG" in signal.get('direction', '') else "SELL"
+            signal_conf = float(signal.get('ai_confidence', 0))
+            
+            # Check duplication
+            existing = supabase.table("paper_trades") \
+                .select("id") \
+                .eq("signal_id", signal['id']) \
+                .execute()
 
-                if existing.data:
-                    # Already traded this signal ID
-                    continue
+            if existing.data:
+                # Already traded this signal ID
+                continue
 
-                features = {
-                    "price": float(signal['entry_price']),
-                    "rsi_value": 50, # Placeholder as new schema might not have raw features
-                    "confidence": signal_conf
-                }
-                
-                # We skip the Brain re-calculation for now (since it's already in DB from Worker)
-                # We trust the signal from the DB.
-                should_trade = True
-                ai_conf = signal_conf / 100.0
-                ai_reason = "Executed from Signal DB"
-                
-                if not should_trade:
-                    print(f"       [SKIPPED] {ai_reason}")
-                    continue
-                
-                print(f"       [AI APPROVED] {ai_reason}")
+            features = {
+                "price": float(signal['entry_price']),
+                "rsi_value": 50, # Placeholder as new schema might not have raw features
+                "confidence": signal_conf
+            }
+            
+            # We skip the Brain re-calculation for now (since it's already in DB from Worker)
+            # We trust the signal from the DB.
+            should_trade = True
+            ai_conf = signal_conf / 100.0
+            ai_reason = "Executed from Signal DB"
+            
+            if not should_trade:
+                print(f"       [SKIPPED] {ai_reason}")
+                continue
+            
+            print(f"       [AI APPROVED] {ai_reason}")
 
-                # V94: DYNAMIC MARGIN SIZING (Confidence-Based Scaling)
-                # Risk Management: Dynamic % of Equity (capped at 5% safety)
-                user_risk = float(params.get('account_risk_pct', 0.02))
-                base_account_risk = min(user_risk, 0.05) 
-                
-                # Confidence Multiplier:
-                # Ultra High Conf (>95%) -> 2.0x | High Conf (90-95%) -> 1.0x | Lower Confluence (<90%) -> 0.5x
-                conf_multiplier = 1.0
-                if ai_conf >= 0.95:
-                    conf_multiplier = 2.0
-                elif ai_conf < 0.90:
-                    conf_multiplier = 0.5
-                
-                scaling_reason = f"({conf_multiplier}x Scaled)" if conf_multiplier != 1.0 else " (Standard)"
-                
-                # Solvency Check
-                equity = float(wallet['equity'])
-                balance = float(wallet['balance'])
+            # V94: DYNAMIC MARGIN SIZING (Confidence-Based Scaling)
+            # Risk Management: Dynamic % of Equity (capped at 5% safety)
+            user_risk = float(params.get('account_risk_pct', 0.02))
+            base_account_risk = min(user_risk, 0.05) 
+            
+            # Confidence Multiplier:
+            # Ultra High Conf (>95%) -> 2.0x | High Conf (90-95%) -> 1.0x | Lower Confluence (<90%) -> 0.5x
+            conf_multiplier = 1.0
+            if ai_conf >= 0.95:
+                conf_multiplier = 2.0
+            elif ai_conf < 0.90:
+                conf_multiplier = 0.5
+            
+            scaling_reason = f"({conf_multiplier}x Scaled)" if conf_multiplier != 1.0 else " (Standard)"
+            
+            # Solvency Check
+            equity = float(wallet['equity'])
+            balance = float(wallet['balance'])
                 
                 # V215: MARGIN LEVEL GUARD (Risk Ratio Health Check)
                 # V402: Enforce LIVE check based on Master Switch
