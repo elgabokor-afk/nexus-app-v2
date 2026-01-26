@@ -159,6 +159,18 @@ def run_oracle_step(symbol='BTC/USDT'):
             trend=trend,
             reasoning=reasoning
         )
+
+        # V1400: Redis Broadcast (Low Latency)
+        # Decouples the frontend from Supabase Realtime
+        from redis_engine import redis_engine
+        redis_engine.publish("ai_rankings", {
+            "symbol": symbol,
+            "score": prob * 100,
+            "confidence": prob,
+            "trend_status": trend,
+            "reasoning": reasoning,
+            "updated_at": time.time()
+        })
         
     except Exception as e:
         print(f"!!! Oracle Error ({symbol}): {e}")

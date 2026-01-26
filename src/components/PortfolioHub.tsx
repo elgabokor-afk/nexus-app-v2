@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { Gauge, TrendingUp, TrendingDown, Target, Zap } from 'lucide-react';
+import { useLiveStream } from '@/hooks/useLiveStream';
 
 interface AssetRanking {
     id: number;
@@ -25,21 +26,30 @@ export default function PortfolioHub() {
         setLoading(false);
     };
 
+    const { lastMessage } = useLiveStream(['ai_rankings']);
+
     useEffect(() => {
         fetchRankings();
-
-        const channel = supabase.channel('ranking_sync')
-            .on(
-                'postgres_changes',
-                { event: '*', schema: 'public', table: 'ai_asset_rankings' },
-                () => fetchRankings()
-            )
-            .subscribe();
-
-        return () => {
-            supabase.removeChannel(channel);
-        };
     }, []);
+
+    // V1400: Listen to Redis Rankings
+    useEffect(() => {
+        if (!lastMessage || lastMessage.channel !== 'ai_rankings') return;
+
+        const newRank = lastMessage.data;
+        setRankings(prev => {
+            // Upsert logic: Update if exists, add if new
+            const exists = prev.find(r => r.symbol === newRank.symbol);
+            let updatedList;
+            if (exists) {
+                updatedList = prev.map(r => r.symbol === newRank.symbol ? { ...r, ...newRank } : r);
+            } else {
+                updatedList = [...prev, newRank];
+            }
+            // Always keep sorted by Score
+            return updatedList.sort((a, b) => b.score - a.score).slice(0, 20);
+        });
+    }, [lastMessage]);
 
     if (loading) return null;
 
