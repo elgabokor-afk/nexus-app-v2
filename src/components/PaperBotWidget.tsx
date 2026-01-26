@@ -85,7 +85,7 @@ export default function PaperBotWidget({
     // unified price updates synced with the backend scanner.
     // This ensures "Mirror Mode" - what the bot sees is what you see.
 
-    const { lastMessage } = useLiveStream(['live_positions', 'live_prices']);
+    const { lastMessage, isConnected } = useLiveStream(['live_positions', 'live_prices']);
 
     useEffect(() => {
         if (!lastMessage) return;
@@ -143,9 +143,28 @@ export default function PaperBotWidget({
         };
     }, [fetchPositions]);
 
+    // V1500: DYNAMIC REAL-TIME CALCULATIONS
+    const activePositions = positions.filter(p => p.status === 'OPEN');
+
+    const totalUnrealizedPnl = activePositions.reduce((acc, pos) => {
+        const livePrice = prices[pos.symbol.toUpperCase()] || prices[pos.symbol.toUpperCase().replace('/USDT', '/USD')] || pos.entry_price;
+        let pnl = (livePrice - pos.entry_price) * pos.quantity;
+        if (pos.quantity < 0 || (pos.bot_take_profit && pos.bot_take_profit < pos.entry_price)) {
+            pnl = (pos.entry_price - livePrice) * Math.abs(pos.quantity);
+        }
+        return acc + pnl;
+    }, 0);
+
+    const usedMargin = activePositions.reduce((acc, pos) => {
+        return acc + (pos.initial_margin || (pos.entry_price * Math.abs(pos.quantity) / (pos.leverage || 10)));
+    }, 0);
+
+    const dynamicEquity = wallet.balance + totalUnrealizedPnl;
+    const dynamicAvailable = wallet.balance - usedMargin;
+
     const stats = {
-        activeCount: positions.filter(p => p.status === 'OPEN').length,
-        totalPnl: positions.filter(p => p.status === 'CLOSED').reduce((acc, p) => acc + (p.pnl || 0), 0),
+        activeCount: activePositions.length,
+        totalPnl: positions.filter(p => p.status === 'CLOSED').reduce((acc, p) => acc + (p.pnl || 0), 0) + totalUnrealizedPnl,
         winRate: (positions.filter(p => p.status === 'CLOSED' && (p.pnl || 0) > 0).length /
             (positions.filter(p => p.status === 'CLOSED').length || 1)) * 100
     };
@@ -161,14 +180,22 @@ export default function PaperBotWidget({
 
             {/* WALLET SUMMARY */}
             <div className="p-6 border-b border-white/5 bg-white/[0.01]">
+                <div className="flex items-center justify-between mb-4 px-1">
+                    <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-[#00ffa3] animate-pulse shadow-[0_0_8px_#00ffa3]' : 'bg-red-500'}`}></div>
+                        <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">
+                            {isConnected ? 'Railway Price Bridge: Connected' : 'Railway Bridge: Offline'}
+                        </span>
+                    </div>
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                     <div className="p-4 rounded-3xl bg-black/40 border border-white/5">
                         <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Available Margin</p>
-                        <p className="text-xl font-black text-white font-mono">${wallet.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                        <p className="text-xl font-black text-white font-mono">${dynamicAvailable.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                     </div>
-                    <div className="p-4 rounded-3xl bg-[#00ffa3]/5 border border-[#00ffa3]/10">
-                        <p className="text-[10px] font-black text-[#00ffa3]/60 uppercase tracking-widest mb-1">Total Equity</p>
-                        <p className="text-xl font-black text-[#00ffa3] font-mono">${wallet.equity.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                    <div className={`p-4 rounded-3xl border transition-colors duration-300 ${totalUnrealizedPnl >= 0 ? 'bg-[#00ffa3]/5 border-[#00ffa3]/20' : 'bg-red-500/5 border-red-500/20'}`}>
+                        <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${totalUnrealizedPnl >= 0 ? 'text-[#00ffa3]/60' : 'text-red-500/60'}`}>Total Equity</p>
+                        <p className={`text-xl font-black font-mono ${totalUnrealizedPnl >= 0 ? 'text-[#00ffa3]' : 'text-red-500'}`}>${dynamicEquity.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                     </div>
                 </div>
             </div>
@@ -193,12 +220,13 @@ export default function PaperBotWidget({
                         </thead>
                         <tbody className="divide-y divide-white/5">
                             {positions.filter(p => p.status === 'OPEN').slice(0, 20).map(pos => {
-                                const livePrice = prices[pos.symbol.toUpperCase()] || pos.entry_price;
+                                const livePrice = prices[pos.symbol.toUpperCase()] || prices[pos.symbol.toUpperCase().replace('/USDT', '/USD')] || pos.entry_price;
+                                const isStreaming = !!prices[pos.symbol.toUpperCase()];
                                 let pnl = (livePrice - pos.entry_price) * pos.quantity;
                                 if (pos.quantity < 0 || (pos.bot_take_profit && pos.bot_take_profit < pos.entry_price)) {
                                     pnl = (pos.entry_price - livePrice) * Math.abs(pos.quantity);
                                 }
-                                const margin = pos.initial_margin || (pos.entry_price * Math.abs(pos.quantity));
+                                const margin = pos.initial_margin || (pos.entry_price * Math.abs(pos.quantity) / (pos.leverage || 10));
                                 const roePercent = margin > 0 ? (pnl / margin) * 100 : 0;
                                 const isPosGreen = pnl >= 0;
 
@@ -224,7 +252,10 @@ export default function PaperBotWidget({
                                             ${pos.entry_price.toLocaleString()}
                                         </td>
                                         <td className={`p-3 text-right font-mono text-xs font-bold ${isPosGreen ? 'text-[#00ffa3]' : 'text-red-500'}`}>
-                                            ${livePrice.toLocaleString()}
+                                            <div className="flex flex-col items-end">
+                                                <span>${livePrice.toLocaleString()}</span>
+                                                {isStreaming && <span className="text-[8px] animate-pulse text-[#00ffa3]">LIVE</span>}
+                                            </div>
                                         </td>
                                         <td className="p-3 text-right font-mono text-xs text-orange-500">
                                             ${pos.liquidation_price?.toLocaleString() || '---'}
@@ -292,6 +323,7 @@ export default function PaperBotWidget({
                             ) : (
                                 positions.filter(p => p.status === 'OPEN').slice(0, 20).map(pos => {
                                     const livePrice = prices[pos.symbol.toUpperCase()] || prices[pos.symbol.toUpperCase().replace('/USDT', '/USD')] || pos.entry_price;
+                                    const isStreaming = !!prices[pos.symbol.toUpperCase()];
                                     let pnl = (livePrice - pos.entry_price) * pos.quantity;
                                     if (pos.quantity < 0 || (pos.bot_take_profit && pos.bot_take_profit < pos.entry_price)) {
                                         pnl = (pos.entry_price - livePrice) * Math.abs(pos.quantity);
