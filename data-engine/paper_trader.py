@@ -379,24 +379,20 @@ def check_new_entries():
                 break
 
             # V3 LOGIC: Dynamic Filter based on 'bot_params'
-            # 1. RSI Check
-            if signal['rsi'] > params['rsi_buy_threshold'] and "BUY" in signal['signal_type']:
-                print(f"       [SKIPPED] {signal['symbol']} High RSI: {signal['rsi']} > {params['rsi_buy_threshold']}")
-                continue 
-
+            # 1. RSI Check - Removed as AI already confirms confluence in scanner.py
+            
             # 2. CONFIDENCE Check (Strict V415)
             # User Requirement: Confidence >= 85
             min_conf = float(params.get('min_confidence', 85))
-            signal_conf = float(signal.get('confidence', 0))
+            signal_conf = float(signal.get('ai_confidence', 0))
             if signal_conf < min_conf:
-                 print(f"       [SKIPPED] {signal['symbol']} Low Confidence: {signal_conf}% < {min_conf}%")
+                 print(f"       [SKIPPED] {signal['pair']} Low Confidence: {signal_conf}% < {min_conf}%")
                  continue
 
             # V500: Strict Schema - Schema Mapping
             # signals table -> code logic
             signal_symbol = signal['pair']
-            signal_type = "BUY" if "LONG" in signal.get('direction', '') else "SELL"
-            signal_conf = float(signal.get('ai_confidence', 0))
+            signal_type = signal.get('direction', 'LONG') # LONG or SHORT
             
             # Check duplication
             existing = supabase.table("paper_trades") \
@@ -409,8 +405,8 @@ def check_new_entries():
                 continue
 
             features = {
-                "price": float(signal['entry_price']),
-                "rsi_value": 50, # Placeholder as new schema might not have raw features
+                "price": float(signal['entry_price'] or 0),
+                "rsi_value": 50, # Placeholder
                 "confidence": signal_conf
             }
             
