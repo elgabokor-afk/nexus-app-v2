@@ -185,7 +185,81 @@ def fetch_fear_greed():
         print(f"Warning: Could not fetch Fear & Greed Index: {e}")
     return 50 # Default Neutral
 
-def analyze_quant_signal(symbol, tech_analysis, sentiment_score=50):
+# V415: Triple Confluence Helper Functions
+
+def check_rsi_divergence(df, lookback=10):
+    """
+    Detects simple RSI Divergence.
+    Bullish: Price Lower Low, RSI Higher Low
+    Bearish: Price Higher High, RSI Lower High
+    """
+    if len(df) < lookback: return "NONE"
+    
+    price = df['close'].iloc[-1]
+    rsi = df['RSI'].iloc[-1]
+    
+    # Simple logic: Compare current vs lowest/highest in lookback
+    window = df.iloc[-lookback:-1]
+    
+    if rsi < 35: # Potential Bullish Div
+        min_price_idx = window['close'].idxmin()
+        min_price = window['close'][min_price_idx]
+        min_rsi = window['RSI'][min_price_idx]
+        
+        if price < min_price and rsi > min_rsi:
+            return "BULLISH"
+            
+    if rsi > 65: # Potential Bearish Div
+        max_price_idx = window['close'].idxmax()
+        max_price = window['close'][max_price_idx]
+        max_rsi = window['RSI'][max_price_idx]
+        
+        if price > max_price and rsi < max_rsi:
+            return "BEARISH"
+            
+    return "NONE"
+
+def analyze_volume_pressure(df):
+    """
+    Calculates Volume Pressure Ratio.
+    Formula: Current Volume / 20-period Volume MA
+    Threshold: > 1.2 is significant.
+    """
+    vol = df['volume'].iloc[-1]
+    ma = df['Vol_MA'].iloc[-1]
+    if ma == 0: return 1.0
+    return vol / ma
+
+def check_market_structure(df, lookback=20):
+    """
+    Approximation of MSB (Market Structure Break).
+    Bullish: Close > Highest High of last X periods (Breakout)
+    Bearish: Close < Lowest Low of last X periods (Breakdown)
+    """
+    current_close = df['close'].iloc[-1]
+    window = df.iloc[-lookback:-1]
+    
+    highest = window['high'].max()
+    lowest = window['low'].min()
+    
+    if current_close > highest:
+        return "BULLISH"
+    elif current_close < lowest:
+        return "BEARISH"
+    
+    return "NEUTRAL"
+
+def check_news_blackout():
+    """
+    Manual News Filter (Placeholder).
+    Returns TRUE if in blackout window.
+    """
+    # TODO: Integrate valid news API. For now, we trust the manual schedule.
+    # Logic: Avoid 8:30am EST and 2:00pm EST ? 
+    # Let's keep it simple: No blackout unless manually added here.
+    return False
+
+def analyze_quant_signal(symbol, tech_analysis, sentiment_score=50, df_confluence=None):
     """
     Combines Technicals (RSI/EMA/MACD) with Quant Data (Order Book)
     using DYNAMIC WEIGHTS from the Optimizer.
@@ -228,6 +302,31 @@ def analyze_quant_signal(symbol, tech_analysis, sentiment_score=50):
     if hist < 0: macd_score = 0.2
     if hist > 0 and tech_analysis['macd'] > 0: macd_score = 1.0
     
+    # V415: TRIPLE CONFLUENCE CHECK
+    # 1. Structure
+    structure = "NEUTRAL"
+    if df_confluence is not None:
+        structure = check_market_structure(df_confluence)
+    
+    # 2. RSI Divergence
+    divergence = "NONE"
+    if df_confluence is not None:
+        divergence = check_rsi_divergence(df_confluence)
+        
+    # 3. Volume Pressure
+    vol_pressure = 1.0
+    if df_confluence is not None:
+        vol_pressure = analyze_volume_pressure(df_confluence)
+        
+    # LOGIC UPDATE: Force Confluence
+    # We punish the score heavily if Volume is weak or Structure is opposing.
+    
+    # Volume Check
+    if vol_pressure < 1.2:
+        # Weak Volume -> Penalty
+        macd_score *= 0.5
+        imb_score *= 0.5
+        
     # 3. APPLY DYNAMIC WEIGHTS
     weights = get_dynamic_weights()
     
@@ -237,6 +336,21 @@ def analyze_quant_signal(symbol, tech_analysis, sentiment_score=50):
         (imb_score * weights['imbalance']) + 
         (macd_score * weights['macd'])
     )
+    
+    # TRIPLE CONFLUENCE BONUSES
+    if structure == "BULLISH" and rsi_score > 0.5: final_score += 0.1
+    if structure == "BEARISH" and rsi_score < 0.5: final_score += 0.1
+    
+    if divergence == "BULLISH" and rsi_score > 0.5: final_score += 0.15 # Strong signal
+    if divergence == "BEARISH" and rsi_score < 0.5: final_score += 0.15 # Strong signal
+    
+    if vol_pressure > 2.0: final_score += 0.1 # Whale activity
+    elif vol_pressure > 1.5: final_score += 0.05
+    
+    # Check News Blackout
+    if check_news_blackout():
+        print(f"   [NEWS FILTER] Signal suppressed during blackout.")
+        return None
     
     # V8 COSMOS AI PREDICTION
     # Ask the Brain: "What are the odds?"
@@ -303,7 +417,8 @@ def analyze_quant_signal(symbol, tech_analysis, sentiment_score=50):
         'signal_line': round(tech_analysis['signal_line'], 4),
         'histogram': round(tech_analysis['histogram'], 4),
         'ai_prob': round(ai_prob * 100, 1),
-        'sentiment': sentiment_score
+        'sentiment': sentiment_score,
+        'depth_score': int(vol_pressure * 100) # Re-purposing depth score to show Vol Pressure in UI for now
     }
 
 from db import insert_signal, insert_analytics, log_error, get_active_position_count, get_last_trade_time
@@ -394,8 +509,8 @@ def main():
                     p_5m = techs_5m['price']
                     trend_15m = "BULLISH" if p_5m > ma_15m else "BEARISH"
                     
-                    # Upgrade to V4 Analysis with Confluence
-                    quant_signal = analyze_quant_signal(symbol, techs_5m, sentiment_score=fng_index)
+                    # Upgrade to V4 Analysis with Confluence (Pass the DF for history checks)
+                    quant_signal = analyze_quant_signal(symbol, techs_5m, sentiment_score=fng_index, df_confluence=df_5m)
                     
                     if quant_signal:
                         # V410: STRENGTHEN FILTER - Confluence check

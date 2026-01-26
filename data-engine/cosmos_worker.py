@@ -107,7 +107,7 @@ def main_loop():
                         trend_15m = "BULLISH" if p_5m > ma_15m else "BEARISH"
                         
                         # AI + Quant Analysis
-                        quant_signal = analyze_quant_signal(symbol, techs_5m, sentiment_score=fng_index)
+                        quant_signal = analyze_quant_signal(symbol, techs_5m, sentiment_score=fng_index, df_confluence=df_5m)
                         
                         if quant_signal:
                             # 15m Trend Filter

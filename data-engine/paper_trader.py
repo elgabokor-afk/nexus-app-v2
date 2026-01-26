@@ -384,8 +384,9 @@ def check_new_entries():
                 print(f"       [SKIPPED] {signal['symbol']} High RSI: {signal['rsi']} > {params['rsi_buy_threshold']}")
                 continue 
 
-            # 2. CONFIDENCE Check (New V17)
-            min_conf = float(params.get('min_confidence', 40))
+            # 2. CONFIDENCE Check (Strict V415)
+            # User Requirement: Confidence >= 85
+            min_conf = float(params.get('min_confidence', 85))
             signal_conf = float(signal.get('confidence', 0))
             if signal_conf < min_conf:
                  print(f"       [SKIPPED] {signal['symbol']} Low Confidence: {signal_conf}% < {min_conf}%")
@@ -702,37 +703,50 @@ def monitor_positions():
             elif stop_loss and current_price <= stop_loss:
                 exit_reason = "STOP_LOSS"
             elif take_profit and current_price >= take_profit:
-                # V23: NET PROFIT GUARD
-                # Check if closing now actually makes money after fees
-                raw_pnl = (current_price - pos['entry_price']) * pos['quantity']
-                if "SELL" in (pos.get('signal_type') or "BUY"): 
-                     raw_pnl = (pos['entry_price'] - current_price) * pos['quantity']
+                exit_reason = "TAKE_PROFIT"
                 
-                fee_rate = float(params.get('trading_fee_pct', 0.001))
-                entry_notion = pos['entry_price'] * abs(pos['quantity'])
-                exit_notion = current_price * abs(pos['quantity'])
-                total_f = (entry_notion + exit_notion) * fee_rate
+            # V415: DYNAMIC MANAGEMENT (Trailing Stop & Time Exit)
+            
+            # 1. Trailing Stop to Breakeven
+            # If profit > 1%, move SL to Entry
+            entry_price = float(pos['entry_price'])
+            quantity = float(pos['quantity'])
+            
+            # Calc Profit %
+            if quantity > 0: # LONG
+                profit_pct = (current_price - entry_price) / entry_price
+            else: # SHORT
+                profit_pct = (entry_price - current_price) / entry_price
                 
-                if raw_pnl > total_f:
-                    exit_reason = "TAKE_PROFIT"
-                else:
-                    # Not enough profit to cover fees yet. Wait longer!
-                    pass
-                
-            # V300: STAGNATION PRUNING
-            # If trade > 4 hours and at a loss, close it to free margin.
+            current_sl = float(pos.get('bot_stop_loss') or 0)
+            
+            if profit_pct > 0.01:
+                # Check if SL is already moved
+                # For LONG: SL should be >= Entry
+                # For SHORT: SL should be <= Entry
+                needs_update = False
+                if quantity > 0 and current_sl < entry_price:
+                    new_sl = entry_price * 1.001 # slightly in profit to cover fees
+                    needs_update = True
+                elif quantity < 0 and current_sl > entry_price:
+                    new_sl = entry_price * 0.999
+                    needs_update = True
+                    
+                if needs_update:
+                    print(f"       [TRAILING] Moving SL to Breakeven for {pos['symbol']}. Profit: {profit_pct*100:.2f}%")
+                    supabase.table("paper_positions").update({"bot_stop_loss": new_sl}).eq("id", pos['id']).execute()
+                    
+            # 2. Time-Based Exit (Stagnation)
             try:
                 created_at = datetime.fromisoformat(pos['opened_at'].replace('Z', '+00:00'))
-                age = (datetime.now(timezone.utc) - created_at).total_seconds() / 3600
-                raw_pnl = (current_price - pos['entry_price']) * pos['quantity']
-                if "SELL" in (pos.get('signal_type') or "BUY"): 
-                    raw_pnl = (pos['entry_price'] - current_price) * pos['quantity']
+                age_hours = (datetime.now(timezone.utc) - created_at).total_seconds() / 3600
                 
-                if age > 4 and raw_pnl < 0:
-                    exit_reason = "STAGNATION_PRUNE"
+                # If open > 4 hours and PnL < 0.5% (stuck), close it.
+                if age_hours > 4 and profit_pct < 0.005:
+                     exit_reason = "TIME_EXIT_STAGNATION"
             except Exception as e:
-                print(f"       [STAGNATION] Error calculating age: {e}")
-
+                print(f"       [TIME EXIT] Error: {e}")
+                
             if exit_reason:
                 # CLOSE POSITION
                 total_fees = 0
