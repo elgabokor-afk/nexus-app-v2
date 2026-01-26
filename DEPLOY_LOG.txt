@@ -1,12 +1,12 @@
 ﻿**********************
 Windows PowerShell transcript start
-Start time: 20260126210128
+Start time: 20260126210801
 Username: DESKTOP-TP0K0IU\NPC2
 RunAs User: DESKTOP-TP0K0IU\NPC2
 Configuration Name: 
 Machine: DESKTOP-TP0K0IU (Microsoft Windows NT 10.0.26200.0)
 Host Application: powershell -NoProfile -ExecutionPolicy Bypass -File FORCE_DEPLOY.ps1
-Process ID: 55416
+Process ID: 39280
 PSVersion: 5.1.26100.7462
 PSEdition: Desktop
 PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.7462
@@ -16,3 +16,4 @@ WSManStackVersion: 3.0
 PSRemotingProtocolVersion: 2.3
 SerializationVersion: 1.1.0.1
 **********************
+Transcript started, output file is DEPLOY_LOG.txt

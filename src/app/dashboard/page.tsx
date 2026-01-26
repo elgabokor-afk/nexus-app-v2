@@ -359,16 +359,48 @@ export default function Dashboard() {
                                             {[1, 2, 3, 4].map(i => <div key={i} className="h-32 rounded-3xl bg-white/5 animate-pulse border border-white/5"></div>)}
                                         </div>
                                     ) : (
-                                        signals.map((signal) => (
-                                            <SignalCard
-                                                key={signal.id}
-                                                {...signal}
-                                                imbalance={signal.analytics_signals?.[0]?.imbalance_ratio}
-                                                depth_score={signal.analytics_signals?.[0]?.depth_score}
-                                                onViewChart={handleViewChart}
-                                                compact={true}
-                                            />
-                                        ))
+                                        <>
+                                            {/* V1300: HOT SIGNALS (100% Confidence) */}
+                                            {signals.filter(s => s.confidence === 100).length > 0 && (
+                                                <div className="mb-4 space-y-3">
+                                                    <div className="flex items-center gap-2 px-1">
+                                                        <div className="text-orange-500 animate-fire">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                                                                <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a5.5 5.5 0 1 1-11 0c0-.536.22-1.072.5-1.5Z" />
+                                                            </svg>
+                                                        </div>
+                                                        <span className="text-[10px] font-black text-orange-500 uppercase tracking-widest animate-pulse">HOT ZONE - ELITE SIGNALS</span>
+                                                    </div>
+
+                                                    {signals.filter(s => s.confidence === 100).map((signal) => (
+                                                        <div key={signal.id} className="relative group/hot">
+                                                            <div className="absolute -inset-1 bg-gradient-to-r from-orange-600 to-red-600 rounded-3xl blur opacity-20 group-hover/hot:opacity-50 transition duration-500 animate-fire"></div>
+                                                            <SignalCard
+                                                                {...signal}
+                                                                imbalance={signal.analytics_signals?.[0]?.imbalance_ratio}
+                                                                depth_score={signal.analytics_signals?.[0]?.depth_score}
+                                                                onViewChart={handleViewChart}
+                                                                compact={true}
+                                                            />
+                                                        </div>
+                                                    ))}
+
+                                                    <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent my-4"></div>
+                                                </div>
+                                            )}
+
+                                            {/* REGULAR SIGNALS (<100% Confidence) */}
+                                            {signals.filter(s => s.confidence < 100).map((signal) => (
+                                                <SignalCard
+                                                    key={signal.id}
+                                                    {...signal}
+                                                    imbalance={signal.analytics_signals?.[0]?.imbalance_ratio}
+                                                    depth_score={signal.analytics_signals?.[0]?.depth_score}
+                                                    onViewChart={handleViewChart}
+                                                    compact={true}
+                                                />
+                                            ))}
+                                        </>
                                     )}
                                 </div>
                             </div>
