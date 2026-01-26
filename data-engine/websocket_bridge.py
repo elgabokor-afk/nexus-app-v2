@@ -13,26 +13,32 @@ load_dotenv()
 # V1100: Extended Channels for HA Dashboard (Updated V1400)
 CHANNELS = ["live_signals", "live_analytics", "live_prices", "live_positions", "live_logs", "ai_rankings"]
 
+
 async def redis_listener():
     """Listens to Redis and broadcasts to all WS clients."""
     print("   [WS BRIDGE] Redis Listener Started...")
     
     if not redis_engine.client:
-        print("   [WS BRIDGE] Error: Redis client not connected. Bridge will not function.")
+        print("   [WS BRIDGE] NOTICE: Redis offline. Streaming disabled, but AI Chat is ONLINE.")
         return
 
     pubsub = redis_engine.client.pubsub()
     pubsub.subscribe(CHANNELS)
     
     while True:
-        message = pubsub.get_message(ignore_subscribe_messages=True)
-        if message:
-            payload = {
-                "channel": message['channel'],
-                "data": json.loads(message['data'])
-            }
-            await manager.broadcast(payload)
+        try:
+            message = pubsub.get_message(ignore_subscribe_messages=True)
+            if message:
+                payload = {
+                    "channel": message['channel'],
+                    "data": json.loads(message['data'])
+                }
+                await manager.broadcast(payload)
+        except Exception as e:
+            print(f"   [WS BRIDGE] Redis Error: {e}")
+            break
         await asyncio.sleep(0.01) # Low latency check
+
 
 # V1201: Modern Lifespan Handler (Fixes DeprecationWarning)
 @asynccontextmanager
