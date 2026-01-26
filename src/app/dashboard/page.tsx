@@ -76,17 +76,31 @@ export default function Dashboard() {
             .from('market_signals')
             .select('*, analytics_signals(*)')
             .order('timestamp', { ascending: false })
-            .limit(50);
+            .limit(100); // Increased limit to ensure we get diversity
 
         if (error) console.error('Error fetching signals:', error);
         else {
             setSignals(data || []);
             if (data && data.length > 0 && !selectedSignal) {
-                setSelectedSignal(data[0]);
+                // Determine first unique signal to select
+                const unique = getUniqueSignals(data);
+                if (unique.length > 0) setSelectedSignal(unique[0]);
             }
         }
         setLoading(false);
     };
+
+    // V1500: Smart Deduplication
+    const getUniqueSignals = (rawSignals: Signal[]) => {
+        const seen = new Set();
+        return rawSignals.filter(signal => {
+            if (seen.has(signal.symbol)) return false;
+            seen.add(signal.symbol);
+            return true;
+        });
+    };
+
+    const uniqueSignals = getUniqueSignals(signals);
 
     useEffect(() => {
         setMounted(true);
@@ -361,7 +375,7 @@ export default function Dashboard() {
                                     ) : (
                                         <>
                                             {/* V1300: HOT SIGNALS (100% Confidence) */}
-                                            {signals.filter(s => s.confidence === 100).length > 0 && (
+                                            {uniqueSignals.filter(s => s.confidence === 100).length > 0 && (
                                                 <div className="mb-4 space-y-3">
                                                     <div className="flex items-center gap-2 px-1">
                                                         <div className="text-orange-500 animate-fire">
@@ -372,7 +386,7 @@ export default function Dashboard() {
                                                         <span className="text-[10px] font-black text-orange-500 uppercase tracking-widest animate-pulse">HOT ZONE - ELITE SIGNALS</span>
                                                     </div>
 
-                                                    {signals.filter(s => s.confidence === 100).map((signal) => (
+                                                    {uniqueSignals.filter(s => s.confidence === 100).map((signal) => (
                                                         <div key={signal.id} className="relative group/hot">
                                                             <div className="absolute -inset-1 bg-gradient-to-r from-orange-600 to-red-600 rounded-3xl blur opacity-20 group-hover/hot:opacity-50 transition duration-500 animate-fire"></div>
                                                             <SignalCard
@@ -390,7 +404,7 @@ export default function Dashboard() {
                                             )}
 
                                             {/* REGULAR SIGNALS (<100% Confidence) */}
-                                            {signals.filter(s => s.confidence < 100).map((signal) => (
+                                            {uniqueSignals.filter(s => s.confidence < 100).map((signal) => (
                                                 <SignalCard
                                                     key={signal.id}
                                                     {...signal}

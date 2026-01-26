@@ -26,6 +26,9 @@ if os.path.exists(config_path):
 PRIORITY_ASSETS = GLOBAL_CONFIG.get("priority_assets", ["BTC/USDT", "SOL/USDT"])
 SYMBOLS = GLOBAL_CONFIG.get("trading_pairs", ["BTC/USDT", "SOL/USDT", "ETH/USDT", "DOGE/USDT"])
 
+# V1500: Dedup Cache
+SIGNAL_COOLDOWN = {}
+
 def calculate_rsi(series, period=14):
     delta = series.diff()
     gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
@@ -105,7 +108,31 @@ def run_oracle_step(symbol='BTC/USDT'):
         print(f"[{time.strftime('%H:%M:%S')}] ORACLE | {symbol.ljust(8)} | {trend.ljust(7)} | Prob: {prob*100:4.1f}% | Rank: {score:.1f}")
         
         # 6. EMIT SCALP SIGNAL
+        # V1500: Database Throttling (Spam Protection)
+        # Prevents identical signals from flooding the DB.
+        # Rule: Cooldown 15m (900s) per symbol unless signal type changes.
+        
+        signal_key = f"{symbol}_{signal_type}"
+        last_signal_time = SIGNAL_COOLDOWN.get(symbol, {}).get("timestamp", 0)
+        last_signal_type = SIGNAL_COOLDOWN.get(symbol, {}).get("type", "")
+        
+        should_emit = False
+        
         if signal_type != "NEUTRAL":
+            # If type flipped (e.g. BUY -> SELL), emit immediately
+            if signal_type != last_signal_type:
+                should_emit = True
+            # If same type, check 15m cooldown
+            elif (time.time() - last_signal_time) > 900:
+                should_emit = True
+            else:
+                # Update cooldown timestamp only (keep alive)
+                print(f"      [THROTTLE] Skipping duplicate {symbol} signal (Cooldown active).")
+
+        if should_emit:
+            # Update Cache
+            SIGNAL_COOLDOWN[symbol] = {"timestamp": time.time(), "type": signal_type}
+            
             print(f"      !!! SCALP OPPORTUNITY: {symbol} {signal_type} !!!")
             atr = latest['ATR']
             sl = latest['close'] - (atr * 2.5) if "BUY" in signal_type else latest['close'] + (atr * 2.5)
