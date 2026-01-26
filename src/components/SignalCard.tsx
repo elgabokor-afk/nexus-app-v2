@@ -23,9 +23,10 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
     symbol, price, rsi, signal_type, confidence, timestamp, stop_loss, take_profit, atr_value, volume_ratio, imbalance, depth_score, onViewChart, onConsultAI, compact = false
 }) => {
 
-    // V2100: UNIFIED LAYOUT
-    // The user wants detailed cards (Header/Metrics/Targets) even in the sidebar "Signal Pulse".
-    // We removed the "Strip" specific layout. "compact" now just means "tighter padding".
+    // V2200: STRICT LAYOUT CONTROL
+    // We are disregarding 'compact' mode's structure changes. 
+    // Always render the Full detailed card.
+    // Ensure AI button is FLEXbox aligned, never Absolute.
 
     const isBuy = signal_type.includes('BUY');
     const isSell = signal_type.includes('SELL');
@@ -37,7 +38,6 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
     let textColor = 'text-gray-400';
     let actionText = 'WAITING';
 
-    // Stronger colors for the border in compact mode to pop against sidebar
     if (isBuy) {
         borderColor = 'border-[#00ffa3]/30';
         textColor = 'text-[#00ffa3]';
@@ -62,30 +62,38 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
                 bg-gradient-to-br from-white/[0.02] to-transparent
             `}
         >
-            {/* === 1. HEADER ROW (Symbol | Confidence | Price) === */}
+            {/* === 1. HEADER ROW === */}
+            {/* Flex Container: Left = Icon/Symbol/AI, Right = Price/RSI */}
             <div className={`${compact ? 'flex justify-between items-start mb-2' : 'p-6 pb-2 flex justify-between items-start'}`}>
+
+                {/* Left Side Group */}
                 <div className="flex items-center gap-3">
                     {/* Icon */}
-                    <div className={`relative ${compact ? 'w-8 h-8' : 'w-12 h-12'} rounded-lg bg-white/5 flex items-center justify-center p-1 overflow-hidden border border-white/10`}>
+                    <div className={`relative ${compact ? 'w-10 h-10' : 'w-12 h-12'} rounded-xl bg-white/5 flex items-center justify-center p-1 overflow-hidden border border-white/10`}>
                         <img src={logoUrl} alt={coin} className="w-full h-full object-contain"
                             onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
                         />
                     </div>
-                    {/* Text Info */}
+
+                    {/* Symbol & Info */}
                     <div>
                         <div className="flex items-center gap-2">
-                            <h3 className={`${compact ? 'text-xs' : 'text-lg'} font-bold font-sans text-white leading-none`}>{symbol}</h3>
-                            {/* AI Brain Button (Discreet, next to symbol) */}
+                            {/* Symbol */}
+                            <h3 className={`${compact ? 'text-sm' : 'text-lg'} font-bold font-sans text-white leading-none`}>{symbol}</h3>
+
+                            {/* AI BUTTON (Discreet, Inline, No Overlap) */}
                             {onConsultAI && (
                                 <button
                                     onClick={(e) => { e.stopPropagation(); onConsultAI({ symbol, price, confidence, signal_type, rsi, stop_loss, take_profit }); }}
-                                    className="p-1 rounded hover:bg-white/10 text-purple-400 transition-colors"
+                                    className="w-5 h-5 flex items-center justify-center rounded-md bg-purple-500/20 text-purple-400 hover:bg-purple-500 hover:text-white transition-colors ml-1"
                                     title="Consult AI"
                                 >
-                                    <Brain size={compact ? 12 : 14} />
+                                    <Brain size={12} />
                                 </button>
                             )}
                         </div>
+
+                        {/* Status Line */}
                         <div className="flex items-center gap-2 mt-1">
                             <span className={`text-[9px] font-black uppercase tracking-wider ${textColor}`}>{actionText}</span>
                             <div className="w-12 h-1 bg-white/10 rounded-full overflow-hidden">
@@ -95,17 +103,18 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
                     </div>
                 </div>
 
-                {/* Price Block */}
-                <div className="text-right">
+                {/* Right Side Group (Price) */}
+                <div className="text-right pl-2">
                     <p className={`${compact ? 'text-sm' : 'text-xl'} font-mono font-bold text-white tracking-tighter`}>{formatPrice(price)}</p>
                     <div className="flex items-center justify-end gap-1">
+                        <Activity size={10} className="text-gray-600" />
                         <span className="text-[9px] text-gray-500 font-mono">RSI {rsi.toFixed(0)}</span>
                     </div>
                 </div>
             </div>
 
-            {/* === 2. METRICS ROW (Vol | ATR | Trend) === */}
-            <div className={`${compact ? 'px-1 py-2' : 'px-6 py-4'}`}>
+            {/* === 2. METRICS ROW === */}
+            <div className={`${compact ? 'px-1 py-1' : 'px-6 py-4'}`}>
                 <div className="bg-white/[0.02] border border-white/5 rounded-lg p-2 flex items-center justify-between">
                     <div className="text-center">
                         <p className="text-[8px] text-gray-600 uppercase font-bold">Vol</p>
@@ -124,9 +133,9 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
                 </div>
             </div>
 
-            {/* === 3. TARGETS ROW (Stop | Profit) === */}
+            {/* === 3. TARGETS ROW === */}
             <div className={`${compact ? 'px-2 pb-2 grid grid-cols-2 gap-4' : 'px-6 pb-6 grid grid-cols-2 gap-8'}`}>
-                <div>
+                <div className="text-left">
                     <p className="text-[8px] uppercase tracking-widest text-gray-600 font-bold mb-0.5">Stop</p>
                     <p className={`${compact ? 'text-xs' : 'text-base'} font-mono text-gray-400 font-medium`}>{formatPrice(stop_loss)}</p>
                 </div>
@@ -136,7 +145,7 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
                 </div>
             </div>
 
-            {/* Full Mode Only: Large Action Footer (Compact hides this to save vertical space, rely on small brain button) */}
+            {/* Full Mode Footer */}
             {!compact && (
                 <div className="mt-2 p-4 border-t border-white/5 bg-black/40 flex gap-2">
                     <button
