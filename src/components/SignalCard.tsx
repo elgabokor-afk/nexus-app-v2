@@ -23,10 +23,9 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
     symbol, price, rsi, signal_type, confidence, timestamp, stop_loss, take_profit, atr_value, volume_ratio, imbalance, depth_score, onViewChart, onConsultAI, compact = false
 }) => {
 
-    // V2200: STRICT LAYOUT CONTROL
-    // We are disregarding 'compact' mode's structure changes. 
-    // Always render the Full detailed card.
-    // Ensure AI button is FLEXbox aligned, never Absolute.
+    // V2300: VISUAL COMPLIANCE
+    // Labels must match screenshot EXACTLY: "VOL PRESSURE", "ATR RISK", "TREND STATUS", "TARGET STOP", "TARGET PROFIT".
+    // AI Button: Hidden by default, appears as Overlay on Hover to preserve "Clean Design".
 
     const isBuy = signal_type.includes('BUY');
     const isSell = signal_type.includes('SELL');
@@ -38,6 +37,7 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
     let textColor = 'text-gray-400';
     let actionText = 'WAITING';
 
+    // Matching the glowing text logic
     if (isBuy) {
         borderColor = 'border-[#00ffa3]/30';
         textColor = 'text-[#00ffa3]';
@@ -57,109 +57,106 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
             className={`
                 relative overflow-hidden group transition-all duration-300
                 ${compact
-                    ? `p-3 mb-3 cursor-pointer bg-[#0a0a0c] border ${borderColor} rounded-xl hover:bg-white/[0.02] active:scale-[0.98]`
+                    ? `p-4 mb-3 cursor-pointer bg-[#0a0a0c] border ${borderColor} rounded-2xl hover:bg-white/[0.02] active:scale-[0.98]`
                     : 'p-0 backdrop-blur-xl bg-[#0a0a0c]/80 border border-white/5 rounded-3xl hover:border-white/10 shadow-2xl'}
                 bg-gradient-to-br from-white/[0.02] to-transparent
             `}
         >
-            {/* === 1. HEADER ROW === */}
-            {/* Flex Container: Left = Icon/Symbol/AI, Right = Price/RSI */}
-            <div className={`${compact ? 'flex justify-between items-start mb-2' : 'p-6 pb-2 flex justify-between items-start'}`}>
+            {/* === HOVER OVERLAY: AI ACTION (Hidden by default, visible on hover) === */}
+            {onConsultAI && (
+                <div className="absolute inset-0 z-20 bg-black/60 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center gap-3 pointer-events-none group-hover:pointer-events-auto">
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onConsultAI({ symbol, price, confidence, signal_type, rsi, stop_loss, take_profit }); }}
+                        className="px-6 py-2 rounded-xl bg-[#7c3aed] text-white font-bold tracking-wider shadow-[0_0_20px_rgba(124,58,237,0.5)] hover:scale-105 transition-transform flex items-center gap-2"
+                    >
+                        <Brain size={18} />
+                        CONSULT AI
+                    </button>
+                    {!compact && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onViewChart && onViewChart(symbol); }}
+                            className="px-6 py-2 rounded-xl bg-white/10 text-white font-bold tracking-wider hover:bg-white/20 transition-colors"
+                        >
+                            VIEW CHART
+                        </button>
+                    )}
+                </div>
+            )}
 
-                {/* Left Side Group */}
-                <div className="flex items-center gap-3">
+            {/* === 1. HEADER ROW === */}
+            <div className={`${compact ? 'flex justify-between items-start mb-3' : 'p-6 pb-2 flex justify-between items-start'}`}>
+
+                {/* Left: Icon & Info */}
+                <div className="flex items-center gap-4">
                     {/* Icon */}
-                    <div className={`relative ${compact ? 'w-10 h-10' : 'w-12 h-12'} rounded-xl bg-white/5 flex items-center justify-center p-1 overflow-hidden border border-white/10`}>
+                    <div className={`relative ${compact ? 'w-10 h-10' : 'w-12 h-12'} rounded-full bg-white/5 flex items-center justify-center p-1 overflow-hidden border border-white/10`}>
                         <img src={logoUrl} alt={coin} className="w-full h-full object-contain"
                             onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
                         />
+                        {/* Status Dot */}
+                        <div className={`absolute top-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-[#0a0a0c] ${isBuy ? 'bg-[#00ffa3]' : 'bg-[#ff4d4d]'}`}></div>
                     </div>
 
-                    {/* Symbol & Info */}
+                    {/* Text */}
                     <div>
                         <div className="flex items-center gap-2">
-                            {/* Symbol */}
                             <h3 className={`${compact ? 'text-sm' : 'text-lg'} font-bold font-sans text-white leading-none`}>{symbol}</h3>
-
-                            {/* AI BUTTON (Discreet, Inline, No Overlap) */}
-                            {onConsultAI && (
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); onConsultAI({ symbol, price, confidence, signal_type, rsi, stop_loss, take_profit }); }}
-                                    className="w-5 h-5 flex items-center justify-center rounded-md bg-purple-500/20 text-purple-400 hover:bg-purple-500 hover:text-white transition-colors ml-1"
-                                    title="Consult AI"
-                                >
-                                    <Brain size={12} />
-                                </button>
-                            )}
                         </div>
-
-                        {/* Status Line */}
                         <div className="flex items-center gap-2 mt-1">
-                            <span className={`text-[9px] font-black uppercase tracking-wider ${textColor}`}>{actionText}</span>
-                            <div className="w-12 h-1 bg-white/10 rounded-full overflow-hidden">
-                                <div className={`h-full ${isBuy ? 'bg-[#00ffa3]' : 'bg-[#ff4d4d]'}`} style={{ width: `${confidence}%` }}></div>
-                            </div>
+                            <span className={`text-[10px] font-black uppercase tracking-wider ${textColor}`}>{actionText}</span>
+                            <span className="text-[10px] text-gray-500 font-mono flex items-center gap-1">
+                                {confidence}% Conf.
+                            </span>
                         </div>
                     </div>
                 </div>
 
-                {/* Right Side Group (Price) */}
-                <div className="text-right pl-2">
-                    <p className={`${compact ? 'text-sm' : 'text-xl'} font-mono font-bold text-white tracking-tighter`}>{formatPrice(price)}</p>
+                {/* Right: Price */}
+                <div className="text-right">
+                    <p className={`${compact ? 'text-lg' : 'text-xl'} font-mono font-bold text-white tracking-tighter`}>{formatPrice(price)}</p>
                     <div className="flex items-center justify-end gap-1">
-                        <Activity size={10} className="text-gray-600" />
-                        <span className="text-[9px] text-gray-500 font-mono">RSI {rsi.toFixed(0)}</span>
+                        {/* RSI Small */}
+                        <span className="text-[9px] text-gray-500 font-mono">RSI: <span className={rsi > 70 || rsi < 30 ? 'text-white font-bold' : ''}>{rsi.toFixed(1)}</span></span>
                     </div>
                 </div>
             </div>
 
-            {/* === 2. METRICS ROW === */}
-            <div className={`${compact ? 'px-1 py-1' : 'px-6 py-4'}`}>
-                <div className="bg-white/[0.02] border border-white/5 rounded-lg p-2 flex items-center justify-between">
-                    <div className="text-center">
-                        <p className="text-[8px] text-gray-600 uppercase font-bold">Vol</p>
-                        <p className="text-[9px] font-medium text-gray-300">{(volume_ratio || 0).toFixed(1)}x</p>
+            {/* === 2. METRICS ROW (Exact Labels) === */}
+            <div className={`${compact ? 'px-0 py-2' : 'px-6 py-4'}`}>
+                <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 flex items-center justify-between">
+                    <div className="space-y-0.5">
+                        <p className="text-[8px] text-gray-500 uppercase font-bold tracking-widest">VOL PRESSURE</p>
+                        <p className="text-[10px] font-medium text-gray-300">{(volume_ratio || 0).toFixed(2)}x</p>
                     </div>
-                    <div className="h-4 w-px bg-white/5"></div>
-                    <div className="text-center">
-                        <p className="text-[8px] text-gray-600 uppercase font-bold">Risk</p>
-                        <p className="text-[9px] font-medium text-gray-300">{(atr_value || 0).toFixed(2)}</p>
+                    <div className="h-5 w-px bg-white/5"></div>
+                    <div className="space-y-0.5">
+                        <p className="text-[8px] text-gray-500 uppercase font-bold tracking-widest">ATR RISK</p>
+                        <p className="text-[10px] font-medium text-gray-300">{(atr_value || 0).toFixed(2)}</p>
                     </div>
-                    <div className="h-4 w-px bg-white/5"></div>
-                    <div className="text-center">
-                        <p className="text-[8px] text-gray-600 uppercase font-bold">Trend</p>
-                        <p className={`text-[9px] font-bold ${textColor}`}>{confidence > 75 ? 'Good' : 'Weak'}</p>
+                    <div className="h-5 w-px bg-white/5"></div>
+                    <div className="space-y-0.5 text-right">
+                        <p className="text-[8px] text-gray-500 uppercase font-bold tracking-widest">TREND STATUS</p>
+                        <div className="flex items-center justify-end gap-1">
+                            <div className={`w-2 h-2 rounded-full ${confidence > 75 ? 'bg-[#00ffa3] shadow-[0_0_5px_#00ffa3]' : 'bg-gray-600'}`}></div>
+                            <span className="text-[10px] font-bold text-white">{confidence > 75 ? 'STRONG' : 'WEAK'}</span>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            {/* === 3. TARGETS ROW === */}
-            <div className={`${compact ? 'px-2 pb-2 grid grid-cols-2 gap-4' : 'px-6 pb-6 grid grid-cols-2 gap-8'}`}>
-                <div className="text-left">
-                    <p className="text-[8px] uppercase tracking-widest text-gray-600 font-bold mb-0.5">Stop</p>
-                    <p className={`${compact ? 'text-xs' : 'text-base'} font-mono text-gray-400 font-medium`}>{formatPrice(stop_loss)}</p>
+            {/* === 3. TARGETS ROW (Exact Labels) === */}
+            <div className={`${compact ? 'pt-1 pb-1 grid grid-cols-2 gap-4' : 'px-6 pb-6 grid grid-cols-2 gap-8'}`}>
+                <div>
+                    <p className="text-[8px] uppercase tracking-widest text-gray-500 font-bold mb-1">TARGET STOP</p>
+                    <p className={`${compact ? 'text-sm' : 'text-base'} font-mono text-gray-400 font-bold`}>{formatPrice(stop_loss)}</p>
                 </div>
                 <div className="text-right">
-                    <p className="text-[8px] uppercase tracking-widest text-[#00ffa3]/80 font-bold mb-0.5">Target</p>
-                    <p className={`${compact ? 'text-xs' : 'text-base'} font-mono text-white font-bold`}>{formatPrice(take_profit)}</p>
+                    <p className="text-[8px] uppercase tracking-widest text-[#00ffa3] font-bold mb-1">TARGET PROFIT</p>
+                    <p className={`${compact ? 'text-sm' : 'text-base'} font-mono text-white font-bold`}>{formatPrice(take_profit)}</p>
                 </div>
             </div>
 
-            {/* Full Mode Footer */}
-            {!compact && (
-                <div className="mt-2 p-4 border-t border-white/5 bg-black/40 flex gap-2">
-                    <button
-                        onClick={() => onViewChart && onViewChart(symbol)}
-                        className={`
-                            w-full py-3 rounded-xl font-black text-[10px] tracking-[0.2em] uppercase
-                            transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]
-                            ${isBuy ? 'bg-[#00ffa3] text-black hover:bg-white' : 'bg-[#ff4d4d] text-white hover:bg-white hover:text-black'}
-                        `}
-                    >
-                        Chart Analysis
-                    </button>
-                </div>
-            )}
+            {/* No VISIBLE Footer in Default State - Matches Screenshot */}
         </div>
     );
 };
