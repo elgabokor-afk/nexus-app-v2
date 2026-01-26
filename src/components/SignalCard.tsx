@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ArrowUpRight, ArrowDownRight, Activity, Brain, BarChart2 } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, Activity, Brain, BarChart2, Flame } from 'lucide-react';
 
 interface SignalProps {
     symbol: string;
@@ -23,12 +23,14 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
     symbol, price, rsi, signal_type, confidence, timestamp, stop_loss, take_profit, atr_value, volume_ratio, imbalance, depth_score, onViewChart, onConsultAI, compact = false
 }) => {
 
-    // V2300: VISUAL COMPLIANCE
-    // Labels must match screenshot EXACTLY: "VOL PRESSURE", "ATR RISK", "TREND STATUS", "TARGET STOP", "TARGET PROFIT".
-    // AI Button: Hidden by default, appears as Overlay on Hover to preserve "Clean Design".
+    // V2400: VISUAL REPLICATION + HOT ZONE
+    // 1. "Hot Zone": If confidence > 90, show the Red Flame Header.
+    // 2. "Strict Params": Ensure Vol, ATR, Trend, Stop, Profit are visible exactly as in screenshot.
+    // 3. Colors: Darker backgrounds, high contrast text.
 
     const isBuy = signal_type.includes('BUY');
     const isSell = signal_type.includes('SELL');
+    const isHot = confidence >= 90;
 
     const coin = symbol.split('/')[0];
     const logoUrl = `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${coin.toLowerCase()}.png`;
@@ -36,16 +38,16 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
     let borderColor = 'border-white/5';
     let textColor = 'text-gray-400';
     let actionText = 'WAITING';
+    let glowClass = '';
 
-    // Matching the glowing text logic
     if (isBuy) {
-        borderColor = 'border-[#00ffa3]/30';
         textColor = 'text-[#00ffa3]';
         actionText = 'LONG';
+        if (isHot) glowClass = 'shadow-[0_0_30px_-10px_rgba(0,255,163,0.3)] border-[#00ffa3]/30';
     } else if (isSell) {
-        borderColor = 'border-[#ff4d4d]/30';
         textColor = 'text-[#ff4d4d]';
         actionText = 'SHORT';
+        if (isHot) glowClass = 'shadow-[0_0_30px_-10px_rgba(255,77,77,0.3)] border-[#ff4d4d]/30';
     }
 
     const formatPrice = (p: number | undefined) =>
@@ -57,106 +59,107 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
             className={`
                 relative overflow-hidden group transition-all duration-300
                 ${compact
-                    ? `p-4 mb-3 cursor-pointer bg-[#0a0a0c] border ${borderColor} rounded-2xl hover:bg-white/[0.02] active:scale-[0.98]`
-                    : 'p-0 backdrop-blur-xl bg-[#0a0a0c]/80 border border-white/5 rounded-3xl hover:border-white/10 shadow-2xl'}
-                bg-gradient-to-br from-white/[0.02] to-transparent
+                    ? `mb-3 cursor-pointer bg-[#0e0e10] border border-white/5 rounded-2xl hover:bg-white/[0.02] active:scale-[0.98]`
+                    : 'backdrop-blur-xl bg-[#0e0e10]/90 border border-white/5 rounded-3xl hover:border-white/10 shadow-2xl'}
+                ${isHot ? glowClass : ''}
             `}
         >
-            {/* === HOVER OVERLAY: AI ACTION (Hidden by default, visible on hover) === */}
+            {/* === HOVER OVERLAY: AI ACTION === */}
             {onConsultAI && (
-                <div className="absolute inset-0 z-20 bg-black/60 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center gap-3 pointer-events-none group-hover:pointer-events-auto">
+                <div className="absolute inset-0 z-30 bg-black/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col items-center justify-center gap-3 pointer-events-none group-hover:pointer-events-auto">
                     <button
                         onClick={(e) => { e.stopPropagation(); onConsultAI({ symbol, price, confidence, signal_type, rsi, stop_loss, take_profit }); }}
-                        className="px-6 py-2 rounded-xl bg-[#7c3aed] text-white font-bold tracking-wider shadow-[0_0_20px_rgba(124,58,237,0.5)] hover:scale-105 transition-transform flex items-center gap-2"
+                        className="px-5 py-2 rounded-lg bg-[#7c3aed] text-white font-black uppercase tracking-wider text-xs shadow-lg hover:bg-[#6d28d9] transition-transform hover:scale-105 flex items-center gap-2"
                     >
-                        <Brain size={18} />
-                        CONSULT AI
+                        <Brain size={16} />
+                        Consult Nexus
                     </button>
                     {!compact && (
                         <button
                             onClick={(e) => { e.stopPropagation(); onViewChart && onViewChart(symbol); }}
-                            className="px-6 py-2 rounded-xl bg-white/10 text-white font-bold tracking-wider hover:bg-white/20 transition-colors"
+                            className="px-5 py-2 rounded-lg bg-white/10 text-white font-black uppercase tracking-wider text-xs hover:bg-white/20 transition-colors"
                         >
-                            VIEW CHART
+                            Open Chart
                         </button>
                     )}
                 </div>
             )}
 
-            {/* === 1. HEADER ROW === */}
-            <div className={`${compact ? 'flex justify-between items-start mb-3' : 'p-6 pb-2 flex justify-between items-start'}`}>
+            {/* === HOT ZONE HEADER (Only for Elite Signals) === */}
+            {isHot && (
+                <div className={`
+                    w-full py-1.5 px-4 flex items-center gap-2 
+                    bg-gradient-to-r from-red-500/10 to-transparent border-b border-red-500/10
+                `}>
+                    <Flame size={12} className="text-orange-500 fill-orange-500" />
+                    <span className="text-[9px] font-black uppercase tracking-[0.15em] text-orange-400">HOT ZONE - ELITE SIGNALS</span>
+                </div>
+            )}
 
-                {/* Left: Icon & Info */}
-                <div className="flex items-center gap-4">
-                    {/* Icon */}
-                    <div className={`relative ${compact ? 'w-10 h-10' : 'w-12 h-12'} rounded-full bg-white/5 flex items-center justify-center p-1 overflow-hidden border border-white/10`}>
-                        <img src={logoUrl} alt={coin} className="w-full h-full object-contain"
-                            onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
-                        />
-                        {/* Status Dot */}
-                        <div className={`absolute top-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-[#0a0a0c] ${isBuy ? 'bg-[#00ffa3]' : 'bg-[#ff4d4d]'}`}></div>
+            {/* === CARD CONTENT === */}
+            <div className={`${compact ? 'p-4' : 'p-6'}`}>
+
+                {/* 1. HEADER: Icon | Symbol | Status | Price */}
+                <div className="flex justify-between items-start mb-4">
+                    <div className="flex items-center gap-3">
+                        {/* Icon Box */}
+                        <div className="w-10 h-10 rounded-full bg-[#18181b] flex items-center justify-center p-1.5 border border-white/5 relative">
+                            <img src={logoUrl} alt={coin} className="w-full h-full object-contain" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
+                            {/* Status Indicator Dot */}
+                            <div className={`absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full border-[3px] border-[#0e0e10] ${isBuy ? 'bg-[#00ffa3]' : 'bg-[#ff4d4d]'}`}></div>
+                        </div>
+
+                        {/* Symbol Name & Signal */}
+                        <div>
+                            <h3 className="text-base font-bold text-white leading-none mb-1">{symbol}</h3>
+                            <div className="flex items-center gap-2">
+                                <span className={`text-[10px] font-black uppercase ${textColor}`}>{actionText}</span>
+                                <div className="h-3 w-px bg-white/10"></div>
+                                <span className="text-[9px] font-bold text-gray-500">{confidence}% Conf</span>
+                            </div>
+                        </div>
                     </div>
 
-                    {/* Text */}
+                    {/* Price & RSI */}
+                    <div className="text-right">
+                        <p className="text-base font-mono font-bold text-white mb-0.5">{formatPrice(price)}</p>
+                        <p className="text-[9px] text-gray-500 font-mono">RSI: <span className={rsi > 70 || rsi < 30 ? 'text-white' : ''}>{rsi.toFixed(1)}</span></p>
+                    </div>
+                </div>
+
+                {/* 2. METRICS ROW: Vol | ATR | Trend */}
+                <div className="bg-[#18181b] border border-white/5 rounded-lg p-3 grid grid-cols-3 gap-2 mb-4">
                     <div>
-                        <div className="flex items-center gap-2">
-                            <h3 className={`${compact ? 'text-sm' : 'text-lg'} font-bold font-sans text-white leading-none`}>{symbol}</h3>
-                        </div>
-                        <div className="flex items-center gap-2 mt-1">
-                            <span className={`text-[10px] font-black uppercase tracking-wider ${textColor}`}>{actionText}</span>
-                            <span className="text-[10px] text-gray-500 font-mono flex items-center gap-1">
-                                {confidence}% Conf.
+                        <p className="text-[7px] text-gray-500 font-black uppercase tracking-wider mb-0.5">VOL PRESSURE</p>
+                        <p className="text-[10px] font-bold text-gray-300">{(volume_ratio || 0).toFixed(2)}x</p>
+                    </div>
+                    <div className="text-center border-l border-white/5 border-r">
+                        <p className="text-[7px] text-gray-500 font-black uppercase tracking-wider mb-0.5">ATR RISK</p>
+                        <p className="text-[10px] font-bold text-gray-300">{(atr_value || 0).toFixed(2)}</p>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-[7px] text-gray-500 font-black uppercase tracking-wider mb-0.5">TREND STATUS</p>
+                        <div className="flex items-center justify-end gap-1">
+                            <span className={`text-[9px] font-black ${confidence > 75 ? 'text-[#00ffa3]' : 'text-gray-400'}`}>
+                                {confidence > 75 ? 'STRONG' : 'NEUTRAL'}
                             </span>
                         </div>
                     </div>
                 </div>
 
-                {/* Right: Price */}
-                <div className="text-right">
-                    <p className={`${compact ? 'text-lg' : 'text-xl'} font-mono font-bold text-white tracking-tighter`}>{formatPrice(price)}</p>
-                    <div className="flex items-center justify-end gap-1">
-                        {/* RSI Small */}
-                        <span className="text-[9px] text-gray-500 font-mono">RSI: <span className={rsi > 70 || rsi < 30 ? 'text-white font-bold' : ''}>{rsi.toFixed(1)}</span></span>
+                {/* 3. TARGETS ROW: Stop | Profit */}
+                <div className="flex justify-between items-center">
+                    <div>
+                        <p className="text-[8px] text-gray-600 font-black uppercase tracking-widest mb-0.5">TARGET STOP</p>
+                        <p className="text-sm font-mono font-bold text-gray-400">{formatPrice(stop_loss)}</p>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-[8px] text-[#00ffa3]/80 font-black uppercase tracking-widest mb-0.5">TARGET PROFIT</p>
+                        <p className="text-sm font-mono font-bold text-white">{formatPrice(take_profit)}</p>
                     </div>
                 </div>
-            </div>
 
-            {/* === 2. METRICS ROW (Exact Labels) === */}
-            <div className={`${compact ? 'px-0 py-2' : 'px-6 py-4'}`}>
-                <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 flex items-center justify-between">
-                    <div className="space-y-0.5">
-                        <p className="text-[8px] text-gray-500 uppercase font-bold tracking-widest">VOL PRESSURE</p>
-                        <p className="text-[10px] font-medium text-gray-300">{(volume_ratio || 0).toFixed(2)}x</p>
-                    </div>
-                    <div className="h-5 w-px bg-white/5"></div>
-                    <div className="space-y-0.5">
-                        <p className="text-[8px] text-gray-500 uppercase font-bold tracking-widest">ATR RISK</p>
-                        <p className="text-[10px] font-medium text-gray-300">{(atr_value || 0).toFixed(2)}</p>
-                    </div>
-                    <div className="h-5 w-px bg-white/5"></div>
-                    <div className="space-y-0.5 text-right">
-                        <p className="text-[8px] text-gray-500 uppercase font-bold tracking-widest">TREND STATUS</p>
-                        <div className="flex items-center justify-end gap-1">
-                            <div className={`w-2 h-2 rounded-full ${confidence > 75 ? 'bg-[#00ffa3] shadow-[0_0_5px_#00ffa3]' : 'bg-gray-600'}`}></div>
-                            <span className="text-[10px] font-bold text-white">{confidence > 75 ? 'STRONG' : 'WEAK'}</span>
-                        </div>
-                    </div>
-                </div>
             </div>
-
-            {/* === 3. TARGETS ROW (Exact Labels) === */}
-            <div className={`${compact ? 'pt-1 pb-1 grid grid-cols-2 gap-4' : 'px-6 pb-6 grid grid-cols-2 gap-8'}`}>
-                <div>
-                    <p className="text-[8px] uppercase tracking-widest text-gray-500 font-bold mb-1">TARGET STOP</p>
-                    <p className={`${compact ? 'text-sm' : 'text-base'} font-mono text-gray-400 font-bold`}>{formatPrice(stop_loss)}</p>
-                </div>
-                <div className="text-right">
-                    <p className="text-[8px] uppercase tracking-widest text-[#00ffa3] font-bold mb-1">TARGET PROFIT</p>
-                    <p className={`${compact ? 'text-sm' : 'text-base'} font-mono text-white font-bold`}>{formatPrice(take_profit)}</p>
-                </div>
-            </div>
-
-            {/* No VISIBLE Footer in Default State - Matches Screenshot */}
         </div>
     );
 };
