@@ -134,27 +134,71 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
                         </div>
                     </div>
 
-                    {/* Stats Grid */}
-                    <div className="px-6 pb-6">
-                        <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 flex items-center justify-between">
-                            <div className="space-y-1">
-                                <p className="text-[9px] uppercase tracking-widest text-gray-500 font-bold">Vol</p>
-                                <p className="text-xs font-medium text-white">{(volume_ratio || 0).toFixed(2)}x</p>
+                    {/* V1750: REPAIRED STATS GRID (Restored SL, Trend Bar) */}
+                    <div className="px-6 pb-2">
+                        {/* Trend Bar */}
+                        <div className="mb-4">
+                            <div className="flex justify-between items-end mb-1">
+                                <span className="text-[9px] uppercase tracking-widest text-gray-500 font-bold">Trend Strength</span>
+                                <span className={`text-[9px] font-mono font-bold ${isBuy ? 'text-[#00ffa3]' : 'text-red-500'}`}>{confidence}%</span>
                             </div>
-                            <div className="h-6 w-px bg-white/5"></div>
-                            <div className="space-y-1">
-                                <p className="text-[9px] uppercase tracking-widest text-gray-500 font-bold">ATR</p>
-                                <p className="text-xs font-medium text-white">{(atr_value || 0).toFixed(2)}</p>
+                            <div className="h-1 bg-white/5 rounded-full overflow-hidden w-full">
+                                <div
+                                    className={`h-full ${isBuy ? 'bg-[#00ffa3]' : 'bg-[#ff4d4d]'} transition-all duration-1000`}
+                                    style={{ width: `${confidence}%` }}
+                                ></div>
                             </div>
-                            <div className="h-6 w-px bg-white/5"></div>
-                            <div className="space-y-1 text-right">
-                                <p className="text-[9px] uppercase tracking-widest text-[#00ffa3] font-bold">TP</p>
-                                <p className="text-xs font-mono text-white font-bold">{formatPrice(take_profit)}</p>
+                        </div>
+
+                        {/* Detailed Metrics */}
+                        <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 grid grid-cols-2 gap-4">
+                            {/* Col 1 */}
+                            <div className="space-y-4">
+                                <div className="space-y-1">
+                                    <p className="text-[9px] uppercase tracking-widest text-gray-500 font-bold">Vol Ratio</p>
+                                    <p className="text-xs font-medium text-white">{(volume_ratio || 0).toFixed(2)}x</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-[9px] uppercase tracking-widest text-gray-500 font-bold">Target Stop</p>
+                                    <p className="text-xs font-mono text-gray-400 font-medium">{formatPrice(stop_loss)}</p>
+                                </div>
+                            </div>
+
+                            {/* Col 2 (Right Align) */}
+                            <div className="space-y-4 text-right">
+                                <div className="space-y-1">
+                                    <p className="text-[9px] uppercase tracking-widest text-gray-500 font-bold">ATR Risk</p>
+                                    <p className="text-xs font-medium text-white">{(atr_value || 0).toFixed(2)}</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-[9px] uppercase tracking-widest text-[#00ffa3] font-bold">Target Profit</p>
+                                    <p className="text-xs font-mono text-white font-bold">{formatPrice(take_profit)}</p>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Footer Actions (New Row) */}
+                    {/* V1750: MARKET PRESSURE BAR (Restored) */}
+                    {imbalance !== undefined && (
+                        <div className="px-6 pt-3 pb-4">
+                            <div className="flex justify-between items-end mb-1">
+                                <p className="text-[9px] uppercase tracking-widest text-gray-500 font-bold">Pressure</p>
+                                <p className={`text-[9px] font-mono font-bold ${imbalance > 0 ? 'text-[#00ffa3]' : 'text-red-500'}`}>
+                                    {(imbalance * 100).toFixed(0)}%
+                                </p>
+                            </div>
+                            <div className="h-1 w-full bg-white/5 rounded-full relative overflow-hidden flex">
+                                <div className="w-1/2 h-full bg-gradient-to-l from-transparent to-red-500/50"></div>
+                                <div className="w-1/2 h-full bg-gradient-to-r from-transparent to-[#00ffa3]/50"></div>
+                                <div
+                                    className="absolute top-0 bottom-0 w-0.5 bg-white shadow-[0_0_5px_white] transition-all duration-500"
+                                    style={{ left: `${((imbalance + 1) / 2) * 100}%` }}
+                                ></div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Footer Actions */}
                     <div className="p-4 bg-black/40 border-t border-white/5 flex gap-3">
                         <button
                             onClick={() => onViewChart && onViewChart(symbol)}
