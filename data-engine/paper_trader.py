@@ -441,23 +441,18 @@ def check_new_entries():
 
             # V94: DYNAMIC MARGIN SIZING (Confidence-Based Scaling)
             # Risk Management: Dynamic % of Equity (capped at 5% safety)
-            user_risk = float(params.get('account_risk_pct', 0.02))
-            base_account_risk = min(user_risk, 0.05) 
-            
-            # Confidence Multiplier:
-            # Ultra High Conf (>95%) -> 2.0x | High Conf (90-95%) -> 1.0x | Lower Confluence (<90%) -> 0.5x
-            conf_multiplier = 1.0
-            if ai_conf >= 0.95:
-                conf_multiplier = 2.0
-            elif ai_conf < 0.90:
-                conf_multiplier = 0.5
+            # Use ai_conf from DB
+            leverage = int(params.get('max_leverage', 10))
+            conf_multiplier = 1.0 # Base
+            if ai_conf > 0.8: conf_multiplier = 1.5
+            elif ai_conf < 0.6: conf_multiplier = 0.5
             
             scaling_reason = f"({conf_multiplier}x Scaled)" if conf_multiplier != 1.0 else " (Standard)"
             
             # Solvency Check
             equity = float(wallet['equity'])
             balance = float(wallet['balance'])
-                
+            
             # V215: MARGIN LEVEL GUARD (Risk Ratio Health Check)
             # V402: Enforce LIVE check based on Master Switch
             is_live_execution = (TRADING_MODE == "LIVE") and (not PAPER_TRADE_ENABLED)
@@ -493,7 +488,7 @@ def check_new_entries():
             # Check current exposure for this symbol
             existing_asset_pos = supabase.table("paper_positions") \
                 .select("initial_margin") \
-                .eq("symbol", signal['symbol']) \
+                .eq("symbol", signal_symbol) \
                 .eq("status", "OPEN") \
                 .execute()
             
@@ -505,7 +500,7 @@ def check_new_entries():
                 else:
                     target_margin = max(0, max_asset_exposure - current_exposure)
                     if target_margin < 2.0:
-                        print(f"       [SKIPPED] Max Asset Exposure reached for {signal['symbol']}")
+                        print(f"       [SKIPPED] Max Asset Exposure reached for {signal_symbol}")
                         continue
                     print(f"       [DIVERSIFICATION] Scaling down to ${target_margin:.2f} for cap safety.")
 
@@ -517,108 +512,56 @@ def check_new_entries():
 
             # Final Position Values
             trade_value = initial_margin * leverage
-            quantity = trade_value / signal['price']
-            entry = signal['price']
+            entry = float(signal['entry_price'] or 0)
+            quantity = trade_value / entry if entry > 0 else 0
+            if signal_type == "SHORT": quantity = -quantity
             
-            print(f"       Opening Position: {signal['symbol']} ${trade_value:.2f} {scaling_reason} | Margin: ${initial_margin:.2f}")
+            print(f"       Opening Position: {signal_symbol} ${trade_value:.2f} {scaling_reason} | Margin: ${initial_margin:.2f}")
             
             # V510: SIGNAL FIDELITY (Mirror Mode)
             # User requested EXACT signal following. We prefer signal values over dynamic calculation.
             
-            signal_tp = float(signal.get('take_profit', 0) or 0)
-            signal_sl = float(signal.get('stop_loss', 0) or 0)
+            bot_tp = float(signal.get('tp_price', 0) or 0)
+            bot_sl = float(signal.get('sl_price', 0) or 0)
             
-            if signal_tp > 0 and signal_sl > 0:
-                 print(f"       [V510 MIRROR] Using Signal's Native Targets. TP: {signal_tp} | SL: {signal_sl}")
-                 # Pre-calculate multipliers for logging, but we will use the prices directly
-                 tp_mult = 0 
-                 sl_mult = 0
+            if bot_tp > 0 and bot_sl > 0:
+                 print(f"       [V510 MIRROR] Using Signal's Native Targets. TP: {bot_tp} | SL: {bot_sl}")
             else:
-                # Fallback to standard multipliers (Disable V300 Vol-Adapt to be consistent)
-                tp_mult = 2.0 
-                sl_mult = 1.0
-                print(f"       [V510 STANDARD] Signal Lacks TP/SL. Using Fixed Multipliers: TP(2.0x) SL(1.0x)")
-
-            target_net_profit = (atr_val * tp_mult) * abs(quantity)
-            target_net_loss = (atr_val * sl_mult) * abs(quantity)
+                # Fallback to standard 2% TP / 1% SL if missing (Shouldn't happen with strict schema)
+                bot_tp = entry * 1.02 if signal_type == "LONG" else entry * 0.98
+                bot_sl = entry * 0.99 if signal_type == "LONG" else entry * 1.01
+                print(f"       [V510 STANDARD] Signal Lacks TP/SL. Using Fixed 2%/1%")
             
-            # V155/V185: HARD LOSS CAP
-            if is_survival:
-                max_allowed_loss = 0.30 # V185: Increased for Breathing Room
-                if target_net_loss > max_allowed_loss:
-                    target_net_loss = max_allowed_loss
-                    print(f"       [V185] HARD LOSS CAP: Protected risk at ${max_allowed_loss}")
-            
-            abs_qty = abs(quantity)
-            fee_r = float(params.get('trading_fee_pct', 0.0005))
-            
-            # V1600: SIMPLIFIED PRECISION LOGIC
-            # Direct calculation: Entry +/- (ATR * Multiplier)
-            # This ensures the dashboard values match user expectation perfectly.
-            
-            tp_dist = atr_val * tp_mult if atr_val > 0 else entry * 0.02 # Fallback 2%
-            sl_dist = atr_val * sl_mult if atr_val > 0 else entry * 0.01 # Fallback 1%
-
-            if "BUY" in signal['signal_type']:
-                if signal_tp > 0:
-                    bot_tp = signal_tp
-                    bot_sl = signal_sl
-                else:
-                    bot_tp = entry + tp_dist
-                    bot_sl = entry - sl_dist
-                    
-                # V1602: SANITY GUARD (Assert TP > Entry)
-                if bot_tp <= entry:
-                    print(f"   [V1602] CRITICAL: Invalid BUY TP (${bot_tp}) <= Entry (${entry}). Forcing Recalc.")
-                    bot_tp = entry * 1.02 # Force 2% profit
-                    bot_sl = entry * 0.99
-                    
-                liq_price = entry - (entry / leverage)
-                binance_side = 'buy'
-            else:
-                if signal_tp > 0:
-                    bot_tp = signal_tp
-                    bot_sl = signal_sl
-                else:
-                    bot_tp = entry - tp_dist
-                    bot_sl = entry + sl_dist
-                    
-                # V1602: SANITY GUARD (Assert TP < Entry)
-                if bot_tp >= entry:
-                    print(f"   [V1602] CRITICAL: Invalid SELL TP (${bot_tp}) >= Entry (${entry}). Forcing Recalc.")
-                    bot_tp = entry * 0.98 # Force 2% profit
-                    bot_sl = entry * 1.01
-
-                liq_price = entry + (entry / leverage)
-                binance_side = 'sell'
+            liq_price = entry - (entry / leverage) if signal_type == "LONG" else entry + (entry / leverage)
+            binance_side = 'buy' if signal_type == 'LONG' else 'sell'
 
             # V100: LIVE EXECUTION BRIDGE
             if TRADING_MODE == "LIVE":
                 # V2904: Side Sanitization (Backport)
-                sanitized_side = "buy" if "buy" in binance_side.lower() else "sell"
+                sanitized_side = binance_side
                 
-                print(f"   [V480] EXECUTING CROSS-MARGIN ORDER: {sanitized_side.upper()} {abs_qty} {signal['symbol']} (Auto-Borrow)")
+                print(f"   [V480] EXECUTING CROSS-MARGIN ORDER: {sanitized_side.upper()} {abs(quantity)} {signal_symbol} (Auto-Borrow)")
                 
                 # V3005: Robust Symbol Mapping (Allows Kraken /USD signals to trade on Binance /USDT)
                 # We prioritize the engine's internal mapping, but passing clean /USDT helps.
-                execution_symbol = signal['symbol'].replace("/USD", "/USDT")
+                execution_symbol = signal_symbol.replace("/USD", "/USDT")
                 if "USDT" not in execution_symbol and "USD" not in execution_symbol:
                      # Fallback for plain 'BTC' -> 'BTC/USDT' if needed, or leave as is if CCXT handles it
                      if "/" not in execution_symbol: execution_symbol += "/USDT"
                 
-                live_trader.execute_market_order(execution_symbol, sanitized_side, abs_qty, leverage=leverage)
+                live_trader.execute_market_order(execution_symbol, sanitized_side, abs(quantity), leverage=leverage)
 
 
             trade_data = {
                 "signal_id": signal['id'],
-                "symbol": signal['symbol'],
-                "entry_price": signal['price'],
+                "symbol": signal_symbol,
+                "entry_price": entry,
                 "quantity": quantity,
                 "status": "OPEN",
-                "confidence_score": signal.get('confidence'),
-                "signal_type": signal.get('signal_type'),
-                "rsi_entry": signal.get('rsi'),
-                "atr_entry": signal.get('atr_value'),
+                "confidence_score": signal_conf,
+                "signal_type": signal_type,
+                "rsi_entry": 50, # Placeholder
+                "atr_entry": 0, # Placeholder
                 "bot_stop_loss": round(bot_sl, 4),
                 "bot_take_profit": round(bot_tp, 4),
                 # V5 Fields
@@ -673,7 +616,7 @@ def monitor_positions():
         params = get_bot_params()
         # Get all OPEN positions
         response = supabase.table("paper_positions") \
-            .select("*, market_signals(stop_loss, take_profit)") \
+            .select("*, signals(tp_price, sl_price)") \
             .eq("status", "OPEN") \
             .execute()
             
@@ -684,23 +627,19 @@ def monitor_positions():
             if not current_price:
                 continue
                 
-            # Get SL/TP from the associated signal
-            # Note: supbase-py nesting might return market_signals as a dict or list
-            signal_data = pos['market_signals']
-            # Handle potential list wrapper if one-to-many (though here it's foreign key)
-            if isinstance(signal_data, list) and len(signal_data) > 0:
-                signal_data = signal_data[0]
-                
+            # Get SL/TP from the associated signal (New Schema: signals)
+            signal_data = pos.get('signals')
+            
             # PRO TRADING LOGIC: Use Editable TP/SL from Position
             # This allows user to modify the active trade (Binance Style)
             stop_loss = pos.get('bot_stop_loss')
             take_profit = pos.get('bot_take_profit')
             
-            # Fallback to signal if missing (Legacy support)
+            # Fallback to signal if missing
             if stop_loss is None and signal_data:
-                 stop_loss = signal_data.get('stop_loss')
+                 stop_loss = signal_data.get('sl_price')
             if take_profit is None and signal_data:
-                 take_profit = signal_data.get('take_profit')
+                 take_profit = signal_data.get('tp_price')
                  
             exit_reason = None
             
