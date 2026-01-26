@@ -616,7 +616,7 @@ def monitor_positions():
         params = get_bot_params()
         # Get all OPEN positions
         response = supabase.table("paper_positions") \
-            .select("*, signals(tp_price, sl_price)") \
+            .select("*, signals!signal_id(tp_price, sl_price)") \
             .eq("status", "OPEN") \
             .execute()
             
