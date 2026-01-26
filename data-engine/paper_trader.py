@@ -414,6 +414,23 @@ def check_new_entries():
                 "confidence": signal_conf
             }
             
+            # V415: RISK:REWARD CHECK
+            # Must be at least 1:2
+            try:
+                potential_profit = abs(float(signal.get('tp_price', 0)) - float(signal.get('entry_price', 0)))
+                potential_loss = abs(float(signal.get('entry_price', 0)) - float(signal.get('sl_price', 0)))
+                
+                if potential_loss == 0: 
+                    rr_ratio = 0
+                else:
+                    rr_ratio = potential_profit / potential_loss
+                    
+                if rr_ratio < 2.0:
+                    print(f"       [SKIPPED] Bad R:R ({rr_ratio:.2f}) < 2.0. Precision Mode Active.")
+                    continue
+            except Exception as e:
+                print(f"       [R:R CHECK ERROR] {e}")
+
             # We skip the Brain re-calculation for now (since it's already in DB from Worker)
             # We trust the signal from the DB.
             should_trade = True
