@@ -198,26 +198,28 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
                         </div>
                     )}
 
-                    {/* Footer Actions */}
-                    <div className="p-4 bg-black/40 border-t border-white/5 flex gap-3">
+                    {/* Footer Actions (Restored Original Style) */}
+                    <div className="p-6 pt-0 flex gap-4">
                         <button
                             onClick={() => onViewChart && onViewChart(symbol)}
                             className={`
-                                flex-1 py-3 rounded-xl font-black text-[10px] tracking-[0.2em] uppercase
-                                transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]
-                                ${isBuy ? 'bg-[#00ffa3] text-black hover:bg-white' : 'bg-[#ff4d4d] text-white hover:bg-white hover:text-black'}
+                                relative flex-1 py-4 rounded-2xl font-black text-[10px] tracking-[0.25em] uppercase overflow-hidden
+                                transition-all duration-300 active:scale-[0.97]
+                                ${isBuy
+                                    ? 'bg-[#00ffa3] text-black hover:bg-white shadow-[0_10px_30px_-10px_rgba(0,255,163,0.5)]'
+                                    : 'bg-[#ff4d4d] text-white hover:bg-white hover:text-black shadow-[0_10px_30px_-10px_rgba(255,77,77,0.5)]'}
                             `}
                         >
-                            Analyze
+                            EXECUTE ANALYSIS
                         </button>
 
                         {onConsultAI && (
                             <button
                                 onClick={(e) => { e.stopPropagation(); onConsultAI({ symbol, price, confidence, signal_type, rsi, stop_loss, take_profit }); }}
-                                className="px-4 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20 hover:bg-purple-500 hover:text-white transition-all flex items-center gap-2 group/ai"
+                                className="w-14 rounded-2xl bg-white/5 border border-white/10 text-purple-400 hover:bg-purple-500 hover:text-white transition-all flex items-center justify-center group/ai hover:shadow-[0_0_20px_rgba(168,85,247,0.4)]"
+                                title="Consult AI"
                             >
-                                <Brain size={16} className="group-hover/ai:animate-pulse" />
-                                <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-wider">Ask AI</span>
+                                <Brain size={20} className="group-hover/ai:animate-pulse" />
                             </button>
                         )}
                     </div>
