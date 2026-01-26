@@ -144,27 +144,33 @@ export default function Dashboard() {
 
         const channel = supabase
             .channel('realtime signals')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'signals' }, (payload: any) => {
-                const s = payload.new as any;
-                const newSignal: Signal = {
-                    id: s.id,
-                    symbol: s.pair,
-                    price: Number(s.entry_price),
-                    rsi: Number(s.rsi || 50),
-                    signal_type: s.direction === 'LONG' ? 'BUY' : 'SELL',
-                    confidence: Number(s.ai_confidence),
-                    timestamp: s.created_at,
-                    stop_loss: Number(s.sl_price),
-                    take_profit: Number(s.tp_price),
-                    atr_value: Number(s.atr_value || 0),
-                    volume_ratio: Number(s.volume_ratio || 0)
-                };
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'signals' }, (payload: any) => {
+                if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+                    const s = payload.new as any;
+                    const newSignal: Signal = {
+                        id: s.id,
+                        symbol: s.pair,
+                        price: Number(s.entry_price),
+                        rsi: Number(s.rsi || 50),
+                        signal_type: s.direction === 'LONG' ? 'BUY' : 'SELL',
+                        confidence: Number(s.ai_confidence),
+                        timestamp: s.created_at,
+                        stop_loss: Number(s.sl_price),
+                        take_profit: Number(s.tp_price),
+                        atr_value: Number(s.atr_value || 0),
+                        volume_ratio: Number(s.volume_ratio || 0)
+                    };
 
-                setSignals((prev) => {
-                    const exists = prev.find(sig => sig.id === newSignal.id);
-                    if (exists) return prev;
-                    return [newSignal, ...prev].slice(0, 100);
-                });
+                    setSignals((prev) => {
+                        const exists = prev.find(sig => sig.id === newSignal.id);
+                        if (exists) {
+                            return prev.map(sig => sig.id === newSignal.id ? newSignal : sig);
+                        }
+                        return [newSignal, ...prev].slice(0, 100);
+                    });
+                } else if (payload.eventType === 'DELETE') {
+                    setSignals((prev) => prev.filter(sig => sig.id !== payload.old.id));
+                }
             })
             .subscribe();
 

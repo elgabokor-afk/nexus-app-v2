@@ -628,6 +628,13 @@ def monitor_positions():
             if not current_price:
                 continue
                 
+            # V1500: Broadcast live price for real-time PnL in UI (No DB overhead)
+            redis_engine.publish("live_prices", {
+                "symbol": pos['symbol'].upper(),
+                "price": current_price,
+                "time": int(time.time())
+            })
+                
             # Get SL/TP from the associated signal (New Schema: signals)
             signal_data = pos.get('signals')
             

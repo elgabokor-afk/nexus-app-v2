@@ -109,9 +109,38 @@ export default function PaperBotWidget({
 
     useEffect(() => {
         fetchPositions();
+
+        // V1500: Direct Supabase Realtime (Replaces WebSocket Bridge for DB Sync)
+        const posChannel = supabase
+            .channel('realtime_paper_positions')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'paper_positions' }, (payload: any) => {
+                if (payload.eventType === 'INSERT') {
+                    setPositions(prev => [payload.new as Position, ...prev]);
+                } else if (payload.eventType === 'UPDATE') {
+                    setPositions(prev => prev.map(p =>
+                        p.id === payload.new.id ? { ...p, ...payload.new } : p
+                    ));
+                } else if (payload.eventType === 'DELETE') {
+                    setPositions(prev => prev.filter(p => p.id !== payload.old.id));
+                }
+            })
+            .subscribe();
+
+        const walletChannel = supabase
+            .channel('realtime_bot_wallet')
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'bot_wallet' }, (payload: any) => {
+                setWallet(payload.new as Wallet);
+            })
+            .subscribe();
+
         // V1100: HA Polling is now just a background sync every 60s
         const interval = setInterval(fetchPositions, 60000);
-        return () => clearInterval(interval);
+
+        return () => {
+            clearInterval(interval);
+            supabase.removeChannel(posChannel);
+            supabase.removeChannel(walletChannel);
+        };
     }, [fetchPositions]);
 
     const stats = {

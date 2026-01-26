@@ -121,10 +121,14 @@ BEGIN
     INSERT INTO _realtime.publication_tables (publication_name, schema_name, table_name)
     VALUES ('supabase_realtime', 'public', 'signals'),
            ('supabase_realtime', 'public', 'paper_trades'),
-           ('supabase_realtime', 'public', 'paper_positions')
+           ('supabase_realtime', 'public', 'paper_positions'),
+           ('supabase_realtime', 'public', 'bot_wallet'),
+           ('supabase_realtime', 'public', 'error_logs')
     ON CONFLICT DO NOTHING;
 EXCEPTION WHEN OTHERS THEN
     BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.signals; EXCEPTION WHEN OTHERS THEN NULL; END;
     BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.paper_trades; EXCEPTION WHEN OTHERS THEN NULL; END;
     BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.paper_positions; EXCEPTION WHEN OTHERS THEN NULL; END;
+    BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.bot_wallet; EXCEPTION WHEN OTHERS THEN NULL; END;
+    BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.error_logs; EXCEPTION WHEN OTHERS THEN NULL; END;
 END $$;

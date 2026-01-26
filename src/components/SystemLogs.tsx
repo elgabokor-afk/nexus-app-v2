@@ -31,17 +31,20 @@ export default function SystemLogs({ onClose, embedded = false }: { onClose?: ()
 
     useEffect(() => {
         fetchLogs();
+
+        // V1500: Direct Supabase Realtime (Replaces WebSocket Bridge for DB Sync)
+        const channel = supabase
+            .channel('realtime_error_logs')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'error_logs' }, (payload: any) => {
+                const newLog = payload.new as Log;
+                setLogs(prev => [newLog, ...prev].slice(0, 100));
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, []);
-
-    // V1400: High-Speed WebSockets for Logs
-    const { lastMessage } = useLiveStream(['live_logs']);
-
-    useEffect(() => {
-        if (lastMessage?.channel === 'live_logs') {
-            const newLog = lastMessage.data;
-            setLogs(prev => [newLog, ...prev].slice(0, 100));
-        }
-    }, [lastMessage]);
 
     const wrapperClasses = embedded
         ? "w-full h-full flex flex-col bg-transparent"

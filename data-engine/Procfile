@@ -1,1 +1,4 @@
 web: uvicorn websocket_bridge:app --host 0.0.0.0 --port $PORT
+worker_trader: python paper_trader.py
+worker_scanner: python cosmos_worker.py
+worker_prices: python price_feed.py

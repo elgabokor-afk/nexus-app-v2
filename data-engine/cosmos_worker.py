@@ -109,6 +109,13 @@ def main_loop():
                         p_5m = techs_5m['price']
                         trend_15m = "BULLISH" if p_5m > ma_15m else "BEARISH"
                         
+                        # V1500: Always broadcast live price to UI during scan
+                        redis_engine.publish("live_prices", {
+                            "symbol": symbol.upper(),
+                            "price": p_5m,
+                            "time": int(time.time())
+                        })
+                        
                         # AI + Quant Analysis
                         quant_signal = analyze_quant_signal(symbol, techs_5m, sentiment_score=fng_index, df_confluence=df_5m)
                         
