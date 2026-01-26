@@ -87,7 +87,7 @@ export default function Dashboard() {
 
         if (error) console.error('Error fetching signals:', error);
         else {
-            const mapped = (data || []).map(s => ({
+            const mapped = (data || []).map((s: any) => ({
                 id: s.id,
                 symbol: s.pair,
                 price: Number(s.entry_price),
@@ -145,7 +145,7 @@ export default function Dashboard() {
         const channel = supabase
             .channel('realtime signals')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'signals' }, (payload: any) => {
-                const s = payload.new;
+                const s = payload.new as any;
                 const newSignal: Signal = {
                     id: s.id,
                     symbol: s.pair,
