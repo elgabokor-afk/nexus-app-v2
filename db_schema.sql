@@ -111,9 +111,9 @@ CREATE POLICY "Service Role Write Positions" ON public.paper_positions FOR ALL T
 
 ALTER TABLE public.error_logs ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Restrict Error Logs Insert" ON public.error_logs;
-CREATE POLICY "Restrict Error Logs Insert" ON public.error_logs FOR INSERT TO authenticated, service_role WITH CHECK (true);
+CREATE POLICY "Service Role Insert Error Logs" ON public.error_logs FOR INSERT TO service_role WITH CHECK (true);
 DROP POLICY IF EXISTS "Restrict Error Logs Read" ON public.error_logs;
-CREATE POLICY "Restrict Error Logs Read" ON public.error_logs FOR SELECT TO service_role USING (true);
+CREATE POLICY "Authenticated Read Error Logs" ON public.error_logs FOR SELECT TO authenticated, service_role USING (true);
 
 -- 6. REALTIME (Idempotent)
 DO $$
