@@ -1,5 +1,5 @@
 {
-    "paper_trade_enabled": false,
+    "paper_trade_enabled": true,
     "analysis_timeframes": [
         "5m",
         "15m",
