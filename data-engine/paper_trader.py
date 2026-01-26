@@ -421,8 +421,9 @@ def check_new_entries():
                 else:
                     rr_ratio = potential_profit / potential_loss
                     
-                if rr_ratio < 2.0:
-                    print(f"       [SKIPPED] Bad R:R ({rr_ratio:.2f}) < 2.0. Precision Mode Active.")
+                min_rrr = float(params.get('min_rrr', 2.0))
+                if rr_ratio < min_rrr:
+                    print(f"       [SKIPPED] Bad R:R ({rr_ratio:.2f}) < {min_rrr}. Precision Mode Active.")
                     continue
             except Exception as e:
                 print(f"       [R:R CHECK ERROR] {e}")

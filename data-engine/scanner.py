@@ -395,11 +395,11 @@ def analyze_quant_signal(symbol, tech_analysis, sentiment_score=50, df_confluenc
     # ATR Risk Logic
     atr = tech_analysis['atr']
     if "BUY" in signal_type:
-        stop_loss = price - (atr * 1.5)
-        take_profit = price + (atr * 2.5)
+        stop_loss = price - (atr * 1.2)
+        take_profit = price + (atr * 3.2)
     else:
-        stop_loss = price + (atr * 1.5)
-        take_profit = price - (atr * 2.5)
+        stop_loss = price + (atr * 1.2)
+        take_profit = price - (atr * 3.2)
         
     return {
         'signal': signal_type,
