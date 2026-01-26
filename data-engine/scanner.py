@@ -418,7 +418,8 @@ def analyze_quant_signal(symbol, tech_analysis, sentiment_score=50, df_confluenc
         'histogram': round(tech_analysis['histogram'], 4),
         'ai_prob': round(ai_prob * 100, 1),
         'sentiment': sentiment_score,
-        'depth_score': int(vol_pressure * 100) # Re-purposing depth score to show Vol Pressure in UI for now
+        'volume_ratio': round(vol_pressure, 2),
+        'depth_score': int(vol_pressure * 100) # Keep for legacy support if any
     }
 
 from db import insert_signal, insert_analytics, log_error, get_active_position_count, get_last_trade_time

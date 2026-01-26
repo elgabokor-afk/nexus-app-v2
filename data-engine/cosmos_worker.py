@@ -56,8 +56,11 @@ def save_signal_to_db(signal_data):
             "tp_price": signal_data.get('take_profit'),
             "sl_price": signal_data.get('stop_loss'),
             "ai_confidence": signal_data.get('confidence'),
-            "risk_level": "HIGH" if signal_data.get('confidence', 0) < 80 else "MID", # Simple logic
+            "risk_level": "HIGH" if signal_data.get('confidence', 0) < 85 else "MID", 
             "status": "ACTIVE",
+            "rsi": signal_data.get('rsi'),
+            "atr_value": signal_data.get('atr_value'),
+            "volume_ratio": signal_data.get('volume_ratio'),
             "created_at": datetime.now(timezone.utc).isoformat()
         }
         
@@ -124,7 +127,10 @@ def main_loop():
                                 "price": quant_signal['price'],
                                 "take_profit": quant_signal['take_profit'],
                                 "stop_loss": quant_signal['stop_loss'],
-                                "confidence": quant_signal['confidence']
+                                "confidence": quant_signal['confidence'],
+                                "rsi": quant_signal.get('rsi'),
+                                "atr_value": quant_signal.get('atr_value'),
+                                "volume_ratio": quant_signal.get('volume_ratio')
                             }
                             generated_signals.append(sig_payload)
                             logger.info(f"   >>> SIGNAL FOUND: {symbol} {quant_signal['signal']}")

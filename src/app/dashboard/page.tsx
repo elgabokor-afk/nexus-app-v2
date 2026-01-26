@@ -80,17 +80,30 @@ export default function Dashboard() {
 
     const fetchSignals = async () => {
         const { data, error } = await supabase
-            .from('market_signals')
-            .select('*, analytics_signals(*)')
-            .order('timestamp', { ascending: false })
-            .limit(100); // Increased limit to ensure we get diversity
+            .from('signals')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(100);
 
         if (error) console.error('Error fetching signals:', error);
         else {
-            setSignals(data || []);
-            if (data && data.length > 0 && !selectedSignal) {
-                // Determine first unique signal to select
-                const unique = getUniqueSignals(data);
+            const mapped = (data || []).map(s => ({
+                id: s.id,
+                symbol: s.pair,
+                price: Number(s.entry_price),
+                rsi: Number(s.rsi || 50),
+                signal_type: s.direction === 'LONG' ? 'BUY' : 'SELL',
+                confidence: Number(s.ai_confidence),
+                timestamp: s.created_at,
+                stop_loss: Number(s.sl_price),
+                take_profit: Number(s.tp_price),
+                atr_value: Number(s.atr_value || 0),
+                volume_ratio: Number(s.volume_ratio || 0)
+            }));
+
+            setSignals(mapped);
+            if (mapped.length > 0 && !selectedSignal) {
+                const unique = getUniqueSignals(mapped);
                 if (unique.length > 0) setSelectedSignal(unique[0]);
             }
         }
@@ -131,10 +144,24 @@ export default function Dashboard() {
 
         const channel = supabase
             .channel('realtime signals')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'market_signals' }, (payload: any) => {
-                const newSignal = payload.new as Signal;
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'signals' }, (payload: any) => {
+                const s = payload.new;
+                const newSignal: Signal = {
+                    id: s.id,
+                    symbol: s.pair,
+                    price: Number(s.entry_price),
+                    rsi: Number(s.rsi || 50),
+                    signal_type: s.direction === 'LONG' ? 'BUY' : 'SELL',
+                    confidence: Number(s.ai_confidence),
+                    timestamp: s.created_at,
+                    stop_loss: Number(s.sl_price),
+                    take_profit: Number(s.tp_price),
+                    atr_value: Number(s.atr_value || 0),
+                    volume_ratio: Number(s.volume_ratio || 0)
+                };
+
                 setSignals((prev) => {
-                    const exists = prev.find(s => s.id === newSignal.id);
+                    const exists = prev.find(sig => sig.id === newSignal.id);
                     if (exists) return prev;
                     return [newSignal, ...prev].slice(0, 100);
                 });

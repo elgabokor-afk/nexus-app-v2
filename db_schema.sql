@@ -13,6 +13,9 @@ CREATE TABLE IF NOT EXISTS public.signals (
     risk_level TEXT CHECK (risk_level IN ('LOW', 'MID', 'HIGH')),
     status TEXT DEFAULT 'ACTIVE',
     result_pnl NUMERIC DEFAULT 0,
+    rsi NUMERIC,
+    atr_value NUMERIC,
+    volume_ratio NUMERIC,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -64,6 +67,17 @@ BEGIN
     -- 4. Data Migration (Optional: try to link existing entries if they had market_signals_id)
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='paper_positions' AND column_name='market_signals_id') THEN
         UPDATE public.paper_positions SET signal_id = market_signals_id WHERE signal_id IS NULL;
+    END IF;
+
+    -- Add missing columns to signals if they don't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='signals' AND column_name='rsi') THEN
+        ALTER TABLE public.signals ADD COLUMN rsi NUMERIC;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='signals' AND column_name='atr_value') THEN
+        ALTER TABLE public.signals ADD COLUMN atr_value NUMERIC;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='signals' AND column_name='volume_ratio') THEN
+        ALTER TABLE public.signals ADD COLUMN volume_ratio NUMERIC;
     END IF;
 END $$;
 
