@@ -107,6 +107,20 @@ def main_loop():
     logger.info("--- COSMOS AI WORKER STARTED [RAILWAY MODE] ---")
     
     while True:
+        # V3000: HEARTBEAT & STARTUP LOGGING
+        # This runs ONCE per loop cycle start (or usually just once if we insert before while)
+        # But we want to ensure we log at least once.
+        try:
+            if 'worker_started' not in locals():
+                supabase.table("error_logs").insert({
+                    "message": "COSMOS WORKER RESTARTED (v3.0)", 
+                    "severity": "INFO"
+                }).execute()
+                worker_started = True
+                logger.info("   >>> [DB] Logged Startup Event")
+        except Exception as e:
+            logger.error(f"Failed to log startup: {e}")
+
         try:
             start_time = time.time()
             
