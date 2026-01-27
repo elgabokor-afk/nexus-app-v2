@@ -40,18 +40,20 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
     const logoUrl = coin ? `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${coin.toLowerCase()}.png` : '';
 
     let borderColor = 'border-white/5';
-    let textColor = 'text-gray-400';
+    let textColor = 'text-white'; // Default to white
     let actionText = 'WAITING';
     let glowClass = '';
 
     if (isBuy) {
         textColor = 'text-[#00ffa3]';
+        borderColor = 'border-[#00ffa3]/20';
         actionText = 'LONG';
-        if (isHot) glowClass = 'shadow-[0_0_30px_-10px_rgba(0,255,163,0.3)] border-[#00ffa3]/30';
+        if (isHot) glowClass = 'shadow-[0_0_30px_-10px_rgba(0,255,163,0.3)] border-[#00ffa3]/50';
     } else if (isSell) {
         textColor = 'text-[#ff4d4d]';
+        borderColor = 'border-[#ff4d4d]/20';
         actionText = 'SHORT';
-        if (isHot) glowClass = 'shadow-[0_0_30px_-10px_rgba(255,77,77,0.3)] border-[#ff4d4d]/30';
+        if (isHot) glowClass = 'shadow-[0_0_30px_-10px_rgba(255,77,77,0.3)] border-[#ff4d4d]/50';
     }
 
     const formatPrice = (p: number | undefined) =>
@@ -138,8 +140,8 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
                 className={`
                 relative overflow-hidden group transition-all duration-300
                 ${compact
-                        ? `mb-3 cursor-pointer bg-[#0e0e10] border border-white/5 rounded-2xl hover:bg-white/[0.02] active:scale-[0.98]`
-                        : 'backdrop-blur-xl bg-[#0e0e10]/90 border border-white/5 rounded-3xl hover:border-white/10 shadow-2xl'}
+                        ? `mb-3 cursor-pointer bg-[#0e0e10] border ${borderColor} rounded-2xl hover:bg-white/[0.02] active:scale-[0.98]`
+                        : `backdrop-blur-xl bg-[#0e0e10]/90 border ${borderColor} rounded-3xl hover:border-white/10 shadow-2xl`}
                 ${isHot ? glowClass : ''}
             `}
             >
