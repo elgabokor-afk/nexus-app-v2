@@ -219,7 +219,7 @@ def main_loop():
                         "type": "NEW_SIGNAL",
                         "data": safe_payload
                     })
-                    })
+
                     logger.info(f"Published Signal: {sig['symbol']}")
 
             # Sleep remainder of minute
