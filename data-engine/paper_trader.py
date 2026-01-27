@@ -667,7 +667,7 @@ def monitor_positions():
             # V1600: DYNAMIC MANAGEMENT (Trailing Stop & Time Exit)
             
             # 1. Trailing Stop to Breakeven
-            # Trigger: When price covers 50% of the distance to TP
+            # Trigger: User requested +1% profit trigger
             entry_price = float(pos['entry_price'])
             quantity = float(pos['quantity'])
             
@@ -681,14 +681,8 @@ def monitor_positions():
             
             should_move_to_be = False
             
-            if take_profit:
-                 dist_tp = abs(take_profit - entry_price)
-                 if dist_tp > 0:
-                     dist_current = abs(current_price - entry_price)
-                     progress = dist_current / dist_tp
-                     if progress >= 0.50: # 50% Way to TP
-                         should_move_to_be = True
-            elif profit_pct > 0.015: # Fallback if no TP (1.5% profit)
+            # CAPITAL PROTECTION: Move to Breakeven at +1% Profit
+            if profit_pct >= 0.01:
                  should_move_to_be = True
             
             if should_move_to_be:

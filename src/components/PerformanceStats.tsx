@@ -50,9 +50,9 @@ export default function PerformanceStats() {
 
     const fetchStats = async () => {
         try {
-            // 1. Fetch Summary View
+            // 1. Fetch Summary View (V1700: Use aliased view)
             const { data: viewData, error: viewError } = await supabase
-                .from('performance_stats')
+                .from('trading_performance')
                 .select('*')
                 .single();
 
