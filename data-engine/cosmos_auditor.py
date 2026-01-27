@@ -5,7 +5,26 @@ import pandas as pd
 import numpy as np
 from supabase import create_client
 from dotenv import load_dotenv
-from pusher_client import broadcast_signal
+from pusher_client import pusher_client
+
+# ... (rest of imports)
+
+# ... (inside audit logic)
+                # PUSHER BROADCAST (The "Live" Update)
+                update_payload = {
+                    "id": sig_id,
+                    "symbol": symbol,
+                    "type": "UPDATE",
+                    "audit_action": audit_action,
+                    "audit_note": audit_note,
+                    "new_sl": new_sl,
+                    "new_tp": new_tp,
+                    "timestamp": time.time()
+                }
+                
+                # Send to Public (and VIP implicitly if they listen to Public)
+                pusher_client.trigger('public-signals', 'signal-update', update_payload)
+                print(f"      >>> [PUSHER] Sent Update for {symbol}")
 
 # Load Env
 current_dir = os.path.dirname(os.path.abspath(__file__))
