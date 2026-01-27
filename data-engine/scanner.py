@@ -522,10 +522,10 @@ def main():
             if time.time() - last_asset_update > 3600:
                 print("--- [DYNAMIC] Refreshing Top Volume Assets ---")
                 dynamic_pairs = get_top_vol_pairs(limit=15)
-                # Merge Unique
-                current_scan_list = list(set(PRIORITY_ASSETS + dynamic_pairs))
+                # Merge Unique: Priority + Dynamic + Standard Symbols (Fallback)
+                current_scan_list = list(set(PRIORITY_ASSETS + dynamic_pairs + SYMBOLS))
                 last_asset_update = time.time()
-                print(f"   [SCAN LIST] Total: {len(current_scan_list)} Pairs")
+                print(f"   [SCAN LIST] Total: {len(current_scan_list)} Pairs (Dynamic: {len(dynamic_pairs)})")
             
             # 1. Fetch Global Data (Sentiment)
             fng_index = fetch_fear_greed()

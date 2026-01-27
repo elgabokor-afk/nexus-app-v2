@@ -267,15 +267,16 @@ if __name__ == "__main__":
         # V410: Priority Pulse (BTC/SOL first)
         active_assets = get_active_assets()
         
-        # Merge: Priority (Config) + Active (DB) + Dynamic (Binance)
-        all_unique_assets = list(set(active_assets + PRIORITY_ASSETS + dynamic_assets))
+        # Merge: Priority (Config) + Active (DB) + Dynamic (Binance) + Standard (Config)
+        all_unique_assets = list(set(active_assets + PRIORITY_ASSETS + dynamic_assets + SYMBOLS))
         
         # Ensure Priority Assets are scanned FIRST
-        target_assets = PRIORITY_ASSETS + [a for a in all_unique_assets if a not in PRIORITY_ASSETS]
+        target_assets = PRIORITY_ASSETS + [a for a in dynamic_assets if a not in PRIORITY_ASSETS] + [a for a in all_unique_assets if a not in PRIORITY_ASSETS and a not in dynamic_assets]
         
         print(f"\n>>> Starting Recursive Pulse for {len(target_assets)} assets...")
         print(f"    [PRIORITY]: {PRIORITY_ASSETS}")
-        print(f"    [DYNAMIC]:  {dynamic_assets[:5]}...") # Log first 5
+        print(f"    [DYNAMIC]:  {len(dynamic_assets)} found")
+        print(f"    [STANDARD]: {len(SYMBOLS)} additional")
         
         for symbol in target_assets:
             run_oracle_step(symbol)
