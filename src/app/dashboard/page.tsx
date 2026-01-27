@@ -161,6 +161,8 @@ export default function Dashboard() {
 
     const uniqueSignals = getUniqueSignals(signals);
 
+    const [connectionStatus, setConnectionStatus] = useState<'connected' | 'connecting' | 'unavailable'>('connecting');
+
     useEffect(() => {
         setMounted(true);
 
@@ -171,7 +173,7 @@ export default function Dashboard() {
                 return;
             }
             setUser(session.user);
-            fetchSignals();
+            fetchSignals(); // Initial Static Load
         };
 
         checkAuth();
@@ -179,34 +181,44 @@ export default function Dashboard() {
         if (window.innerWidth < 1280) setIsSidebarOpen(false);
 
         // V2100: PUSHER REALTIME (Low Latency)
+        // Re-connect whenever 'isVip' changes to ensure we subscribe to the right channels
         const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
             cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
             authEndpoint: '/api/pusher/auth',
         });
 
-        // 1. Public Channel (Censored data for Free, but we merge it)
+        pusher.connection.bind('connected', () => setConnectionStatus('connected'));
+        pusher.connection.bind('unavailable', () => setConnectionStatus('unavailable'));
+        pusher.connection.bind('failed', () => setConnectionStatus('unavailable'));
+
+        // 1. Public Channel (Always)
         const publicChannel = pusher.subscribe('public-signals');
         publicChannel.bind('new-signal', (data: any) => {
             console.log('Pusher Public Event:', data);
             handleNewSignal(data);
         });
 
-        // 2. VIP Channel (Full Phase Alpha)
+        // 2. VIP Channel (Conditional)
         if (isVip) {
+            console.log("Subscribing to VIP Channel...");
             const privateChannel = pusher.subscribe('private-vip-signals');
             privateChannel.bind('new-signal', (data: any) => {
                 console.log('Pusher VIP Event:', data);
                 handleNewSignal(data);
+            });
+            privateChannel.bind('pusher:subscription_error', (status: any) => {
+                console.error("VIP Auth Failed:", status);
+                // Could act here to force logout or show error
             });
         }
 
         const handleNewSignal = (s: any) => {
             const newSignal: Signal = {
                 id: s.id,
-                symbol: s.symbol, // Python sends 'symbol', DB used 'pair'
+                symbol: s.symbol,
                 price: Number(s.price || s.entry_price || 0),
                 rsi: Number(s.rsi || 50),
-                signal_type: s.signal_type, // Python sends 'BUY'/'SELL' directly
+                signal_type: s.signal_type,
                 confidence: Number(s.confidence),
                 timestamp: s.created_at || new Date().toISOString(),
                 stop_loss: Number(s.stop_loss || s.sl_price || 0),
@@ -218,17 +230,11 @@ export default function Dashboard() {
             setSignals((prev) => {
                 const exists = prev.find(sig => sig.id === newSignal.id);
                 if (exists) {
-                    // Update existing (Merges VIP data over Public data if arriving later)
-                    // If this is public data overwriting VIP data, be careful? 
-                    // No, usually VIP comes second or same time. 
-                    // But if public comes after VIP, it might have nulls.
-                    // Protection: Only overwrite if new value is NOT null
                     return prev.map(sig => {
                         if (sig.id === newSignal.id) {
                             return {
                                 ...sig,
                                 ...newSignal,
-                                // If newSignal has null price (public), keep old price (vip)
                                 price: newSignal.price || sig.price,
                                 stop_loss: newSignal.stop_loss || sig.stop_loss,
                                 take_profit: newSignal.take_profit || sig.take_profit
@@ -244,8 +250,9 @@ export default function Dashboard() {
         return () => {
             pusher.unsubscribe('public-signals');
             if (isVip) pusher.unsubscribe('private-vip-signals');
+            pusher.disconnect();
         };
-    }, []);
+    }, [isVip]); // Re-run when VIP status updates dynamically
 
     if (!mounted) return (
         <div className="h-screen bg-[#050505] flex flex-col items-center justify-center text-[#00ffa3] font-mono">
@@ -329,9 +336,11 @@ export default function Dashboard() {
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <div className="hidden lg:flex items-center gap-3 px-4 py-2 rounded-2xl bg-white/[0.03] border border-white/5 text-[#00ffa3]">
-                        <span className="w-2 h-2 rounded-full bg-current animate-pulse shadow-[0_0_10px_currentColor]"></span>
-                        <span className="text-[10px] font-black tracking-widest uppercase">Streaming Real-time Data</span>
+                    <div className={`hidden lg:flex items-center gap-3 px-4 py-2 rounded-2xl border ${connectionStatus === 'connected' ? 'bg-white/[0.03] border-white/5 text-[#00ffa3]' : 'bg-red-500/10 border-red-500/20 text-red-500'}`}>
+                        <span className={`w-2 h-2 rounded-full bg-current shadow-[0_0_10px_currentColor] ${connectionStatus === 'connected' ? 'animate-pulse' : ''}`}></span>
+                        <span className="text-[10px] font-black tracking-widest uppercase">
+                            {connectionStatus === 'connected' ? 'LIVE DATA STREAM' : 'CONNECTION LOST'}
+                        </span>
                     </div>
                 </div>
             </header>
