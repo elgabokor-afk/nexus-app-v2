@@ -113,13 +113,27 @@ def main_loop():
             # 1. Fetch Candidates & Scan
             # We import logic from scanner.py to avoid code duplication
             # Assumption: scanner.py functions are stateless enough or valid
-            from scanner import fetch_data, analyze_market, analyze_quant_signal, fetch_fear_greed, SYMBOLS, PRIORITY_ASSETS
+            # 1. Fetch Candidates & Scan
+            from scanner import fetch_data, analyze_market, analyze_quant_signal, fetch_fear_greed, get_top_vol_pairs, SYMBOLS, PRIORITY_ASSETS
             
             logger.info("Scanning markets...")
             fng_index = fetch_fear_greed()
             
+            # V24: Dynamic Asset List Update (Every 30m)
+            # We persist this variable outside the loop (using a hack or global if needed, 
+            # but here we can just fetch if the variable is empty or time elapsed)
+            # Since 'main_loop' is a while loop, we define this outside in a better structure, 
+            # but to minimize diff size:
+            if 'last_asset_update' not in locals():
+                last_asset_update = 0
+                dynamic_pairs = []
+
+            if time.time() - last_asset_update > 1800: # 30 mins
+                logger.info("Refeshing Dynamic Top-20 Priority List...")
+                dynamic_pairs = get_top_vol_pairs(limit=20)
+                last_asset_update = time.time()
+
             # V1700: SELF-OPTIMIZATION LOOP
-            # If Win Rate < 50%, we become more conservative (+5% Confidence Required)
             current_win_rate = fetch_win_rate()
             min_confidence_threshold = 0 # Base
             
@@ -129,8 +143,9 @@ def main_loop():
             else:
                 logger.info(f"   [SELF-OPTIMIZACIÓN] Win Rate ({current_win_rate}%) saludable. Exigencia estándar.")
             
-            # Combine symbols
-            symbols_to_scan = list(set(PRIORITY_ASSETS + SYMBOLS))
+            # Combine symbols: Priority + Static + Dynamic
+            symbols_to_scan = list(set(PRIORITY_ASSETS + SYMBOLS + dynamic_pairs))
+            logger.info(f"Scanning {len(symbols_to_scan)} Assets: {symbols_to_scan}")
             
             generated_signals = [] 
             
