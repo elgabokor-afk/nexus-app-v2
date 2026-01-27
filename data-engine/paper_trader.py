@@ -386,12 +386,13 @@ def check_new_entries():
             min_conf = float(params.get('min_confidence', 85))
             signal_conf = float(signal.get('ai_confidence', 0))
             if signal_conf < min_conf:
-                 print(f"       [SKIPPED] {signal['pair']} Low Confidence: {signal_conf}% < {min_conf}%")
+                 print(f"       [SKIPPED] {signal.get('symbol', '???')} Low Confidence: {signal_conf}% < {min_conf}%")
                  continue
 
             # V500: Strict Schema - Schema Mapping
             # signals table -> code logic
-            signal_symbol = signal['pair']
+            # V2403: Fix Key Error (DB renamed to 'symbol')
+            signal_symbol = signal.get('symbol', signal.get('pair', 'UNKNOWN'))
             signal_type = signal.get('direction', 'LONG') # LONG or SHORT
             
             # Check duplication
