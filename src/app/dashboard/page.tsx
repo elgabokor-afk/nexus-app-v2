@@ -99,7 +99,7 @@ export default function Dashboard() {
                     const vipDetails = Array.isArray(s.vip_signal_details) ? s.vip_signal_details[0] : s.vip_signal_details;
                     return {
                         id: s.id,
-                        symbol: s.pair,
+                        symbol: s.symbol,
                         // Priority: VIP Table -> Public Table -> 0
                         price: Number(vipDetails?.entry_price || s.entry_price || 0),
                         stop_loss: Number(vipDetails?.sl_price || s.sl_price || 0),
