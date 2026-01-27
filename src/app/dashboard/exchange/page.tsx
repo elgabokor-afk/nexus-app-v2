@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ArrowUpRight, ArrowDownRight, Search, Activity, BarChart2 } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, Search, Activity, ArrowLeft } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 interface TickerData {
     symbol: string;
@@ -12,6 +13,7 @@ interface TickerData {
 }
 
 export default function ExchangePage() {
+    const router = useRouter();
     const [tickers, setTickers] = useState<TickerData[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
@@ -66,25 +68,33 @@ export default function ExchangePage() {
     };
 
     return (
-        <div className="min-h-screen bg-[#050505] text-white p-6 lg:p-10 font-sans">
+        <div className="min-h-screen bg-[#050505] text-white p-6 lg:p-10 font-sans pb-32 overflow-y-auto">
 
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
-                <div>
-                    <h1 className="text-3xl font-black tracking-tighter flex items-center gap-3">
-                        <Activity className="text-[#00ffa3]" />
-                        LIVE <span className="text-[#00ffa3]">EXCHANGE</span>
-                    </h1>
-                    <p className="text-gray-500 text-xs font-bold tracking-widest uppercase mt-1">
-                        Top 100 Volume Assets (Binance Feed)
-                    </p>
+                <div className="flex items-center gap-4">
+                    <button
+                        onClick={() => router.back()}
+                        className="p-2 bg-white/5 rounded-full hover:bg-white/10 transition-colors"
+                    >
+                        <ArrowLeft size={20} />
+                    </button>
+                    <div>
+                        <h1 className="text-3xl font-black tracking-tighter flex items-center gap-3">
+                            <Activity className="text-[#00ffa3]" />
+                            LIVE <span className="text-[#00ffa3]">EXCHANGE</span>
+                        </h1>
+                        <p className="text-gray-500 text-xs font-bold tracking-widest uppercase mt-1">
+                            Top 100 Volume Assets (Binance Feed)
+                        </p>
+                    </div>
                 </div>
 
                 <div className="relative w-full md:w-96">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
                     <input
                         type="text"
-                        placeholder="Search Pair (e.g. BTC)..."
+                        placeholder="Search Pair..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-3 pl-12 pr-4 text-sm text-white focus:outline-none focus:border-[#00ffa3]/50 transition-all font-medium placeholder:text-gray-600 uppercase"
@@ -97,7 +107,7 @@ export default function ExchangePage() {
                 {/* Gloss Effect */}
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#00ffa3]/20 to-transparent"></div>
 
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto w-full">
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="border-b border-white/5 bg-white/[0.02]">
@@ -127,6 +137,8 @@ export default function ExchangePage() {
                                     const change = parseFloat(t.priceChangePercent);
                                     const isPositive = change >= 0;
                                     const symbol = t.symbol.replace('USDT', ' / USDT');
+                                    const rawSymbol = t.symbol.replace('USDT', '').toLowerCase();
+                                    const logoUrl = `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${rawSymbol}.png`;
 
                                     return (
                                         <tr key={t.symbol} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors group">
@@ -134,8 +146,21 @@ export default function ExchangePage() {
                                                 {i + 1}
                                             </td>
                                             <td className="p-6">
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`w-2 h-2 rounded-full ${isPositive ? 'bg-[#00ffa3]' : 'bg-[#ff4d4d]'}`}></div>
+                                                <div className="flex items-center gap-4">
+                                                    <img
+                                                        src={logoUrl}
+                                                        alt={rawSymbol}
+                                                        className="w-8 h-8 rounded-full"
+                                                        onError={(e) => {
+                                                            (e.target as HTMLImageElement).style.display = 'none';
+                                                            (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                                                        }}
+                                                    />
+                                                    {/* Fallback Dot */}
+                                                    <div className={`w-8 h-8 rounded-full ${isPositive ? 'bg-[#00ffa3]/20 text-[#00ffa3]' : 'bg-[#ff4d4d]/20 text-[#ff4d4d]'} flex items-center justify-center font-bold text-xs hidden`}>
+                                                        {rawSymbol[0].toUpperCase()}
+                                                    </div>
+
                                                     <span className="text-sm font-bold text-white font-mono">{symbol}</span>
                                                 </div>
                                             </td>
@@ -143,7 +168,7 @@ export default function ExchangePage() {
                                                 {formatCurrency(t.lastPrice)}
                                             </td>
                                             <td className="p-6 text-right">
-                                                <div className={`inline-flex items-center gap-1 font-bold text-xs ${isPositive ? 'text-[#00ffa3]' : 'text-[#ff4d4d]'}`}>
+                                                <div className={`inline-flex items-center gap-2 font-bold text-xs ${isPositive ? 'text-[#00ffa3]' : 'text-[#ff4d4d]'}`}>
                                                     {isPositive ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
                                                     {Math.abs(change).toFixed(2)}%
                                                 </div>
