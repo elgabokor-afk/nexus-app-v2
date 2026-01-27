@@ -129,13 +129,6 @@ export default function PaperBotWidget({
 
         // V2100: PUSHER LISTENER (The Real-Time "Pulse")
         // This receives the instant trade execution from the Python Bot
-        import Pusher from 'pusher-js'; // Lazy import or ensure global available? Better strict import at top.
-        // Assuming global Pusher is available or imported.
-        // Note: We used 'new Pusher' in page.tsx. We should use logic here.
-        // Since we didn't see import Pusher on top, checking file...
-        // It wasn't imported. We'll rely on global or add import.
-        // Correction: page.tsx had `const pusher = new Pusher(...)`.
-        // Let's add the logic here safely.
 
         const pusherKey = process.env.NEXT_PUBLIC_PUSHER_KEY;
         let pusherClient: any = null;
