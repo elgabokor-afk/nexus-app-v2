@@ -146,13 +146,7 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
                 {/* === HOVER OVERLAY: AI ACTION === */}
                 {onConsultAI && !isLocked && (
                     <div className="absolute inset-0 z-30 bg-black/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col items-center justify-center gap-3 pointer-events-none group-hover:pointer-events-auto">
-                        <button
-                            onClick={(e) => { e.stopPropagation(); onConsultAI({ symbol, price, confidence, signal_type, rsi, stop_loss, take_profit }); }}
-                            className="px-5 py-2 rounded-lg bg-[#7c3aed] text-white font-black uppercase tracking-wider text-xs shadow-lg hover:bg-[#6d28d9] transition-transform hover:scale-105 flex items-center gap-2"
-                        >
-                            <Brain size={16} />
-                            Consult Nexus
-                        </button>
+                        {/* Consult Nexus Button Removed */}
                         {!compact && (
                             <button
                                 onClick={(e) => { e.stopPropagation(); onViewChart && onViewChart(symbol); }}
