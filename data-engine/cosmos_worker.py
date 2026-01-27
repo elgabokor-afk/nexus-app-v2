@@ -74,6 +74,17 @@ def save_signal_to_db(signal_data):
         logger.error(f"Failed to save signal DB: {e}")
         return None
 
+def fetch_win_rate():
+    """Fetch current Win Rate from the database view."""
+    try:
+        res = supabase.table("trading_performance").select("win_rate").limit(1).execute()
+        if res.data and res.data[0]['win_rate'] is not None:
+             return float(res.data[0]['win_rate'])
+        return 50.0 # Default if no history
+    except Exception as e:
+        logger.warning(f"Failed to fetch Win Rate: {e}")
+        return 50.0
+
 def main_loop():
     logger.info("--- COSMOS AI WORKER STARTED [RAILWAY MODE] ---")
     
@@ -88,6 +99,17 @@ def main_loop():
             
             logger.info("Scanning markets...")
             fng_index = fetch_fear_greed()
+            
+            # V1700: SELF-OPTIMIZATION LOOP
+            # If Win Rate < 50%, we become more conservative (+5% Confidence Required)
+            current_win_rate = fetch_win_rate()
+            min_confidence_threshold = 0 # Base
+            
+            if current_win_rate < 50.0:
+                min_confidence_threshold = 5
+                logger.info(f"   [SELF-OPTIMIZACIÓN] Win Rate ({current_win_rate}%) < 50%. Aumentando exigencia (+5%).")
+            else:
+                logger.info(f"   [SELF-OPTIMIZACIÓN] Win Rate ({current_win_rate}%) saludable. Exigencia estándar.")
             
             # Combine symbols
             symbols_to_scan = list(set(PRIORITY_ASSETS + SYMBOLS))
@@ -141,8 +163,13 @@ def main_loop():
                                 "atr_value": quant_signal.get('atr_value'),
                                 "volume_ratio": quant_signal.get('volume_ratio')
                             }
-                            generated_signals.append(sig_payload)
-                            logger.info(f"   >>> SIGNAL FOUND: {symbol} {quant_signal['signal']}")
+                            
+                            # V1700: Apply Dynamic Threshold
+                            if sig_payload['confidence'] >= (50 + min_confidence_threshold) or ("STRONG" in sig_payload['signal_type']):
+                                 generated_signals.append(sig_payload)
+                                 logger.info(f"   >>> SIGNAL FOUND: {symbol} {quant_signal['signal']} (Conf: {sig_payload['confidence']}%)")
+                            else:
+                                 logger.info(f"   [FILTER] Signal {symbol} discarded by Optimization Threshold (Req: {50+min_confidence_threshold}%)")
                 
                 except Exception as e:
                     logger.error(f"Error scanning {symbol}: {e}")

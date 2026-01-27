@@ -138,7 +138,7 @@ END $$;
 
 -- 7. PERFORMANCE ANALYTICS VIEW (V15)
 -- Simplifies frontend fetching for Win Rate and PnL
-CREATE OR REPLACE VIEW public.performance_stats AS
+CREATE OR REPLACE VIEW public.performance_stats WITH (security_invoker = true) AS
 SELECT 
     COUNT(*) as total_trades,
     COUNT(*) FILTER (WHERE realized_pnl > 0) as winning_trades,
@@ -151,3 +151,85 @@ SELECT
     END as win_rate
 FROM public.paper_trades
 WHERE bot_status = 'CLOSED';
+
+-- 8. DATA MIGRATION (Fix Missing Stats)
+-- Run this if your Dashboard shows 0 but you have past trades.
+DO $$
+BEGIN
+    -- Insert missing CLOSED trades from legacy 'paper_positions' into 'paper_trades'
+    INSERT INTO public.paper_trades (signal_id, entry_price_executed, exit_price_executed, realized_pnl, bot_status, created_at)
+    SELECT 
+        signal_id, 
+        entry_price, 
+        exit_price, 
+        pnl, 
+        'CLOSED', 
+        opened_at
+    FROM public.paper_positions
+    WHERE status = 'CLOSED' 
+    AND pnl IS NOT NULL
+    AND signal_id IS NOT NULL
+    AND signal_id NOT IN (SELECT signal_id FROM public.paper_trades WHERE signal_id IS NOT NULL);
+    
+    RAISE NOTICE 'Data Migration Complete: Historical trades synced.';
+END $$;
+
+-- 9. AI RANKINGS SECURITY FIX (Consolidate Policies)
+-- Fixes "multiple permissive policies" warning
+ALTER TABLE IF EXISTS public.ai_asset_rankings ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow Ranking View" ON public.ai_asset_rankings;
+DROP POLICY IF EXISTS "Public Read Rankings" ON public.ai_asset_rankings;
+DROP POLICY IF EXISTS "Enable read access for all users" ON public.ai_asset_rankings;
+CREATE POLICY "Public Read Rankings" ON public.ai_asset_rankings FOR SELECT TO anon, authenticated USING (true);
+
+-- Ensure Realtable for Rankings
+DO $$
+BEGIN
+  INSERT INTO _realtime.publication_tables (publication_name, schema_name, table_name)
+  VALUES ('supabase_realtime', 'public', 'ai_asset_rankings')
+  ON CONFLICT DO NOTHING;
+EXCEPTION WHEN OTHERS THEN
+  BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.ai_asset_rankings; EXCEPTION WHEN OTHERS THEN NULL; END;
+END $$;
+
+-- 10. BOT PARAMS SECURITY FIX (Consolidate Policies)
+ALTER TABLE IF EXISTS public.bot_params ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Obey The Config" ON public.bot_params;
+DROP POLICY IF EXISTS "Public Read Params" ON public.bot_params;
+DROP POLICY IF EXISTS "Enable read access for all users" ON public.bot_params;
+CREATE POLICY "Public Read Params" ON public.bot_params FOR SELECT TO anon, authenticated USING (true);
+-- Allow Service Role to update config
+DROP POLICY IF EXISTS "Service Role Update Params" ON public.bot_params;
+CREATE POLICY "Service Role Update Params" ON public.bot_params FOR UPDATE TO service_role USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Service Role Insert Params" ON public.bot_params;
+CREATE POLICY "Service Role Insert Params" ON public.bot_params FOR INSERT TO service_role WITH CHECK (true);
+
+-- 11. ERROR LOGS SECURITY FIX (Strict Consolidation)
+-- Fixes "multiple permissive policies" warning
+ALTER TABLE IF EXISTS public.error_logs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Authenticated Read Error Logs" ON public.error_logs;
+DROP POLICY IF EXISTS "Enable view for service role" ON public.error_logs;
+DROP POLICY IF EXISTS "Restrict Error Logs Read" ON public.error_logs;
+-- Consolidated Read Policy (Auth Users + Service Role)
+CREATE POLICY "Authenticated Read Error Logs" ON public.error_logs FOR SELECT TO authenticated, service_role USING (true);
+-- Consolidated Write Policy (Service Role ONLY)
+DROP POLICY IF EXISTS "Service Role Insert Error Logs" ON public.error_logs;
+DROP POLICY IF EXISTS "Enable insert for all users" ON public.error_logs;
+CREATE POLICY "Service Role Insert Error Logs" ON public.error_logs FOR INSERT TO service_role WITH CHECK (true);
+
+-- 12. PAPER POSITIONS SECURITY FIX (Consolidated)
+-- Fixes "multiple permissive policies" warning
+ALTER TABLE IF EXISTS public.paper_positions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Universal Dashboard Access" ON public.paper_positions;
+DROP POLICY IF EXISTS "Public Read Positions" ON public.paper_positions;
+DROP POLICY IF EXISTS "Enable read access for all users" ON public.paper_positions;
+-- Consolidated Read Policy
+CREATE POLICY "Public Read Positions" ON public.paper_positions FOR SELECT TO anon, authenticated USING (true);
+-- Write Policy (Service Role)
+DROP POLICY IF EXISTS "Service Role Write Positions" ON public.paper_positions;
+CREATE POLICY "Service Role Write Positions" ON public.paper_positions FOR ALL TO service_role USING (true);
+
+-- 13. SELF-OPTIMIZATION VIEW (Alias)
+-- Provides 'trading_performance' for the AI Worker to query Win Rate
+CREATE OR REPLACE VIEW public.trading_performance WITH (security_invoker = true) AS
+SELECT * FROM public.performance_stats;
