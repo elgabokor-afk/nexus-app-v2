@@ -79,7 +79,7 @@ export default function MarketPage() {
     };
 
     return (
-        <div className="min-h-screen bg-[#050505] text-white p-6 lg:p-10 font-sans">
+        <div className="h-screen bg-[#050505] text-white p-6 lg:p-10 font-sans pb-32 overflow-y-auto custom-scrollbar">
 
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
