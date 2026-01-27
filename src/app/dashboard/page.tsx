@@ -130,7 +130,7 @@ export default function Dashboard() {
             if (publicData) {
                 const formatted = publicData.map((s: any) => ({
                     id: s.id,
-                    symbol: s.pair,
+                    symbol: s.symbol,
                     price: Number(s.entry_price || 0),
                     stop_loss: Number(s.sl_price || 0),
                     take_profit: Number(s.tp_price || 0),
