@@ -99,6 +99,7 @@ def main_loop():
                     # Fetch Data (5m and 15m for confluence)
                     df_5m = fetch_data(symbol, timeframe='5m', limit=100)
                     df_15m = fetch_data(symbol, timeframe='15m', limit=100)
+                    df_4h = fetch_data(symbol, timeframe='4h', limit=50) # V1400: High Timeframe for Structure
                     
                     techs_5m = analyze_market(df_5m)
                     techs_15m = analyze_market(df_15m)
@@ -117,7 +118,8 @@ def main_loop():
                         })
                         
                         # AI + Quant Analysis
-                        quant_signal = analyze_quant_signal(symbol, techs_5m, sentiment_score=fng_index, df_confluence=df_5m)
+                        # V1400: Pass df_4h for Multi-Timeframe Logic
+                        quant_signal = analyze_quant_signal(symbol, techs_5m, sentiment_score=fng_index, df_confluence=df_5m, df_htf=df_4h)
                         
                         if quant_signal:
                             # 15m Trend Filter

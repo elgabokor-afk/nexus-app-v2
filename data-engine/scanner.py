@@ -259,10 +259,11 @@ def check_news_blackout():
     # Let's keep it simple: No blackout unless manually added here.
     return False
 
-def analyze_quant_signal(symbol, tech_analysis, sentiment_score=50, df_confluence=None):
+def analyze_quant_signal(symbol, tech_analysis, sentiment_score=50, df_confluence=None, df_htf=None):
     """
     Combines Technicals (RSI/EMA/MACD) with Quant Data (Order Book)
     using DYNAMIC WEIGHTS from the Optimizer.
+    V14: Added df_htf for H4 S/R checks.
     """
     if not tech_analysis: return None
     
@@ -318,14 +319,43 @@ def analyze_quant_signal(symbol, tech_analysis, sentiment_score=50, df_confluenc
     if df_confluence is not None:
         vol_pressure = analyze_volume_pressure(df_confluence)
         
-    # LOGIC UPDATE: Force Confluence
-    # We punish the score heavily if Volume is weak or Structure is opposing.
+    # LOGIC UPDATE: High Probability Filters
     
-    # Volume Check
+    # V1400: Volume Filter (Strict)
+    # Signal discarded if current volume < 20-period MA (vol_pressure < 1.0)
+    # We allow a small tolerance (0.95) to avoid over-filtering slightly quiet breakouts
+    if vol_pressure < 0.95:
+        return None 
+        
+    # V1400: Weight Penalty for Weak Volume (even if pass)
     if vol_pressure < 1.2:
         # Weak Volume -> Penalty
         macd_score *= 0.5
         imb_score *= 0.5
+        
+    # V1400: H4 Structure / Resistance Filter
+    # If price is approaching H4 Resistance (High of last 20 candles), dampen Bullish confidence
+    if df_htf is not None:
+        htf_lookback = df_htf.iloc[-20:-1]
+        htf_high = htf_lookback['high'].max()
+        htf_low = htf_lookback['low'].min()
+        
+        # Proximity defined as within 1% of key level
+        dist_to_res = (htf_high - price) / price
+        dist_to_sup = (price - htf_low) / price
+        
+        # If Bullish Signal but close to H4 Resistance (< 0.5% away)
+        if dist_to_res < 0.005 and rsi_score > 0.5:
+             # Serious Penalty
+             rsi_score *= 0.5
+             trend_score *= 0.5
+             print(f"   [FILTER] {symbol} dampened by H4 Resistance proximity.")
+             
+        # If Bearish Signal but close to H4 Support (< 0.5% away)
+        if dist_to_sup < 0.005 and rsi_score < 0.5:
+             rsi_score = 1.0 - (1.0 - rsi_score) * 0.5 # Dampen bearishness
+             trend_score *= 0.5
+             print(f"   [FILTER] {symbol} dampened by H4 Support proximity.")
         
     # 3. APPLY DYNAMIC WEIGHTS
     weights = get_dynamic_weights()

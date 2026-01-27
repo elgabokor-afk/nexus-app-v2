@@ -110,9 +110,12 @@ DROP POLICY IF EXISTS "Service Role Write Positions" ON public.paper_positions;
 CREATE POLICY "Service Role Write Positions" ON public.paper_positions FOR ALL TO service_role USING (true);
 
 ALTER TABLE public.error_logs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Enable insert for all users" ON public.error_logs;
 DROP POLICY IF EXISTS "Restrict Error Logs Insert" ON public.error_logs;
+DROP POLICY IF EXISTS "Service Role Insert Error Logs" ON public.error_logs;
 CREATE POLICY "Service Role Insert Error Logs" ON public.error_logs FOR INSERT TO service_role WITH CHECK (true);
 DROP POLICY IF EXISTS "Restrict Error Logs Read" ON public.error_logs;
+DROP POLICY IF EXISTS "Authenticated Read Error Logs" ON public.error_logs;
 CREATE POLICY "Authenticated Read Error Logs" ON public.error_logs FOR SELECT TO authenticated, service_role USING (true);
 
 -- 6. REALTIME (Idempotent)
@@ -132,3 +135,19 @@ EXCEPTION WHEN OTHERS THEN
     BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.bot_wallet; EXCEPTION WHEN OTHERS THEN NULL; END;
     BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.error_logs; EXCEPTION WHEN OTHERS THEN NULL; END;
 END $$;
+
+-- 7. PERFORMANCE ANALYTICS VIEW (V15)
+-- Simplifies frontend fetching for Win Rate and PnL
+CREATE OR REPLACE VIEW public.performance_stats AS
+SELECT 
+    COUNT(*) as total_trades,
+    COUNT(*) FILTER (WHERE realized_pnl > 0) as winning_trades,
+    COUNT(*) FILTER (WHERE realized_pnl < 0) as losing_trades,
+    COALESCE(SUM(realized_pnl), 0) as total_pnl,
+    CASE 
+        WHEN COUNT(*) > 0 THEN 
+            ROUND((COUNT(*) FILTER (WHERE realized_pnl > 0)::NUMERIC / COUNT(*)::NUMERIC) * 100, 2)
+        ELSE 0 
+    END as win_rate
+FROM public.paper_trades
+WHERE bot_status = 'CLOSED';

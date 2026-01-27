@@ -11,6 +11,7 @@ import PortfolioHub from '@/components/PortfolioHub';
 import AIChatModal from '@/components/AIChatModal'; // V1600
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
+import PerformanceStats from '@/components/PerformanceStats'; // V1500
 
 const SmartChart = dynamic(
     () => import('@/components/SmartChart').then((mod) => mod.SmartChart),
@@ -397,6 +398,11 @@ export default function Dashboard() {
 
                     {currentView === 'dashboard' && (
                         <div className="flex-1 p-4 lg:p-8 grid grid-cols-1 xl:grid-cols-12 gap-8 overflow-y-auto lg:overflow-hidden z-20 custom-scrollbar animate-fade-in">
+
+                            {/* V1500: PERFORMANCE DASHBOARD (Full Width) */}
+                            <div className="xl:col-span-12">
+                                <PerformanceStats />
+                            </div>
 
                             {/* COL 1: ADVANCED SIGNALS (3 Columns) */}
                             <div className="xl:col-span-3 flex flex-col gap-6 overflow-hidden min-h-[400px] lg:min-h-0 bg-white/[0.02] backdrop-blur-xl rounded-[2.5rem] border border-white/5 p-6 shadow-2xl relative group">

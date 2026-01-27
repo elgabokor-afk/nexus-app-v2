@@ -664,14 +664,14 @@ def monitor_positions():
             elif take_profit and current_price >= take_profit:
                 exit_reason = "TAKE_PROFIT"
                 
-            # V415: DYNAMIC MANAGEMENT (Trailing Stop & Time Exit)
+            # V1600: DYNAMIC MANAGEMENT (Trailing Stop & Time Exit)
             
             # 1. Trailing Stop to Breakeven
-            # If profit > 1%, move SL to Entry
+            # Trigger: When price covers 50% of the distance to TP
             entry_price = float(pos['entry_price'])
             quantity = float(pos['quantity'])
             
-            # Calc Profit %
+            # Calc Profit % (for logging)
             if quantity > 0: # LONG
                 profit_pct = (current_price - entry_price) / entry_price
             else: # SHORT
@@ -679,7 +679,19 @@ def monitor_positions():
                 
             current_sl = float(pos.get('bot_stop_loss') or 0)
             
-            if profit_pct > 0.01:
+            should_move_to_be = False
+            
+            if take_profit:
+                 dist_tp = abs(take_profit - entry_price)
+                 if dist_tp > 0:
+                     dist_current = abs(current_price - entry_price)
+                     progress = dist_current / dist_tp
+                     if progress >= 0.50: # 50% Way to TP
+                         should_move_to_be = True
+            elif profit_pct > 0.015: # Fallback if no TP (1.5% profit)
+                 should_move_to_be = True
+            
+            if should_move_to_be:
                 # Check if SL is already moved
                 # For LONG: SL should be >= Entry
                 # For SHORT: SL should be <= Entry
