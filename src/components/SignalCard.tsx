@@ -149,16 +149,7 @@ return (
             {/* === HOVER OVERLAY: AI ACTION === */}
             {onConsultAI && !isLocked && (
                 <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center gap-3 z-20">
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onConsultAI?.({ symbol, price, rsi, signal_type, confidence, timestamp, stop_loss, take_profit, atr_value, volume_ratio, imbalance, depth_score });
-                        }}
-                        className="px-6 py-2 bg-[#00ffa3] text-black font-bold rounded-full hover:scale-105 hover:shadow-[0_0_20px_rgba(0,255,163,0.4)] transition-all flex items-center gap-2"
-                    >
-                        <Bot size={18} />
-                        Consult Nexus
-                    </button>
+
                     {!isLocked && (
                         <a
                             href={`https://www.tradingview.com/chart/?symbol=${symbol?.replace('/', '')}`}
