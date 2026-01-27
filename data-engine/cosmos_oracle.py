@@ -186,12 +186,18 @@ def run_oracle_step(symbol='BTC/USDT'):
                     # Determine channel based on confidence (VIP logic)
                     is_vip_signal = (prob * 100) >= 90
                     
+                    # Update payload with correct VIP status
+                    signal_data["is_vip"] = is_vip_signal
+                    
+                    # 1. ALWAYS Broadcast to Public Channel 
+                    # (This ensures Free users see the "Locked" card for Upsell)
+                    broadcast_signal('public-signals', 'new-signal', signal_data)
+                    print(f"      >>> [PUSHER] Public Broadcast: {symbol} (VIP={is_vip_signal})")
+                    
+                    # 2. If VIP, also Broadcast to Private Channel (Redundancy/Secure)
                     if is_vip_signal:
                         broadcast_signal('private-vip-signals', 'new-signal', signal_data)
-                        print(f"      >>> [PUSHER] VIP Signal Broadcast: {symbol}")
-                    else:
-                        broadcast_signal('public-signals', 'new-signal', signal_data)
-                        print(f"      >>> [PUSHER] Public Signal Broadcast: {symbol}")
+                        print(f"      >>> [PUSHER] VIP Channel Broadcast: {symbol}")
                         
                 except Exception as e:
                     print(f"!!! [PUSHER ERROR] Failed to broadcast {symbol}: {e}")
