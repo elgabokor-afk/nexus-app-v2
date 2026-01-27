@@ -233,3 +233,37 @@ CREATE POLICY "Service Role Write Positions" ON public.paper_positions FOR ALL T
 -- Provides 'trading_performance' for the AI Worker to query Win Rate
 CREATE OR REPLACE VIEW public.trading_performance WITH (security_invoker = true) AS
 SELECT * FROM public.performance_stats;
+
+-- 14. PROFILES TABLE & AUTH TRIGGER (Paywall)
+CREATE TABLE IF NOT EXISTS public.profiles (
+  id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
+  email TEXT,
+  subscription_level TEXT DEFAULT 'free' CHECK (subscription_level IN ('free', 'vip')),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+-- Profiles Policies
+DROP POLICY IF EXISTS "Public Read Profiles" ON public.profiles;
+CREATE POLICY "Public Read Profiles" ON public.profiles FOR SELECT TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
+CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE TO authenticated USING (auth.uid() = id);
+
+-- Function to handle new user signup
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, email, subscription_level)
+  VALUES (new.id, new.email, 'free');
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger for new user signup
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();

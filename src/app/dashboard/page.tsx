@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import SignalCard from '@/components/SignalCard';
 import SystemLogs from '@/components/SystemLogs';
-import { Zap, Activity, LogOut, User, TrendingUp } from 'lucide-react';
+import { Zap, Activity, LogOut, User, TrendingUp, Lock } from 'lucide-react';
 import PaperBotWidget from '@/components/PaperBotWidget';
 import OracleMonitor from '@/components/OracleMonitor';
 import PortfolioHub from '@/components/PortfolioHub';
@@ -12,6 +12,8 @@ import AIChatModal from '@/components/AIChatModal'; // V1600
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import PerformanceStats from '@/components/PerformanceStats'; // V1500
+import SubscriptionGuard from '@/components/SubscriptionGuard'; // V1800
+import { useProfile } from '@/hooks/useProfile'; // V1800
 
 const SmartChart = dynamic(
     () => import('@/components/SmartChart').then((mod) => mod.SmartChart),
@@ -57,6 +59,7 @@ export default function Dashboard() {
     const [user, setUser] = useState<any>(null);
     const [currentView, setCurrentView] = useState<'dashboard' | 'bot' | 'logs'>('dashboard');
     const router = useRouter();
+    const { profile, isVip } = useProfile(); // V1800
 
     const handleViewChart = (symbol: string) => {
         const sig = signals.find(s => s.symbol === symbol);
@@ -355,7 +358,12 @@ export default function Dashboard() {
                                 </p>
                             </div>
                             <div className="flex items-end justify-between">
-                                <span className="text-sm font-black text-white">{user?.email?.split('@')[0].toUpperCase() || 'ANONYMOUS'}</span>
+                                <div>
+                                    <span className="text-sm font-black text-white block">{user?.email?.split('@')[0].toUpperCase() || 'ANONYMOUS'}</span>
+                                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${isVip ? 'bg-[#00ffa3] text-black' : 'bg-gray-700 text-gray-300'}`}>
+                                        {isVip ? 'VIP PLAN' : 'FREE PLAN'}
+                                    </span>
+                                </div>
                                 <span className="text-[9px] font-mono text-gray-600 uppercase">99.9% Uptime</span>
                             </div>
                         </div>
@@ -399,9 +407,26 @@ export default function Dashboard() {
                     {currentView === 'dashboard' && (
                         <div className="flex-1 p-4 lg:p-8 grid grid-cols-1 xl:grid-cols-12 gap-8 overflow-y-auto lg:overflow-hidden z-20 custom-scrollbar animate-fade-in">
 
-                            {/* V1500: PERFORMANCE DASHBOARD (Full Width) */}
+                            {/* V1500: PERFORMANCE DASHBOARD (Full Width) - PROTECTED */}
                             <div className="xl:col-span-12">
-                                <PerformanceStats />
+                                <SubscriptionGuard fallback={
+                                    <div className="w-full h-[100px] bg-[#0e0e10] border border-white/5 rounded-3xl flex items-center justify-between px-8">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center">
+                                                <Lock className="text-gray-500" size={18} />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-white font-bold">Performance Analytics</h3>
+                                                <p className="text-gray-500 text-xs">Unlock your win-rate and profit stats.</p>
+                                            </div>
+                                        </div>
+                                        <button className="px-6 py-2 bg-[#00ffa3] text-black font-black text-xs uppercase tracking-widest rounded-full">
+                                            UNLOCK VIP
+                                        </button>
+                                    </div>
+                                }>
+                                    <PerformanceStats />
+                                </SubscriptionGuard>
                             </div>
 
                             {/* COL 1: ADVANCED SIGNALS (3 Columns) */}
