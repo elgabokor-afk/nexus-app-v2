@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabaseClient';
 import Pusher from 'pusher-js';
 import SignalCard from '@/components/SignalCard';
 import SystemLogs from '@/components/SystemLogs';
-import { Zap, Activity, LogOut, User, TrendingUp, Lock } from 'lucide-react';
+import { Zap, Activity, LogOut, User, TrendingUp, Lock, Globe } from 'lucide-react';
 import PaperBotWidget from '@/components/PaperBotWidget';
 import OracleMonitor from '@/components/OracleMonitor';
 import PortfolioHub from '@/components/PortfolioHub';
