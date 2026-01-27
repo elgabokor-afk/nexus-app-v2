@@ -459,9 +459,42 @@ from cosmos_engine import brain # V8 AI Core
 # Initialize Telegram Broadcaster
 tg = TelegramAlerts()
 
+def get_top_vol_pairs(limit=15):
+    """
+    Fetches Top 15 USDT pairs by 24h Quote Volume from Binance.
+    """
+    try:
+        url = "https://api.binance.com/api/v3/ticker/24hr"
+        res = requests.get(url, timeout=10)
+        data = res.json()
+        
+        # Filter USDT, exclude leveraged tokens
+        usdt_pairs = [
+            t for t in data 
+            if t['symbol'].endswith('USDT') 
+            and 'UP' not in t['symbol'] 
+            and 'DOWN' not in t['symbol']
+        ]
+        
+        # Sort by Volume Desc
+        sorted_pairs = sorted(usdt_pairs, key=lambda x: float(x['quoteVolume']), reverse=True)
+        
+        # Extract symbols, format to CCXT standard (BTC/USDT)
+        top_symbols = []
+        for p in sorted_pairs[:limit]:
+            sym = p['symbol']
+            # Convert BTCUSDT -> BTC/USDT
+            formatted = f"{sym[:-4]}/{sym[-4:]}"
+            top_symbols.append(formatted)
+            
+        print(f"   [DYNAMIC] Top {limit} Vol Assets: {top_symbols}")
+        return top_symbols
+    except Exception as e:
+        print(f"   [DYNAMIC] Failed to fetch top stats: {e}")
+        return []
+
 def main():
     print("/// N E X U S  D A T A  E N G I N E  (v1.0) ///")
-    print(f"Scanning Binance Spot Margin: {SYMBOLS}")
     print(f"Priority Focus: {PRIORITY_ASSETS}")
     print("-" * 50)
     
@@ -471,15 +504,28 @@ def main():
     last_train_time = datetime.now()
     train_interval_hours = 6
     
+    # V24: Auto-Update Top Assets
+    last_asset_update = 0
+    
     while True:
         try:
-            # Check for Re-Training (Continuous Learning)
+            # Check for Re-Training
             now = datetime.now()
             elapsed = (now - last_train_time).total_seconds() / 3600
             if elapsed >= train_interval_hours:
                 print(f"--- [SVC] Cosmos Brain: Scheduled Retraining ({train_interval_hours}h elapsed) ---")
                 brain.train()
                 last_train_time = now
+            
+            # V24: Dynamic Asset List Update (Every 1 Hour)
+            # We merge PRIORITY_ASSETS (Fixed) + TOP_VOL_ASSETS (Dynamic)
+            if time.time() - last_asset_update > 3600:
+                print("--- [DYNAMIC] Refreshing Top Volume Assets ---")
+                dynamic_pairs = get_top_vol_pairs(limit=15)
+                # Merge Unique
+                current_scan_list = list(set(PRIORITY_ASSETS + dynamic_pairs))
+                last_asset_update = time.time()
+                print(f"   [SCAN LIST] Total: {len(current_scan_list)} Pairs")
             
             # 1. Fetch Global Data (Sentiment)
             fng_index = fetch_fear_greed()
@@ -497,15 +543,11 @@ def main():
             # Cooldown Check
             last_trade_ts_str = get_last_trade_time()
             if last_trade_ts_str:
-                # Handle ISO format: '2025-01-24T10:00:00+00:00' or similar
-                # Simple parsing logic
                 try:
                     last_trade = datetime.fromisoformat(last_trade_ts_str.replace('Z', '+00:00'))
-                    # Ensure timezone awareness compatibility
                     if last_trade.tzinfo is None:
                         last_trade = last_trade.replace(tzinfo=datetime.now().astimezone().tzinfo)
                     
-                    # current time
                     current_localized = datetime.now(last_trade.tzinfo)
                     mins_since = (current_localized - last_trade).total_seconds() / 60
                     
@@ -517,12 +559,15 @@ def main():
                     print(f"Date Parse Warning: {e}")
 
             print(f"\n--- Scan at {now.strftime('%H:%M:%S')} | Fear & Greed: {fng_index} | Open: {active_positions} ---")
-            print(f"   [PORTFOLIO FLOW] Scanning: {SYMBOLS}")
             
-            # V410: Reorder symbols to ensure priority assets are scanned first
-            symbols_to_scan = PRIORITY_ASSETS + [s for s in SYMBOLS if s not in PRIORITY_ASSETS]
+            # Use current_scan_list for the loop
+            # Fallback if dynamic list failed initially
+            if 'current_scan_list' not in locals() or not current_scan_list:
+                current_scan_list = PRIORITY_ASSETS + [s for s in SYMBOLS if s not in PRIORITY_ASSETS]
+                
+            print(f"   [PORTFOLIO FLOW] Scanning {len(current_scan_list)} Assets...")
             
-            for symbol in symbols_to_scan:
+            for symbol in current_scan_list:
                 if any(b in symbol.upper() for b in ASSET_BLACKLIST):
                     continue
                 
