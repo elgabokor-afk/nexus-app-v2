@@ -13,7 +13,6 @@ load_dotenv(dotenv_path=os.path.join(parent_dir, '.env.local'))
 
 class RedisEngine:
     def __init__(self):
-    def __init__(self):
         # V1102: Robust Railway Redis Discovery
         # Railway creates different vars depending on internal/public access
         self.redis_url = os.getenv("REDIS_URL") or os.getenv("REDIS_PRIVATE_URL") or os.getenv("REDIS_PUBLIC_URL")
