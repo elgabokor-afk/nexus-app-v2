@@ -168,7 +168,7 @@ def run_oracle_step(symbol='BTC/USDT'):
                 # V90: Broadcast to Pusher (Dashboard Visibility)
                 # This ensures the new "Exchange V2" dashboard sees these signals immediately.
                 try:
-                    from pusher_client import broadcast_signal
+                    from pusher_client import pusher_client
                     
                     # Construct signal object for frontend
                     signal_data = {
@@ -191,12 +191,12 @@ def run_oracle_step(symbol='BTC/USDT'):
                     
                     # 1. ALWAYS Broadcast to Public Channel 
                     # (This ensures Free users see the "Locked" card for Upsell)
-                    broadcast_signal('public-signals', 'new-signal', signal_data)
+                    pusher_client.trigger('public-signals', 'new-signal', signal_data)
                     print(f"      >>> [PUSHER] Public Broadcast: {symbol} (VIP={is_vip_signal})")
                     
                     # 2. If VIP, also Broadcast to Private Channel (Redundancy/Secure)
                     if is_vip_signal:
-                        broadcast_signal('private-vip-signals', 'new-signal', signal_data)
+                        pusher_client.trigger('private-vip-signals', 'new-signal', signal_data)
                         print(f"      >>> [PUSHER] VIP Channel Broadcast: {symbol}")
                         
                 except Exception as e:

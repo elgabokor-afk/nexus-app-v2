@@ -161,7 +161,7 @@ def audit_active_signals():
                 }
                 
                 # Send to Public (and VIP implicitly if they listen to Public)
-                broadcast_signal('public-signals', 'signal-update', update_payload)
+                pusher_client.trigger('public-signals', 'signal-update', update_payload)
                 print(f"      >>> [PUSHER] Sent Update for {symbol}")
                 
             except Exception as e:
