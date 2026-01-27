@@ -134,7 +134,7 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
                 onClick={() => {
                     if (isLocked) {
                         setShowPaymentModal(true);
-                    } else if (compact && onViewChart) {
+                    } else if (onViewChart) {
                         onViewChart(symbol);
                     }
                 }}
@@ -146,24 +146,8 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
                 ${isHot ? glowClass : ''}
             `}
             >
-                {/* === HOVER OVERLAY: AI ACTION === */}
-                {onConsultAI && !isLocked && (
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center gap-3 z-20">
-
-                        {!isLocked && (
-                            <a
-                                href={`https://www.tradingview.com/chart/?symbol=${symbol?.replace('/', '')}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                onClick={(e) => e.stopPropagation()}
-                                className="px-6 py-2 bg-white/10 text-white font-medium rounded-full hover:bg-white/20 transition-all flex items-center gap-2 backdrop-blur-md"
-                            >
-                                <ExternalLink size={18} />
-                                Open Chart
-                            </a>
-                        )}
-                    </div>
-                )}
+                {/* === HOVER OVERLAY: AI ACTION (View Internal Chart) === */}
+                {/* Removed external link. Touching card now updates main chart via onSelectSymbol/onViewChart */}
 
                 {/* === HOT ZONE HEADER (Only for Elite Signals) === */}
                 {isHot && (
