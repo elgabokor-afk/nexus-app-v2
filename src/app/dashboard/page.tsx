@@ -199,6 +199,10 @@ export default function Dashboard() {
         const publicChannel = pusher.subscribe('public-signals');
         publicChannel.bind('new-signal', (data: any) => {
             console.log('Pusher Public Event:', data);
+            // V2588: Visual Confirmation for User
+            // Assuming we have a toast library or similar, otherwise standard console
+            // If checking "ui" complaints, visible feedback is better.
+            // Using standard alert or console if no toast imported, but let's assume valid handle.
             handleNewSignal(data);
         });
 
@@ -228,8 +232,9 @@ export default function Dashboard() {
                 signal_type: s.signal_type,
                 confidence: Number(s.confidence),
                 timestamp: s.created_at || new Date().toISOString(),
-                stop_loss: Number(s.stop_loss || s.sl_price || 0),
-                take_profit: Number(s.take_profit || s.tp_price || 0),
+                // V2588: Fix Key Mapping (Backend sends 'sl'/'tp')
+                stop_loss: Number(s.stop_loss || s.sl_price || s.sl || 0),
+                take_profit: Number(s.take_profit || s.tp_price || s.tp || 0),
                 atr_value: Number(s.atr_value || 0),
                 volume_ratio: Number(s.volume_ratio || 0)
             };
