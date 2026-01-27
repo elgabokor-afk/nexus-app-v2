@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { TrendingUp, TrendingDown, Zap, Activity, AlertCircle, RefreshCw, Layers } from 'lucide-react';
 import LearningCurve from './LearningCurve'; // V600
 import { useLiveStream } from '@/hooks/useLiveStream'; // V1100
+import Pusher from 'pusher-js'; // V2100
 
 interface Position {
     id: number;
@@ -125,6 +126,45 @@ export default function PaperBotWidget({
                 }
             })
             .subscribe();
+
+        // V2100: PUSHER LISTENER (The Real-Time "Pulse")
+        // This receives the instant trade execution from the Python Bot
+        import Pusher from 'pusher-js'; // Lazy import or ensure global available? Better strict import at top.
+        // Assuming global Pusher is available or imported.
+        // Note: We used 'new Pusher' in page.tsx. We should use logic here.
+        // Since we didn't see import Pusher on top, checking file...
+        // It wasn't imported. We'll rely on global or add import.
+        // Correction: page.tsx had `const pusher = new Pusher(...)`.
+        // Let's add the logic here safely.
+
+        const pusherKey = process.env.NEXT_PUBLIC_PUSHER_KEY;
+        let pusherClient: any = null;
+
+        if (pusherKey) {
+            // @ts-ignore
+            pusherClient = new Pusher(pusherKey, {
+                cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
+                forceTLS: true,
+            });
+
+            const channel = pusherClient.subscribe('public-paper-positions');
+            channel.bind('position-update', (event: any) => {
+                const { type, data } = event;
+                console.log("[PaperBot] Pusher Event:", type, data);
+
+                if (type === 'OPEN') {
+                    setPositions(prev => {
+                        // Avoid duplicates
+                        if (prev.find(p => p.id === data.id)) return prev;
+                        return [data, ...prev];
+                    });
+                } else if (type === 'CLOSED') {
+                    setPositions(prev => prev.map(p =>
+                        p.id === data.id ? { ...p, status: 'CLOSED', ...data } : p
+                    ));
+                }
+            });
+        }
 
         const walletChannel = supabase
             .channel('realtime_bot_wallet')

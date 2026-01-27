@@ -607,6 +607,20 @@ def check_new_entries():
                 "type": "OPEN",
                 "data": trade_data
             })
+
+            # V2100: PUSHER BROADCAST (Frontend Live View)
+            # Sends instant notification of the trade to the Dashboard
+            try:
+                from pusher_client import pusher_client
+                # We use a public channel for "Paper" trades so the user sees them immediately
+                # (Or private if we want to restrict, but user said "yo poderlas ver")
+                pusher_client.trigger("public-paper-positions", "position-update", {
+                    "type": "OPEN",
+                    "data": trade_data
+                })
+                print(f"       >>> [PUSHER] Broadcasted OPEN position for {signal_symbol}")
+            except Exception as e:
+                print(f"       [PUSHER ERROR] {e}")
                 
     except Exception as e:
         print(f"Error checking entries: {e}")
@@ -785,6 +799,24 @@ def monitor_positions():
                         "exit_reason": exit_reason
                     }
                 })
+
+                # V2100: PUSHER BROADCAST (Closure)
+                try:
+                    from pusher_client import pusher_client
+                    pusher_client.trigger("public-paper-positions", "position-update", {
+                        "type": "CLOSED",
+                        "data": {
+                            "id": pos['id'],
+                            "symbol": pos['symbol'],
+                            "pnl": pnl,
+                            "exit_price": current_price,
+                            "exit_reason": exit_reason,
+                            "status": "CLOSED" 
+                        }
+                    })
+                    print(f"       >>> [PUSHER] Broadcasted CLOSED position for {pos['symbol']}")
+                except Exception as e:
+                    print(f"       [PUSHER ERROR] {e}")
                 
                 # V6: RUN SELF-OPTIMIZATION
                 print("   >>> Triggering AI Optimization...")
