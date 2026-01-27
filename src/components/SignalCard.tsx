@@ -215,9 +215,12 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
                             <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/40 backdrop-blur-md transition-all group-hover/prices:bg-black/50 cursor-pointer" onClick={() => setShowPaymentModal(true)}>
                                 <div className="flex items-center gap-2 px-3 py-1.5 bg-[#00ffa3] rounded-full shadow-[0_0_15px_rgba(0,255,163,0.4)] mb-1">
                                     <Lock size={10} className="text-black" />
-                                    <span className="text-[9px] font-black text-black uppercase tracking-widest">VIP LOCKED</span>
+                                    <span className="text-[9px] font-black text-black uppercase tracking-widest leading-none">HIGH CONFIDENCE (85%+)</span>
                                 </div>
-                                <p className="text-[9px] text-gray-300 font-medium mt-1">Click to Unlock</p>
+                                <p className="text-[9px] text-gray-300 font-medium mt-1 text-center px-4">
+                                    Desbloquea para ver TP/SL <br />
+                                    <span className="text-[#00ffa3] underline">Click to Upgrade</span>
+                                </p>
                             </div>
                         )}
 

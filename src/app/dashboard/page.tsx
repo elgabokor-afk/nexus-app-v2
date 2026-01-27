@@ -185,9 +185,13 @@ export default function Dashboard() {
         const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
             cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
             authEndpoint: '/api/pusher/auth',
+            forceTLS: true,
         });
 
-        pusher.connection.bind('connected', () => setConnectionStatus('connected'));
+        pusher.connection.bind('connected', () => {
+            setConnectionStatus('connected');
+            console.log('[Pusher] Connected to ' + process.env.NEXT_PUBLIC_PUSHER_CLUSTER);
+        });
         pusher.connection.bind('unavailable', () => setConnectionStatus('unavailable'));
         pusher.connection.bind('failed', () => setConnectionStatus('unavailable'));
 
@@ -202,6 +206,9 @@ export default function Dashboard() {
         if (isVip) {
             console.log("Subscribing to VIP Channel...");
             const privateChannel = pusher.subscribe('private-vip-signals');
+            privateChannel.bind('pusher:subscription_succeeded', () => {
+                console.log('[Pusher] Canal Privado conectado exitosamente');
+            });
             privateChannel.bind('new-signal', (data: any) => {
                 console.log('Pusher VIP Event:', data);
                 handleNewSignal(data);
