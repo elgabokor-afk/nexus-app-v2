@@ -179,7 +179,8 @@ export default function Dashboard() {
 
         // V1900: DUAL CHANNEL REALTIME (Main + VIP Details)
         const channel = supabase
-            .channel('realtime signals')
+            .channel('realtime_signals_v2')
+            .on('system', { event: '*' }, (payload) => console.log('Realtime System Event:', payload))
             // 1. Listen for Public Signals
             .on('postgres_changes', { event: '*', schema: 'public', table: 'signals' }, (payload: any) => {
                 if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {

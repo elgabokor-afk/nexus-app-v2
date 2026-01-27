@@ -16,7 +16,7 @@ DROP POLICY IF EXISTS "VIP Read Details" ON public.vip_signal_details;
 CREATE POLICY "VIP Read Details" ON public.vip_signal_details
 FOR SELECT TO authenticated
 USING (
-  auth.uid() IN (SELECT id FROM public.profiles WHERE subscription_level = 'vip')
+  (select auth.uid()) IN (SELECT id FROM public.profiles WHERE subscription_level = 'vip')
 );
 
 -- Service Role: FULL ACCESS
