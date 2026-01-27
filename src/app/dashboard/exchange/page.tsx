@@ -12,6 +12,62 @@ interface TickerData {
     count: number; // Trade count
 }
 
+// V500: Smart Logo Component (Multi-CDN + Vibrant Generator)
+const CryptoLogo = ({ symbol }: { symbol: string }) => {
+    const [srcIndex, setSrcIndex] = useState(0);
+    const [error, setError] = useState(false);
+
+    // Normalize logic
+    const base = symbol.toLowerCase();
+
+    // Priority List:
+    // 1. SpotHQ (Best Vectors)
+    // 2. CoinCap (Broad coverage)
+    // 3. CryptoLogos (Backup)
+    const sources = [
+        `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${base}.png`,
+        `https://assets.coincap.io/assets/icons/${base}@2x.png`,
+        `https://lcw.nyc3.cdn.digitaloceanspaces.com/production/currencies/64/${base}.png`
+    ];
+
+    const handleError = () => {
+        if (srcIndex < sources.length - 1) {
+            setSrcIndex(prev => prev + 1);
+        } else {
+            setError(true);
+        }
+    };
+
+    if (error) {
+        // "Design it if needed": Generative Gradient based on char code
+        const charCode = base.charCodeAt(0) || 0;
+        const gradients = [
+            'from-purple-500 to-indigo-500',
+            'from-green-500 to-emerald-500',
+            'from-orange-500 to-red-500',
+            'from-pink-500 to-rose-500',
+            'from-blue-500 to-cyan-500',
+            'from-teal-500 to-lime-500'
+        ];
+        const gradient = gradients[charCode % gradients.length];
+
+        return (
+            <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center text-white font-black text-[10px] shadow-lg shadow-white/10 ring-1 ring-white/20`}>
+                {base.substring(0, 1).toUpperCase()}
+            </div>
+        );
+    }
+
+    return (
+        <img
+            src={sources[srcIndex]}
+            alt={symbol}
+            className="w-8 h-8 rounded-full shadow-md hover:scale-110 transition-transform duration-300"
+            onError={handleError}
+        />
+    );
+};
+
 export default function ExchangePage() {
     const router = useRouter();
     const [tickers, setTickers] = useState<TickerData[]>([]);
@@ -138,7 +194,7 @@ export default function ExchangePage() {
                                     const isPositive = change >= 0;
                                     const symbol = t.symbol.replace('USDT', ' / USDT');
                                     const rawSymbol = t.symbol.replace('USDT', '').toLowerCase();
-                                    const logoUrl = `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${rawSymbol}.png`;
+
 
                                     return (
                                         <tr key={t.symbol} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors group">
@@ -147,20 +203,7 @@ export default function ExchangePage() {
                                             </td>
                                             <td className="p-6">
                                                 <div className="flex items-center gap-4">
-                                                    <img
-                                                        src={logoUrl}
-                                                        alt={rawSymbol}
-                                                        className="w-8 h-8 rounded-full"
-                                                        onError={(e) => {
-                                                            (e.target as HTMLImageElement).style.display = 'none';
-                                                            (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
-                                                        }}
-                                                    />
-                                                    {/* Fallback Dot */}
-                                                    <div className={`w-8 h-8 rounded-full ${isPositive ? 'bg-[#00ffa3]/20 text-[#00ffa3]' : 'bg-[#ff4d4d]/20 text-[#ff4d4d]'} flex items-center justify-center font-bold text-xs hidden`}>
-                                                        {rawSymbol[0].toUpperCase()}
-                                                    </div>
-
+                                                    <CryptoLogo symbol={rawSymbol} />
                                                     <span className="text-sm font-bold text-white font-mono">{symbol}</span>
                                                 </div>
                                             </td>
