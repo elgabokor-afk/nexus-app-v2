@@ -85,25 +85,32 @@ export default function Dashboard() {
     const fetchSignals = async () => {
         const { data, error } = await supabase
             .from('signals')
-            .select('*')
+            .select('*, vip_signal_details(*)')
             .order('created_at', { ascending: false })
             .limit(100);
 
         if (error) console.error('Error fetching signals:', error);
         else {
-            const mapped = (data || []).map((s: any) => ({
-                id: s.id,
-                symbol: s.pair,
-                price: Number(s.entry_price),
-                rsi: Number(s.rsi || 50),
-                signal_type: s.direction === 'LONG' ? 'BUY' : 'SELL',
-                confidence: Number(s.ai_confidence),
-                timestamp: s.created_at,
-                stop_loss: Number(s.sl_price),
-                take_profit: Number(s.tp_price),
-                atr_value: Number(s.atr_value || 0),
-                volume_ratio: Number(s.volume_ratio || 0)
-            }));
+            const mapped = (data || []).map((s: any) => {
+                // Secure VIP Data Resolving
+                // If vip_signal_details is present (array or object), use it.
+                // Supabase returns an array for one-to-many, even if it's 1:1 in practice usually.
+                const vipDetails = Array.isArray(s.vip_signal_details) ? s.vip_signal_details[0] : s.vip_signal_details;
+
+                return {
+                    id: s.id,
+                    symbol: s.pair,
+                    price: Number(vipDetails?.entry_price || s.entry_price || 0),
+                    rsi: Number(s.rsi || 50),
+                    signal_type: s.direction === 'LONG' ? 'BUY' : 'SELL',
+                    confidence: Number(s.ai_confidence),
+                    timestamp: s.created_at,
+                    stop_loss: Number(vipDetails?.sl_price || s.sl_price || 0),
+                    take_profit: Number(vipDetails?.tp_price || s.tp_price || 0),
+                    atr_value: Number(s.atr_value || 0),
+                    volume_ratio: Number(s.volume_ratio || 0)
+                };
+            });
 
             setSignals(mapped);
             if (mapped.length > 0 && !selectedSignal) {
@@ -132,8 +139,6 @@ export default function Dashboard() {
         const checkAuth = async () => {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) {
-                // For development, we might want to skip redirect if no env vars. 
-                // But as a Product Engineer, we enforce security.
                 router.push('/login');
                 return;
             }
@@ -143,24 +148,26 @@ export default function Dashboard() {
 
         checkAuth();
 
-        // Close sidebar by default on smaller screens
         if (window.innerWidth < 1280) setIsSidebarOpen(false);
 
+        // V1900: DUAL CHANNEL REALTIME (Main + VIP Details)
         const channel = supabase
             .channel('realtime signals')
+            // 1. Listen for Public Signals
             .on('postgres_changes', { event: '*', schema: 'public', table: 'signals' }, (payload: any) => {
                 if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
                     const s = payload.new as any;
+                    // We initially populate with what we have. If VIP data comes later, it will update via the second listener.
                     const newSignal: Signal = {
                         id: s.id,
                         symbol: s.pair,
-                        price: Number(s.entry_price),
+                        price: Number(s.entry_price || 0),
                         rsi: Number(s.rsi || 50),
                         signal_type: s.direction === 'LONG' ? 'BUY' : 'SELL',
                         confidence: Number(s.ai_confidence),
                         timestamp: s.created_at,
-                        stop_loss: Number(s.sl_price),
-                        take_profit: Number(s.tp_price),
+                        stop_loss: Number(s.sl_price || 0),
+                        take_profit: Number(s.tp_price || 0),
                         atr_value: Number(s.atr_value || 0),
                         volume_ratio: Number(s.volume_ratio || 0)
                     };
@@ -168,12 +175,32 @@ export default function Dashboard() {
                     setSignals((prev) => {
                         const exists = prev.find(sig => sig.id === newSignal.id);
                         if (exists) {
-                            return prev.map(sig => sig.id === newSignal.id ? newSignal : sig);
+                            // Preserve existing extra data if just updating metadata
+                            return prev.map(sig => sig.id === newSignal.id ? { ...sig, ...newSignal, price: sig.price || newSignal.price } : sig);
                         }
                         return [newSignal, ...prev].slice(0, 100);
                     });
                 } else if (payload.eventType === 'DELETE') {
                     setSignals((prev) => prev.filter(sig => sig.id !== payload.old.id));
+                }
+            })
+            // 2. Listen for VIP Detail Updates (Async Arrival)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'vip_signal_details' }, (payload: any) => {
+                if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+                    const d = payload.new as any;
+                    if (!d.signal_id) return;
+
+                    setSignals((prev) => prev.map(sig => {
+                        if (sig.id === d.signal_id) {
+                            return {
+                                ...sig,
+                                price: Number(d.entry_price),
+                                stop_loss: Number(d.sl_price),
+                                take_profit: Number(d.tp_price)
+                            };
+                        }
+                        return sig;
+                    }));
                 }
             })
             .subscribe();

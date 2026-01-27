@@ -57,18 +57,37 @@ def save_signal_to_db(signal_data):
             "sl_price": signal_data.get('stop_loss'),
             "ai_confidence": signal_data.get('confidence'),
             "risk_level": "HIGH" if signal_data.get('confidence', 0) < 85 else "MID", 
+            "risk_level": "HIGH" if signal_data.get('confidence', 0) < 85 else "MID", 
             "status": "ACTIVE",
             "rsi": signal_data.get('rsi'),
             "atr_value": signal_data.get('atr_value'),
             "volume_ratio": signal_data.get('volume_ratio'),
             "created_at": datetime.now(timezone.utc).isoformat()
+            # NOTE: entry/tp/sl are still here for backward compatibility during migration
+            # They will be removed/nulled after Frontend update.
         }
         
+        # 1. Insert into Public Signals (Main ID)
         res = supabase.table("signals").insert(db_record).execute()
         
-        # Return the generated ID
         if res.data:
-            return res.data[0]['id']
+            signal_id = res.data[0]['id']
+            
+            # 2. Insert into VIP Secure Table (The Real Vault)
+            vip_record = {
+                "signal_id": signal_id,
+                "entry_price": signal_data.get('price'),
+                "tp_price": signal_data.get('take_profit'),
+                "sl_price": signal_data.get('stop_loss'),
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            try:
+                supabase.table("vip_signal_details").insert(vip_record).execute()
+                logger.info(f"   [SECURE] Signal {signal_id} vaulted in VIP table.")
+            except Exception as e:
+                logger.error(f"Failed to vault VIP details: {e}")
+
+            return signal_id
         return None
     except Exception as e:
         logger.error(f"Failed to save signal DB: {e}")
@@ -188,10 +207,18 @@ def main_loop():
                 if sig_id:
                     sig['id'] = sig_id # Attach DB ID
                     
-                    # 3. Broadcast to Redis (Live Frontend Update)
+                    # 3. Broadcast to Redis (Sanitized for Security)
+                    # V1800: We strip sensitive price data from the broadcast to prevent sniffing.
+                    # VIPs must fetch details via Supabase RLS.
+                    safe_payload = sig.copy()
+                    for key in ['price', 'entry_price', 'take_profit', 'stop_loss', 'tp_price', 'sl_price']:
+                        if key in safe_payload:
+                            del safe_payload[key]
+
                     redis_engine.publish("live_signals", {
                         "type": "NEW_SIGNAL",
-                        "data": sig
+                        "data": safe_payload
+                    })
                     })
                     logger.info(f"Published Signal: {sig['symbol']}")
 

@@ -49,7 +49,7 @@ export function useProfile() {
                     .select('*')
                     .eq('id', session.user.id)
                     .single()
-                    .then(({ data }) => {
+                    .then(({ data }: { data: Profile | null }) => {
                         if (mounted && data) setProfile(data);
                     });
             } else {
