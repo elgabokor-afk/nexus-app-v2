@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import Pusher from 'pusher-js';
 import SignalCard from '@/components/SignalCard';
 import SystemLogs from '@/components/SystemLogs';
 import { Zap, Activity, LogOut, User, TrendingUp, Lock } from 'lucide-react';
@@ -177,64 +178,72 @@ export default function Dashboard() {
 
         if (window.innerWidth < 1280) setIsSidebarOpen(false);
 
-        // V1900: DUAL CHANNEL REALTIME (Main + VIP Details)
-        const channel = supabase
-            .channel('realtime_signals_v2')
-            .on('system', { event: '*' }, (payload) => console.log('Realtime System Event:', payload))
-            // 1. Listen for Public Signals
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'signals' }, (payload: any) => {
-                if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-                    const s = payload.new as any;
-                    // We initially populate with what we have. If VIP data comes later, it will update via the second listener.
-                    const newSignal: Signal = {
-                        id: s.id,
-                        symbol: s.pair,
-                        price: Number(s.entry_price || 0),
-                        rsi: Number(s.rsi || 50),
-                        signal_type: s.direction === 'LONG' ? 'BUY' : 'SELL',
-                        confidence: Number(s.ai_confidence),
-                        timestamp: s.created_at,
-                        stop_loss: Number(s.sl_price || 0),
-                        take_profit: Number(s.tp_price || 0),
-                        atr_value: Number(s.atr_value || 0),
-                        volume_ratio: Number(s.volume_ratio || 0)
-                    };
+        // V2100: PUSHER REALTIME (Low Latency)
+        const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
+            cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
+            authEndpoint: '/api/pusher/auth',
+        });
 
-                    setSignals((prev) => {
-                        const exists = prev.find(sig => sig.id === newSignal.id);
-                        if (exists) {
-                            // Preserve existing extra data if just updating metadata
-                            return prev.map(sig => sig.id === newSignal.id ? { ...sig, ...newSignal, price: sig.price || newSignal.price } : sig);
-                        }
-                        return [newSignal, ...prev].slice(0, 100);
-                    });
-                } else if (payload.eventType === 'DELETE') {
-                    setSignals((prev) => prev.filter(sig => sig.id !== payload.old.id));
-                }
-            })
-            // 2. Listen for VIP Detail Updates (Async Arrival)
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'vip_signal_details' }, (payload: any) => {
-                if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-                    const d = payload.new as any;
-                    if (!d.signal_id) return;
+        // 1. Public Channel (Censored data for Free, but we merge it)
+        const publicChannel = pusher.subscribe('public-signals');
+        publicChannel.bind('new-signal', (data: any) => {
+            console.log('Pusher Public Event:', data);
+            handleNewSignal(data);
+        });
 
-                    setSignals((prev) => prev.map(sig => {
-                        if (sig.id === d.signal_id) {
+        // 2. VIP Channel (Full Phase Alpha)
+        if (isVip) {
+            const privateChannel = pusher.subscribe('private-vip-signals');
+            privateChannel.bind('new-signal', (data: any) => {
+                console.log('Pusher VIP Event:', data);
+                handleNewSignal(data);
+            });
+        }
+
+        const handleNewSignal = (s: any) => {
+            const newSignal: Signal = {
+                id: s.id,
+                symbol: s.symbol, // Python sends 'symbol', DB used 'pair'
+                price: Number(s.price || s.entry_price || 0),
+                rsi: Number(s.rsi || 50),
+                signal_type: s.signal_type, // Python sends 'BUY'/'SELL' directly
+                confidence: Number(s.confidence),
+                timestamp: s.created_at || new Date().toISOString(),
+                stop_loss: Number(s.stop_loss || s.sl_price || 0),
+                take_profit: Number(s.take_profit || s.tp_price || 0),
+                atr_value: Number(s.atr_value || 0),
+                volume_ratio: Number(s.volume_ratio || 0)
+            };
+
+            setSignals((prev) => {
+                const exists = prev.find(sig => sig.id === newSignal.id);
+                if (exists) {
+                    // Update existing (Merges VIP data over Public data if arriving later)
+                    // If this is public data overwriting VIP data, be careful? 
+                    // No, usually VIP comes second or same time. 
+                    // But if public comes after VIP, it might have nulls.
+                    // Protection: Only overwrite if new value is NOT null
+                    return prev.map(sig => {
+                        if (sig.id === newSignal.id) {
                             return {
                                 ...sig,
-                                price: Number(d.entry_price),
-                                stop_loss: Number(d.sl_price),
-                                take_profit: Number(d.tp_price)
+                                ...newSignal,
+                                // If newSignal has null price (public), keep old price (vip)
+                                price: newSignal.price || sig.price,
+                                stop_loss: newSignal.stop_loss || sig.stop_loss,
+                                take_profit: newSignal.take_profit || sig.take_profit
                             };
                         }
                         return sig;
-                    }));
+                    });
                 }
-            })
-            .subscribe();
+                return [newSignal, ...prev].slice(0, 100);
+            });
+        };
 
         return () => {
-            supabase.removeChannel(channel);
+            pusher.unsubscribe('public-signals');
+            if (isVip) pusher.unsubscribe('private-vip-signals');
         };
     }, []);
 

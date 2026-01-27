@@ -206,18 +206,26 @@ def main_loop():
                 if sig_id:
                     sig['id'] = sig_id # Attach DB ID
                     
-                    # 3. Broadcast to Redis (Sanitized for Security)
-                    # V1800: We strip sensitive price data from the broadcast to prevent sniffing.
-                    # VIPs must fetch details via Supabase RLS.
-                    safe_payload = sig.copy()
-                    for key in ['price', 'entry_price', 'take_profit', 'stop_loss', 'tp_price', 'sl_price']:
-                        if key in safe_payload:
-                            del safe_payload[key]
+                    logger.info(f"published signal {sig['symbol']}")
 
-                    redis_engine.publish("live_signals", {
-                        "type": "NEW_SIGNAL",
-                        "data": safe_payload
-                    })
+                    # 3. Broadcast to Pusher (Dual Channel Strategy)
+                    from pusher_client import pusher_client
+                    
+                    # Channel 1: Public Signals (Censored for Free Users)
+                    public_payload = sig.copy()
+                    # If confidence is VERY high, we might show it, but for now we follow strict VIP logic
+                    # Censor critical info
+                    for key in ['price', 'entry_price', 'take_profit', 'stop_loss', 'tp_price', 'sl_price']:
+                         public_payload[key] = None # Nullify for free users
+                    
+                    pusher_client.trigger("public-signals", "new-signal", public_payload)
+                    
+                    # Channel 2: VIP Signals (The Full Alpha)
+                    # We send the RAW signal data to the private channel
+                    pusher_client.trigger("private-vip-signals", "new-signal", sig)
+
+                    # Legacy Redis (Optional: Keep for internal tools/PaperBot if needed)
+                    # redis_engine.publish("live_signals", { "type": "NEW_SIGNAL", "data": public_payload })
 
                     logger.info(f"Published Signal: {sig['symbol']}")
 

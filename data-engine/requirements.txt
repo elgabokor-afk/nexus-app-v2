@@ -9,3 +9,5 @@ postgrest
 scikit-learn
 joblib
 numpy
+
+pusher==3.3.2
