@@ -174,7 +174,7 @@ def run_oracle_step(symbol='BTC/USDT'):
                     signal_data = {
                         "id": sig_id,
                         "symbol": symbol, # Used to be 'pair', Fixed to match Frontend
-                        "type": signal_type.split(" ")[0], # "STRONG" or "BUY"
+                        "signal_type": signal_type, # Fixed: Restore correct key for Frontend interface
                         "price": latest['close'],
                         "time": time.strftime('%H:%M'),
                         "confidence": int(prob * 100),
