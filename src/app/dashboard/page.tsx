@@ -139,8 +139,10 @@ export default function Dashboard() {
                     timestamp: s.created_at,
                     atr_value: Number(s.atr_value || 0),
                     volume_ratio: Number(s.volume_ratio || 0)
-                const unique = getUniqueSignals(mapped);
-                    if(unique.length > 0) setSelectedSignal(unique[0]);
+                }));
+                setSignals(getUniqueSignals(formatted));
+                const unique = getUniqueSignals(formatted);
+                if (unique.length > 0) setSelectedSignal(unique[0]);
             }
         }
         setLoading(false);
