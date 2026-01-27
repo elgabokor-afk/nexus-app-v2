@@ -88,7 +88,7 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
                             Get instant access to high-precision signals (80%+ win rate), deep AI analytics, and ad-free experience.
                         </p>
 
-                        <div className="w-full bg-black/40 border border-white/5 rounded-xl p-3 mb-6">
+                        <div className="w-full bg-black/40 border border-white/5 rounded-xl p-3 mb-4">
                             <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-2 text-left">USDT (TRC20) Deposit Address</p>
                             <div className="flex items-center justify-between gap-2">
                                 <code className="text-[#00ffa3] text-xs font-mono break-all text-left">{wallet}</code>
@@ -101,9 +101,20 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
                             </div>
                         </div>
 
-                        <div className="w-full p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl mb-4">
-                            <p className="text-[10px] text-blue-300">
-                                <strong>Auto-Activation:</strong> Send payment and contact support with your TXID for instant activation.
+                        <div className="w-full">
+                            <label className="text-[10px] text-gray-500 uppercase font-bold mb-1 block text-left">Verify Transaction (TXID)</label>
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    placeholder="Paste TXID here..."
+                                    className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#00ffa3]/50"
+                                />
+                                <button className="px-3 py-2 bg-[#00ffa3] text-black text-xs font-bold rounded-lg hover:bg-[#00ffa3]/90 transition-colors">
+                                    Check
+                                </button>
+                            </div>
+                            <p className="text-[9px] text-gray-600 mt-2 text-left">
+                                *System automatically scans for incoming payments every 30s. Manual check is optional.
                             </p>
                         </div>
                     </div>
