@@ -206,6 +206,30 @@ export default function Dashboard() {
             handleNewSignal(data);
         });
 
+        // V2700: LIVE AUDITOR LISTENER
+        publicChannel.bind('signal-update', (data: any) => {
+            console.log('⚡ [AUDITOR] Update Received:', data);
+
+            setSignals(prev => prev.map(s => {
+                if (s.id === data.id) {
+                    // Update TP/SL and add Flash Flag
+                    return {
+                        ...s,
+                        stop_loss: data.new_sl || s.stop_loss,
+                        take_profit: data.new_tp || s.take_profit,
+                        audit_alert: data.audit_action // 'TAKE_PROFIT_TIGHTEN', 'RISK_FREE', 'WARNING'
+                    };
+                }
+                return s;
+            }));
+
+            // Optional: Show Toast
+            if (data.audit_note) {
+                // console.log("Toast:", data.audit_note);
+                // If we had a toast lib: toast(data.audit_note, { icon: '⚡' });
+            }
+        });
+
         // 2. VIP Channel (Conditional)
         if (isVip) {
             console.log("Subscribing to VIP Channel...");

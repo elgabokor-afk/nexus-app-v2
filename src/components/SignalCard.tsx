@@ -16,12 +16,14 @@ interface SignalProps {
     volume_ratio?: number;
     imbalance?: number;
     depth_score?: number;
+    // V2700: AUDIT ALERT (AI Live Changes)
+    audit_alert?: string; // 'TAKE_PROFIT_TIGHTEN', 'RISK_FREE', 'WARNING'
     onViewChart?: (symbol: string) => void;
     onConsultAI?: (signal: any) => void;
 }
 
 const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
-    symbol, price, rsi, signal_type, confidence, timestamp, stop_loss, take_profit, atr_value, volume_ratio, imbalance, depth_score, onViewChart, onConsultAI, compact = false
+    symbol, price, rsi, signal_type, confidence, timestamp, stop_loss, take_profit, atr_value, volume_ratio, imbalance, depth_score, audit_alert, onViewChart, onConsultAI, compact = false
 }) => {
 
     // V2400: VISUAL REPLICATION + HOT ZONE
@@ -36,6 +38,7 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
     const isBuy = signal_type.includes('BUY');
     const isSell = signal_type.includes('SELL');
     const isHot = confidence >= 80;
+    const isAuditing = !!audit_alert; // True if AI just updated this
 
     const coin = symbol ? symbol.split('/')[0] : 'BTC';
     const logoUrl = coin ? `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${coin.toLowerCase()}.png` : '';
@@ -55,6 +58,13 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
         borderColor = 'border-[#ff4d4d]/20';
         actionText = 'SHORT';
         if (isHot) glowClass = 'shadow-[0_0_30px_-10px_rgba(255,77,77,0.3)] border-[#ff4d4d]/50';
+    }
+
+    // V2700: Audit Flash Effect
+    if (isAuditing) {
+        glowClass = 'animate-pulse border-blue-500/50 shadow-[0_0_30px_-5px_rgba(59,130,246,0.5)]';
+        if (audit_alert === 'RISK_FREE') borderColor = 'border-green-500';
+        if (audit_alert === 'WARNING') borderColor = 'border-orange-500';
     }
 
     const formatPrice = (p: number | undefined) =>
@@ -144,19 +154,34 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
                         ? `mb-3 cursor-pointer bg-[#0e0e10] border ${borderColor} rounded-2xl hover:bg-white/[0.02] active:scale-[0.98]`
                         : `backdrop-blur-xl bg-[#0e0e10]/90 border ${borderColor} rounded-3xl hover:border-white/10 shadow-2xl`}
                 ${isHot ? glowClass : ''}
+                ${isAuditing ? glowClass : ''} 
             `}
             >
                 {/* === HOVER OVERLAY: AI ACTION (View Internal Chart) === */}
                 {/* Removed external link. Touching card now updates main chart via onSelectSymbol/onViewChart */}
 
                 {/* === HOT ZONE HEADER (Only for Elite Signals) === */}
-                {isHot && (
+                {isHot && !isAuditing && (
                     <div className={`
                     w-full py-1.5 px-4 flex items-center gap-2 
                     bg-gradient-to-r from-red-500/10 to-transparent border-b border-red-500/10
                 `}>
                         <Flame size={12} className="text-orange-500 fill-orange-500" />
                         <span className="text-[9px] font-black uppercase tracking-[0.15em] text-orange-400">HOT ZONE - ELITE SIGNALS</span>
+                    </div>
+                )}
+
+                {/* === AI AUDIT HEADER (Overrides HOT) === */}
+                {isAuditing && (
+                    <div className={`
+                    w-full py-1.5 px-4 flex items-center gap-2 
+                    bg-gradient-to-r from-blue-500/10 to-transparent border-b border-blue-500/10
+                    animate-pulse
+                `}>
+                        <Brain size={12} className="text-blue-500 fill-blue-500/50" />
+                        <span className="text-[9px] font-black uppercase tracking-[0.15em] text-blue-400">
+                            {audit_alert === 'RISK_FREE' ? 'AI: SECURING PROFIT' : 'AI AUDITING LIVE'}
+                        </span>
                     </div>
                 )}
 

@@ -244,6 +244,14 @@ def main_loop():
 
                     logger.info(f"Published Signal: {sig['symbol']}")
 
+            # V2700: COSMOS AI AUDITOR INTEGRATION
+            try:
+                from cosmos_auditor import audit_active_signals
+                logger.info("Running AI Signal Audit...")
+                audit_active_signals()
+            except Exception as e:
+                logger.error(f"Audit Cycle Failed: {e}")
+
             # Sleep remainder of minute
             elapsed = time.time() - start_time
             sleep_time = max(0, LOOP_INTERVAL - elapsed)
