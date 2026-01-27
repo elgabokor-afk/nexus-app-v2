@@ -164,6 +164,37 @@ def run_oracle_step(symbol='BTC/USDT'):
                     histogram=hist.iloc[-1],
                     ai_score=prob
                 )
+                
+                # V90: Broadcast to Pusher (Dashboard Visibility)
+                # This ensures the new "Exchange V2" dashboard sees these signals immediately.
+                try:
+                    from pusher_client import broadcast_signal
+                    
+                    # Construct signal object for frontend
+                    signal_data = {
+                        "id": sig_id,
+                        "pair": symbol,
+                        "type": signal_type.split(" ")[0], # "STRONG" or "BUY"
+                        "price": latest['close'],
+                        "time": time.strftime('%H:%M'),
+                        "confidence": int(prob * 100),
+                        "tp": round(tp, 4),
+                        "sl": round(sl, 4),
+                        "is_vip": False # V90 signals are generally accessible or logic defined elsewhere
+                    }
+                    
+                    # Determine channel based on confidence (VIP logic)
+                    is_vip_signal = (prob * 100) >= 90
+                    
+                    if is_vip_signal:
+                        broadcast_signal('private-vip-signals', 'new-signal', signal_data)
+                        print(f"      >>> [PUSHER] VIP Signal Broadcast: {symbol}")
+                    else:
+                        broadcast_signal('public-signals', 'new-signal', signal_data)
+                        print(f"      >>> [PUSHER] Public Signal Broadcast: {symbol}")
+                        
+                except Exception as e:
+                    print(f"!!! [PUSHER ERROR] Failed to broadcast {symbol}: {e}")
 
         insert_oracle_insight(
             symbol=symbol,
@@ -191,14 +222,17 @@ def run_oracle_step(symbol='BTC/USDT'):
         # V1400: Redis Broadcast (Low Latency)
         # Decouples the frontend from Supabase Realtime
         from redis_engine import redis_engine
-        redis_engine.publish("ai_rankings", {
-            "symbol": symbol,
-            "score": prob * 100,
-            "confidence": prob,
-            "trend_status": trend,
-            "reasoning": reasoning,
-            "updated_at": time.time()
-        })
+        try:
+            redis_engine.publish("ai_rankings", {
+                "symbol": symbol,
+                "score": prob * 100,
+                "confidence": prob,
+                "trend_status": trend,
+                "reasoning": reasoning,
+                "updated_at": time.time()
+            })
+        except Exception as e:
+            print(f"!!! Redis Publish Error: {e}")
         
     except Exception as e:
         print(f"!!! Oracle Error ({symbol}): {e}")
@@ -214,13 +248,19 @@ def get_top_vol_oracle(limit=20):
         res = requests.get(url, timeout=10)
         data = res.json()
         
-        # Filter USDT
-        usdt_pairs = [
-            t for t in data 
-            if t['symbol'].endswith('USDT') 
-            and 'UP' not in t['symbol'] 
-            and 'DOWN' not in t['symbol']
-        ]
+        # Filter USDT and Exclude Stablecoins
+        STABLECOINS = ['USDC', 'FDUSD', 'TUSD', 'DAI', 'USDP', 'USDE', 'BUSD', 'EUR']
+        
+        usdt_pairs = []
+        for t in data:
+            sym = t['symbol']
+            base_asset = sym.replace('USDT', '')
+            
+            if sym.endswith('USDT') and \
+               'UP' not in sym and \
+               'DOWN' not in sym and \
+               base_asset not in STABLECOINS:
+                usdt_pairs.append(t)
         
         # Sort by Quote Volume
         sorted_pairs = sorted(usdt_pairs, key=lambda x: float(x['quoteVolume']), reverse=True)
