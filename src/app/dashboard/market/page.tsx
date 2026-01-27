@@ -4,44 +4,46 @@ import { useState, useEffect } from 'react';
 import { ArrowUpRight, ArrowDownRight, Search, Zap, Globe, BarChart2 } from 'lucide-react';
 import { LineChart, Line, ResponsiveContainer, YAxis } from 'recharts';
 
-interface CoinData {
-    id: string;
-    symbol: string;
+interface CMCData {
+    id: number;
     name: string;
-    image: string;
-    current_price: number;
-    market_cap: number;
-    market_cap_rank: number;
-    total_volume: number;
-    price_change_percentage_24h: number;
-    sparkline_in_7d: {
-        price: number[];
-    };
+    symbol: string;
+    cmc_rank: number;
+    quote: {
+        USD: {
+            price: number;
+            volume_24h: number;
+            percent_change_24h: number;
+            percent_change_7d: number;
+            market_cap: number;
+        }
+    }
 }
 
 export default function MarketPage() {
-    const [coins, setCoins] = useState<CoinData[]>([]);
+    const [coins, setCoins] = useState<CMCData[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
 
     useEffect(() => {
         const fetchMarketData = async () => {
             try {
-                // Free Tier CoinGecko API
-                const url = 'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=true&price_change_percentage=24h';
-                const res = await fetch(url);
-                if (!res.ok) throw new Error('API Rate Limit or Error');
-                const data = await res.json();
-                setCoins(data);
+                // Internal Proxy to CoinMarketCap Pro API
+                const res = await fetch('/api/market');
+                if (!res.ok) throw new Error('API Error');
+                const json = await res.json();
+                if (json.data) {
+                    setCoins(json.data);
+                }
                 setLoading(false);
             } catch (error) {
-                console.error("CoinGecko Error:", error);
+                console.error("CMC API Error:", error);
                 setLoading(false);
             }
         };
 
         fetchMarketData();
-        const interval = setInterval(fetchMarketData, 60000); // Update every minute
+        const interval = setInterval(fetchMarketData, 60000); // 1 min update
         return () => clearInterval(interval);
     }, []);
 
@@ -55,7 +57,7 @@ export default function MarketPage() {
             style: 'currency',
             currency: 'USD',
             minimumFractionDigits: val < 1 ? 4 : 2,
-            maximumFractionDigits: val < 1 ? 6 : 2,
+            maximumFractionDigits: val < 1 ? 2,
         }).format(val);
     };
 
@@ -64,6 +66,16 @@ export default function MarketPage() {
             notation: "compact",
             maximumFractionDigits: 1
         }).format(val);
+    };
+
+    const renderChange = (val: number) => {
+        const isPos = val >= 0;
+        return (
+            <div className={`inline-flex items-center gap-1 font-bold text-xs ${isPos ? 'text-[#00ffa3]' : 'text-[#ff4d4d]'}`}>
+                {isPos ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+                {Math.abs(val).toFixed(2)}%
+            </div>
+        );
     };
 
     return (
@@ -77,7 +89,7 @@ export default function MarketPage() {
                         MARKET <span className="text-[#00ffa3]">OVERVIEW</span>
                     </h1>
                     <p className="text-gray-500 text-xs font-bold tracking-widest uppercase mt-1">
-                        Global Crypto Metrics & Trends
+                        Powered by CoinMarketCap Pro
                     </p>
                 </div>
 
@@ -105,10 +117,10 @@ export default function MarketPage() {
                                 <th className="p-6 text-[10px] font-black text-gray-500 uppercase tracking-widest text-center w-16">Rank</th>
                                 <th className="p-6 text-[10px] font-black text-gray-500 uppercase tracking-widest">Asset</th>
                                 <th className="p-6 text-[10px] font-black text-gray-500 uppercase tracking-widest text-right">Price</th>
-                                <th className="p-6 text-[10px] font-black text-gray-500 uppercase tracking-widest text-right">24h Change</th>
-                                <th className="p-6 text-[10px] font-black text-gray-500 uppercase tracking-widest text-right hidden lg:table-cell">Market Cap</th>
+                                <th className="p-6 text-[10px] font-black text-gray-500 uppercase tracking-widest text-right">24h %</th>
+                                <th className="p-6 text-[10px] font-black text-gray-500 uppercase tracking-widest text-right hidden lg:table-cell">7d %</th>
+                                <th className="p-6 text-[10px] font-black text-gray-500 uppercase tracking-widest text-right hidden xl:table-cell">Market Cap</th>
                                 <th className="p-6 text-[10px] font-black text-gray-500 uppercase tracking-widest text-right hidden xl:table-cell">Volume (24h)</th>
-                                <th className="p-6 text-[10px] font-black text-gray-500 uppercase tracking-widest w-48 hidden md:table-cell">Last 7 Days</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -120,24 +132,24 @@ export default function MarketPage() {
                                         <td className="p-6"><div className="flex items-center gap-3"><div className="w-8 h-8 rounded-full bg-white/5 animate-pulse"></div><div className="h-4 w-24 bg-white/5 rounded animate-pulse"></div></div></td>
                                         <td className="p-6"><div className="h-4 w-20 bg-white/5 rounded animate-pulse ml-auto"></div></td>
                                         <td className="p-6"><div className="h-4 w-16 bg-white/5 rounded animate-pulse ml-auto"></div></td>
-                                        <td className="p-6 hidden lg:table-cell"><div className="h-4 w-24 bg-white/5 rounded animate-pulse ml-auto"></div></td>
+                                        <td className="p-6 hidden lg:table-cell"><div className="h-4 w-16 bg-white/5 rounded animate-pulse ml-auto"></div></td>
                                         <td className="p-6 hidden xl:table-cell"><div className="h-4 w-24 bg-white/5 rounded animate-pulse ml-auto"></div></td>
-                                        <td className="p-6 hidden md:table-cell"><div className="h-10 w-32 bg-white/5 rounded animate-pulse"></div></td>
+                                        <td className="p-6 hidden xl:table-cell"><div className="h-4 w-24 bg-white/5 rounded animate-pulse ml-auto"></div></td>
                                     </tr>
                                 ))
                             ) : (
                                 filteredCoins.map((coin) => {
-                                    const isPositive = coin.price_change_percentage_24h >= 0;
-                                    const chartData = coin.sparkline_in_7d.price.map((val, i) => ({ i, val }));
+                                    const quote = coin.quote.USD;
+                                    const logoUrl = `https://s2.coinmarketcap.com/static/img/coins/64x64/${coin.id}.png`;
 
                                     return (
                                         <tr key={coin.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors group">
                                             <td className="p-6 text-center text-xs text-gray-500 font-bold font-mono">
-                                                {coin.market_cap_rank}
+                                                {coin.cmc_rank}
                                             </td>
                                             <td className="p-6">
                                                 <div className="flex items-center gap-4">
-                                                    <img src={coin.image} alt={coin.name} className="w-8 h-8 rounded-full grayscale group-hover:grayscale-0 transition-all duration-300" />
+                                                    <img src={logoUrl} alt={coin.name} className="w-8 h-8 rounded-full grayscale group-hover:grayscale-0 transition-all duration-300" />
                                                     <div>
                                                         <span className="text-sm font-bold text-white block">{coin.name}</span>
                                                         <span className="text-[10px] font-black text-gray-600 uppercase tracking-wider">{coin.symbol}</span>
@@ -145,36 +157,19 @@ export default function MarketPage() {
                                                 </div>
                                             </td>
                                             <td className="p-6 text-right font-mono font-bold text-white tracking-tight">
-                                                {formatCurrency(coin.current_price)}
+                                                {formatCurrency(quote.price)}
                                             </td>
                                             <td className="p-6 text-right">
-                                                <div className={`inline-flex items-center gap-1 font-bold text-xs ${isPositive ? 'text-[#00ffa3]' : 'text-[#ff4d4d]'}`}>
-                                                    {isPositive ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-                                                    {Math.abs(coin.price_change_percentage_24h).toFixed(2)}%
-                                                </div>
+                                                {renderChange(quote.percent_change_24h)}
                                             </td>
-                                            <td className="p-6 text-right font-mono text-gray-400 text-xs hidden lg:table-cell">
-                                                ${formatCompact(coin.market_cap)}
+                                            <td className="p-6 text-right hidden lg:table-cell">
+                                                {renderChange(quote.percent_change_7d)}
                                             </td>
                                             <td className="p-6 text-right font-mono text-gray-400 text-xs hidden xl:table-cell">
-                                                ${formatCompact(coin.total_volume)}
+                                                ${formatCompact(quote.market_cap)}
                                             </td>
-                                            <td className="p-6 hidden md:table-cell">
-                                                <div className="h-12 w-32">
-                                                    <ResponsiveContainer width="100%" height="100%">
-                                                        <LineChart data={chartData}>
-                                                            <Line
-                                                                type="monotone"
-                                                                dataKey="val"
-                                                                stroke={isPositive ? "#00ffa3" : "#ff4d4d"}
-                                                                strokeWidth={2}
-                                                                dot={false}
-                                                                isAnimationActive={false}
-                                                            />
-                                                            <YAxis domain={['dataMin', 'dataMax']} hide />
-                                                        </LineChart>
-                                                    </ResponsiveContainer>
-                                                </div>
+                                            <td className="p-6 text-right font-mono text-gray-400 text-xs hidden xl:table-cell">
+                                                ${formatCompact(quote.volume_24h)}
                                             </td>
                                         </tr>
                                     );
