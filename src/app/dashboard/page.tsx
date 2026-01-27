@@ -83,39 +83,64 @@ export default function Dashboard() {
     };
 
     const fetchSignals = async () => {
-        const { data, error } = await supabase
-            .from('signals')
-            .select('*, vip_signal_details(*)')
-            .order('created_at', { ascending: false })
-            .limit(100);
+        try {
+            // 1. Try fetching with VIP Join (Preferred)
+            const { data, error } = await supabase
+                .from('signals')
+                .select('*, vip_signal_details(*)')
+                .order('created_at', { ascending: false })
+                .limit(100);
 
-        if (error) console.error('Error fetching signals:', error);
-        else {
-            const mapped = (data || []).map((s: any) => {
-                // Secure VIP Data Resolving
-                // If vip_signal_details is present (array or object), use it.
-                // Supabase returns an array for one-to-many, even if it's 1:1 in practice usually.
-                const vipDetails = Array.isArray(s.vip_signal_details) ? s.vip_signal_details[0] : s.vip_signal_details;
+            if (error) throw error; // If this fails (e.g. missing table), go to catch
 
-                return {
+            if (data) {
+                const formatted = data.map((s: any) => {
+                    const vipDetails = Array.isArray(s.vip_signal_details) ? s.vip_signal_details[0] : s.vip_signal_details;
+                    return {
+                        id: s.id,
+                        symbol: s.pair,
+                        // Priority: VIP Table -> Public Table -> 0
+                        price: Number(vipDetails?.entry_price || s.entry_price || 0),
+                        stop_loss: Number(vipDetails?.sl_price || s.sl_price || 0),
+                        take_profit: Number(vipDetails?.tp_price || s.tp_price || 0),
+                        rsi: Number(s.rsi || 50),
+                        signal_type: s.direction === 'LONG' ? 'BUY' : 'SELL',
+                        confidence: Number(s.ai_confidence),
+                        timestamp: s.created_at,
+                        atr_value: Number(s.atr_value || 0),
+                        volume_ratio: Number(s.volume_ratio || 0)
+                    };
+                });
+                setSignals(getUniqueSignals(formatted));
+                if (formatted.length > 0 && !selectedSignal) {
+                    const unique = getUniqueSignals(formatted);
+                    if (unique.length > 0) setSelectedSignal(unique[0]);
+                }
+            }
+        } catch (err) {
+            console.warn("VIP Join failed, falling back to public signals:", err);
+            // 2. Fallback: Fetch Public Signals Only
+            const { data: publicData } = await supabase
+                .from('signals')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(100);
+
+            if (publicData) {
+                const formatted = publicData.map((s: any) => ({
                     id: s.id,
                     symbol: s.pair,
-                    price: Number(vipDetails?.entry_price || s.entry_price || 0),
+                    price: Number(s.entry_price || 0),
+                    stop_loss: Number(s.sl_price || 0),
+                    take_profit: Number(s.tp_price || 0),
                     rsi: Number(s.rsi || 50),
                     signal_type: s.direction === 'LONG' ? 'BUY' : 'SELL',
                     confidence: Number(s.ai_confidence),
                     timestamp: s.created_at,
-                    stop_loss: Number(vipDetails?.sl_price || s.sl_price || 0),
-                    take_profit: Number(vipDetails?.tp_price || s.tp_price || 0),
                     atr_value: Number(s.atr_value || 0),
                     volume_ratio: Number(s.volume_ratio || 0)
-                };
-            });
-
-            setSignals(mapped);
-            if (mapped.length > 0 && !selectedSignal) {
                 const unique = getUniqueSignals(mapped);
-                if (unique.length > 0) setSelectedSignal(unique[0]);
+                    if(unique.length > 0) setSelectedSignal(unique[0]);
             }
         }
         setLoading(false);
