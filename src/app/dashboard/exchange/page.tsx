@@ -123,7 +123,7 @@ export default function ExchangePage() {
                                     </tr>
                                 ))
                             ) : (
-                                filteredCoins.map((t, i) => {
+                                filteredTickers.map((t, i) => {
                                     const change = parseFloat(t.priceChangePercent);
                                     const isPositive = change >= 0;
                                     const symbol = t.symbol.replace('USDT', ' / USDT');

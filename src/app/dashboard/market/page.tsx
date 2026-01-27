@@ -57,7 +57,7 @@ export default function MarketPage() {
             style: 'currency',
             currency: 'USD',
             minimumFractionDigits: val < 1 ? 4 : 2,
-            maximumFractionDigits: val < 1 ? 2,
+            maximumFractionDigits: val < 1 ? 6 : 2,
         }).format(val);
     };
 
