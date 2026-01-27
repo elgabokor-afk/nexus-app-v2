@@ -13,19 +13,25 @@ load_dotenv(dotenv_path=os.path.join(parent_dir, '.env.local'))
 
 class RedisEngine:
     def __init__(self):
-        # V1101: HA Zero-Config - Auto-detect Railway Internal Redis
-        self.redis_url = os.getenv("REDIS_URL")
+    def __init__(self):
+        # V1102: Robust Railway Redis Discovery
+        # Railway creates different vars depending on internal/public access
+        self.redis_url = os.getenv("REDIS_URL") or os.getenv("REDIS_PRIVATE_URL") or os.getenv("REDIS_PUBLIC_URL")
+        
         if not self.redis_url:
+            # Try legacy host/port/password composition
             host = os.getenv("REDISHOST")
             port = os.getenv("REDISPORT")
             user = os.getenv("REDISUSER", "default")
             pw = os.getenv("REDISPASSWORD")
             if host and port and pw:
                 self.redis_url = f"redis://{user}:{pw}@{host}:{port}"
-                print(f"   [REDIS] Railway Internal URL detected: redis://***:***@{host}:{port}")
+                print(f"   [REDIS] Composer URL detected: redis://***:***@{host}:{port}")
             else:
                 self.redis_url = "redis://localhost:6379"
-                print("   [REDIS] Localhost fallback selected.")
+                print("   [REDIS] No Railway Vars found. Localhost fallback selected.")
+        else:
+             print(f"   [REDIS] Auto-detected URL: {self.redis_url[:15]}...")
         try:
             self.client = redis.from_url(self.redis_url, decode_responses=True, socket_connect_timeout=5)
             self.client.ping()

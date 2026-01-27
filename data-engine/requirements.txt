@@ -11,3 +11,4 @@ joblib
 numpy
 
 pusher==3.3.2
+redis
