@@ -1,5 +1,6 @@
 import time
 import json # V405
+import requests # V90: Required for Dynamic List
 import os
 import pandas as pd
 import ccxt
@@ -203,6 +204,39 @@ def run_oracle_step(symbol='BTC/USDT'):
         print(f"!!! Oracle Error ({symbol}): {e}")
         log_error(f"ORACLE_{symbol}", e, "ERROR")
 
+import requests # V90: Required for Dynamic List
+
+# ... (Previous Imports)
+# Just creating a local helper to avoid circular import issues with scanner.py
+def get_top_vol_oracle(limit=20):
+    try:
+        url = "https://api.binance.com/api/v3/ticker/24hr"
+        res = requests.get(url, timeout=10)
+        data = res.json()
+        
+        # Filter USDT
+        usdt_pairs = [
+            t for t in data 
+            if t['symbol'].endswith('USDT') 
+            and 'UP' not in t['symbol'] 
+            and 'DOWN' not in t['symbol']
+        ]
+        
+        # Sort by Quote Volume
+        sorted_pairs = sorted(usdt_pairs, key=lambda x: float(x['quoteVolume']), reverse=True)
+        
+        top_symbols = []
+        for p in sorted_pairs[:limit]:
+            sym = p['symbol']
+            formatted = f"{sym[:-4]}/{sym[-4:]}"
+            top_symbols.append(formatted)
+            
+        print(f">>> [ORACLE V90] Dynamic Top {limit} Asset List Updated: {top_symbols}")
+        return top_symbols
+    except Exception as e:
+        print(f"!!! [ORACLE V90] Failed to fetch top assets: {e}")
+        return []
+
 if __name__ == "__main__":
     print("--- COSMOS RECURSIVE ORACLE V90 STARTED ---")
     print("Broadcasting Live Rankings & AI Insights for Top 20 Portfolio.")
@@ -213,6 +247,8 @@ if __name__ == "__main__":
     brain.update_asset_bias(history)
     
     last_recursive_sync = time.time()
+    last_asset_update = 0
+    dynamic_assets = []
     
     while True:
         # V90: Refresh recursive logic every hour
@@ -222,17 +258,28 @@ if __name__ == "__main__":
             brain.update_asset_bias(history)
             last_recursive_sync = time.time()
 
+        # V24: Dynamic Asset List Update (Every 30m)
+        if time.time() - last_asset_update > 1800:
+            print(">>> [ORACLE V90] Refreshing Dynamic Top-20 Priority List...")
+            dynamic_assets = get_top_vol_oracle(limit=20)
+            last_asset_update = time.time()
+
         # V410: Priority Pulse (BTC/SOL first)
         active_assets = get_active_assets()
-        # Merge DB assets with Config symbols and prioritize
-        all_unique_assets = list(set(active_assets + SYMBOLS))
+        
+        # Merge: Priority (Config) + Active (DB) + Dynamic (Binance)
+        all_unique_assets = list(set(active_assets + PRIORITY_ASSETS + dynamic_assets))
+        
+        # Ensure Priority Assets are scanned FIRST
         target_assets = PRIORITY_ASSETS + [a for a in all_unique_assets if a not in PRIORITY_ASSETS]
         
-        print(f"\n>>> Starting Recursive Pulse for {len(target_assets)} assets (Priority: {PRIORITY_ASSETS})")
+        print(f"\n>>> Starting Recursive Pulse for {len(target_assets)} assets...")
+        print(f"    [PRIORITY]: {PRIORITY_ASSETS}")
+        print(f"    [DYNAMIC]:  {dynamic_assets[:5]}...") # Log first 5
         
         for symbol in target_assets:
             run_oracle_step(symbol)
-            time.sleep(1) # Small delay to avoid rate limits
+            time.sleep(2) # Small delay to avoid rate limits
             
         print(f">>> Pulse Complete. Sleeping 30s...")
         time.sleep(30) 
