@@ -681,40 +681,63 @@ def monitor_positions():
                 
             # V1600: DYNAMIC MANAGEMENT (Trailing Stop & Time Exit)
             
-            # 1. Trailing Stop to Breakeven
-            # Trigger: User requested +1% profit trigger
-            entry_price = float(pos['entry_price'])
-            quantity = float(pos['quantity'])
+            # V3400: SMART ALGORITHMIC TRAILING (Structure Based)
+            # Replaces fixed % trailing with "Market Structure" trailing
+            from scanner import fetch_data 
             
-            # Calc Profit % (for logging)
-            if quantity > 0: # LONG
-                profit_pct = (current_price - entry_price) / entry_price
-            else: # SHORT
-                profit_pct = (entry_price - current_price) / entry_price
-                
-            current_sl = float(pos.get('bot_stop_loss') or 0)
+            # Logic:
+            # 1. Fetch last 15m candles
+            # 2. Find lowest low of last 5 candles (Support)
+            # 3. If (Support > Current SL) -> Move SL Up via smart_trailing_stop
             
-            should_move_to_be = False
-            
-            # CAPITAL PROTECTION: Move to Breakeven at +1% Profit
-            if profit_pct >= 0.01:
-                 should_move_to_be = True
-            
-            if should_move_to_be:
-                # Check if SL is already moved
-                # For LONG: SL should be >= Entry
-                # For SHORT: SL should be <= Entry
-                needs_update = False
-                if quantity > 0 and current_sl < entry_price:
-                    new_sl = entry_price * 1.001 # slightly in profit to cover fees
-                    needs_update = True
-                elif quantity < 0 and current_sl > entry_price:
-                    new_sl = entry_price * 0.999
-                    needs_update = True
+            try:
+                df_structure = fetch_data(pos['symbol'], timeframe='15m', limit=10)
+                if df_structure is not None and not df_structure.empty:
+                    # Identify Structural Support (Lowest Low of last 5 closed candles)
+                    recent_lows = df_structure['low'].iloc[-6:-1] # Ignore current open candle
+                    structure_support = recent_lows.min()
                     
-                if needs_update:
-                    print(f"       [TRAILING] Moving SL to Breakeven for {pos['symbol']}. Profit: {profit_pct*100:.2f}%")
-                    supabase.table("paper_positions").update({"bot_stop_loss": new_sl}).eq("id", pos['id']).execute()
+                    entry_price = float(pos['entry_price'])
+                    current_sl = float(pos.get('bot_stop_loss') or 0)
+                    
+                    # Buffer: 0.2% below support to avoid wick-outs
+                    new_sl = structure_support * 0.998 if "BUY" in (pos.get('signal_type') or "BUY") else structure_support * 1.002
+                    
+                    should_update_sl = False
+                    reason = ""
+                    
+                    quantity = float(pos['quantity'])
+
+                    # LONG LOGIC
+                    if quantity > 0:
+                        # Only move SL UP, never down
+                        # And only if New SL is ABOVE BreakEven (Protect Profit)
+                        if new_sl > current_sl and new_sl > entry_price:
+                            should_update_sl = True
+                            # Verify PnL is positive enough to justify tight trail
+                            if current_price > (entry_price * 1.01): # Only active after 1% profit
+                                reason = f"Structure Support ({structure_support:.4f})"
+
+                    # SHORT LOGIC
+                    elif quantity < 0:
+                         # Only move SL DOWN, never up
+                         if (current_sl == 0 or new_sl < current_sl) and new_sl < entry_price:
+                             should_update_sl = True
+                             if current_price < (entry_price * 0.99):
+                                 reason = f"Structure Resistance ({structure_support:.4f})"
+                    
+                    if should_update_sl:
+                        print(f"       [SMART TRAILING] Moving SL to {new_sl:.4f} based on {reason}")
+                        supabase.table("paper_positions").update({"bot_stop_loss": new_sl}).eq("id", pos['id']).execute()
+                        
+                        # V2100: Notify Frontend (Optional, but nice to see dots move)
+                        redis_engine.publish("live_positions", {
+                            "type": "UPDATE",
+                            "data": { "id": pos['id'], "bot_stop_loss": new_sl }
+                        })
+
+            except Exception as e:
+                print(f"       [SMART TRAIL ERROR] {e}")
                     
             # 2. Time-Based Exit (Stagnation)
             try:
