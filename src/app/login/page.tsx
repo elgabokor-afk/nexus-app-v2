@@ -134,8 +134,9 @@ export default function LoginPage() {
 
                 {/* Logo */}
                 <div className="flex justify-center mb-10">
-                    <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)]">
-                        <Zap size={24} className="text-black fill-black" strokeWidth={0} />
+                    <div className="w-20 h-20 bg-black rounded-xl flex items-center justify-center border border-[#1d1f23] shadow-2xl shadow-[#00ffa3]/10">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src="/nexus-logo.png" alt="Nexus AI" className="w-16 h-16 object-contain" />
                     </div>
                 </div>
 
