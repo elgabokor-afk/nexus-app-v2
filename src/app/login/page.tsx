@@ -112,6 +112,25 @@ export default function LoginPage() {
                                 </div>
                             </div>
 
+                            {isRegistering && (
+                                <div className="flex items-start gap-3 px-1">
+                                    <div className="relative flex items-center pt-0.5">
+                                        <input
+                                            type="checkbox"
+                                            id="terms"
+                                            required
+                                            className="peer h-4 w-4 shrink-0 cursor-pointer appearance-none rounded border border-gray-600 bg-white/5 checked:border-[#00ffa3] checked:bg-[#00ffa3] focus:outline-none focus:ring-1 focus:ring-[#00ffa3]/50 transition-all"
+                                        />
+                                        <svg className="pointer-events-none absolute left-1/2 top-1/2 -ml-2 -mt-2 hidden h-4 w-4 text-black peer-checked:block" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                                            <polyline points="20 6 9 17 4 12"></polyline>
+                                        </svg>
+                                    </div>
+                                    <label htmlFor="terms" className="text-[10px] text-gray-400 font-medium leading-tight cursor-pointer select-none">
+                                        I certify that I have read and accept the <span className="text-[#00ffa3] hover:underline">Risk Disclaimer</span> and <span className="text-[#00ffa3] hover:underline">Terms of Service</span>. I understand that crypto trading involves high risk.
+                                    </label>
+                                </div>
+                            )}
+
                             <button
                                 type="submit"
                                 disabled={loading}
@@ -155,8 +174,8 @@ export default function LoginPage() {
                         {/* Status Messages */}
                         {message && (
                             <div className={`mt-2 p-4 rounded-2xl border text-xs font-bold text-center animate-in fade-in slide-in-from-top-2 duration-300 ${message.type === 'success'
-                                    ? 'bg-green-500/10 border-green-500/20 text-green-400'
-                                    : 'bg-red-500/10 border-red-500/20 text-red-400'
+                                ? 'bg-green-500/10 border-green-500/20 text-green-400'
+                                : 'bg-red-500/10 border-red-500/20 text-red-400'
                                 }`}>
                                 {message.text}
                             </div>

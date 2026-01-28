@@ -680,14 +680,21 @@ export default function Dashboard() {
                     )}
                 </main>
             </div>
-            {/* V1600: AI Modal */}
-            {activeChatSignal && (
-                <AIChatModal
-                    signal={activeChatSignal}
-                    isOpen={!!activeChatSignal}
-                    onClose={() => setActiveChatSignal(null)}
-                />
-            )}
-        </div>
+        </main>
+            </div >
+        {/* V1600: AI Modal */ }
+    {
+        activeChatSignal && (
+            <AIChatModal
+                signal={activeChatSignal}
+                isOpen={!!activeChatSignal}
+                onClose={() => setActiveChatSignal(null)}
+            />
+        )
+    }
+
+    {/* V2900: LEGAL COMPLIANCE LAYER */ }
+    <RiskModal />
+        </div >
     );
 }
