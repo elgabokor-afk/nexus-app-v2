@@ -42,9 +42,20 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
 
     // V2800: Robust Logo Logic (Strip '1000' prefix, etc.)
     const cleanSymbol = symbol ? symbol.split('/')[0].replace('1000', '') : 'BTC';
-    // Use CoinGecko or another high-quality source if SpotHQ is missing, but SpotHQ is usually good.
-    // Fallback included in the IMG tag via onError.
-    const logoUrl = `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${cleanSymbol.toLowerCase()}.png`;
+
+    // V2801: Manual Overrides for newer coins missing in SpotHQ
+    const LOGO_OVERRIDES: Record<string, string> = {
+        'APT': 'https://s2.coinmarketcap.com/static/img/coins/64x64/21794.png',
+        'PEPE': 'https://s2.coinmarketcap.com/static/img/coins/64x64/24478.png',
+        'SUI': 'https://s2.coinmarketcap.com/static/img/coins/64x64/20947.png',
+        'ARB': 'https://s2.coinmarketcap.com/static/img/coins/64x64/11841.png',
+        'WLD': 'https://s2.coinmarketcap.com/static/img/coins/64x64/13502.png',
+        'WIF': 'https://s2.coinmarketcap.com/static/img/coins/64x64/28752.png',
+        'BONK': 'https://s2.coinmarketcap.com/static/img/coins/64x64/23095.png'
+    };
+
+    // Use Override OR Fallback to SpotHQ
+    const logoUrl = LOGO_OVERRIDES[cleanSymbol.toUpperCase()] || `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${cleanSymbol.toLowerCase()}.png`;
 
     let borderColor = 'border-white/5';
     let textColor = 'text-white'; // Default to white
