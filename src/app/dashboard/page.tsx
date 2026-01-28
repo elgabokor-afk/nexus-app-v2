@@ -1,22 +1,25 @@
 import RiskModal from '@/components/RiskModal';
 import LegalFooter from '@/components/LegalFooter';
 
+'use client';
+
+import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabaseClient';
+import Pusher from 'pusher-js';
+import SignalCard from '@/components/SignalCard';
+import SystemLogs from '@/components/SystemLogs';
+import { Zap, Activity, LogOut, User, TrendingUp, Lock, Globe } from 'lucide-react';
+import PaperBotWidget from '@/components/PaperBotWidget';
+import OracleMonitor from '@/components/OracleMonitor';
+import PortfolioHub from '@/components/PortfolioHub';
+import AIChatModal from '@/components/AIChatModal'; // V1600
+import dynamic from 'next/dynamic';
+import { useRouter } from 'next/navigation';
+import PerformanceStats from '@/components/PerformanceStats'; // V1500
+import SubscriptionGuard from '@/components/SubscriptionGuard'; // V1800
+import { useProfile } from '@/hooks/useProfile'; // V1800
+
 export default function Dashboard() {
-    // ... items ...
-    import { supabase } from '@/lib/supabaseClient';
-    import Pusher from 'pusher-js';
-    import SignalCard from '@/components/SignalCard';
-    import SystemLogs from '@/components/SystemLogs';
-    import { Zap, Activity, LogOut, User, TrendingUp, Lock, Globe } from 'lucide-react';
-    import PaperBotWidget from '@/components/PaperBotWidget';
-    import OracleMonitor from '@/components/OracleMonitor';
-    import PortfolioHub from '@/components/PortfolioHub';
-    import AIChatModal from '@/components/AIChatModal'; // V1600
-    import dynamic from 'next/dynamic';
-    import { useRouter } from 'next/navigation';
-    import PerformanceStats from '@/components/PerformanceStats'; // V1500
-    import SubscriptionGuard from '@/components/SubscriptionGuard'; // V1800
-    import { useProfile } from '@/hooks/useProfile'; // V1800
 
     const SmartChart = dynamic(
         () => import('@/components/SmartChart').then((mod) => mod.SmartChart),
