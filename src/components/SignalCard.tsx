@@ -189,7 +189,10 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
                             </div>
                             <div className="flex flex-col">
                                 <h3 className="text-sm font-black text-[#E7E9EA] leading-none tracking-tight">{symbol}</h3>
-                                <span className="text-[9px] font-mono text-gray-500 mt-0.5">{signal_type}</span>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                    <span className="text-[9px] font-mono text-gray-500">{signal_type}</span>
+                                    <span className={`text-[10px] font-mono font-bold ${isBuy ? 'text-[#00ffa3]' : 'text-[#ff4d4d]'}`}>@ {formatPrice(price)}</span>
+                                </div>
                             </div>
                         </div>
                         {isLocked ? (
