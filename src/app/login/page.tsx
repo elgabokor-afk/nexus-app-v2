@@ -152,7 +152,7 @@ export default function LoginPage() {
                             <div className="text-xs text-[#848E9C] uppercase tracking-wide mt-1">Volume</div>
                         </div>
                         <div>
-                            <div className="text-2xl font-bold text-[#EAECEF]">< 50ms</div>
+                            <div className="text-2xl font-bold text-[#EAECEF]">&lt; 50ms</div>
                             <div className="text-xs text-[#848E9C] uppercase tracking-wide mt-1">Latency</div>
                         </div>
                     </div>
