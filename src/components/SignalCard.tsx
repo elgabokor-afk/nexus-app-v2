@@ -20,10 +20,13 @@ interface SignalProps {
     audit_alert?: string; // 'TAKE_PROFIT_TIGHTEN', 'RISK_FREE', 'WARNING'
     onViewChart?: (symbol: string) => void;
     onConsultAI?: (signal: any) => void;
+    // V3200: Winner Effect
+    status?: string;
+    pnl?: number;
 }
 
 const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
-    symbol, price, rsi, signal_type, confidence, timestamp, stop_loss, take_profit, atr_value, volume_ratio, imbalance, depth_score, audit_alert, onViewChart, onConsultAI, compact = false
+    symbol, price, rsi, signal_type, confidence, timestamp, stop_loss, take_profit, atr_value, volume_ratio, imbalance, depth_score, audit_alert, onViewChart, onConsultAI, compact = false, status, pnl
 }) => {
 
     // V2400: VISUAL REPLICATION + HOT ZONE
@@ -72,6 +75,28 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
         glowClass = 'animate-pulse border-blue-500/50 shadow-[0_0_30px_-5px_rgba(59,130,246,0.5)]';
         if (audit_alert === 'RISK_FREE') borderColor = 'border-green-500';
         if (audit_alert === 'WARNING') borderColor = 'border-orange-500';
+    }
+
+    // V3200: WINNER EFFECT (User Request)
+    // If signal closed in profit, show Gold Glow then disappear.
+    const [isVisible, setIsVisible] = useState(true);
+    // Check if WIN (Closed + Profit)
+    const isWin = status === 'CLOSED' && (pnl || 0) > 0;
+
+    // Auto-Disappear Logic
+    React.useEffect(() => {
+        if (isWin) {
+            // Wait 5 seconds to show off the win, then hide
+            const timer = setTimeout(() => setIsVisible(false), 5000);
+            return () => clearTimeout(timer);
+        }
+    }, [isWin]);
+
+    if (!isVisible) return null;
+
+    if (isWin) {
+        glowClass = 'border-yellow-500/50 shadow-[0_0_50px_-5px_rgba(234,179,8,0.6)] animate-pulse';
+        borderColor = 'border-yellow-500';
     }
 
     const formatPrice = (p: number | undefined) =>
@@ -168,8 +193,15 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
                 {/* === HOVER OVERLAY: AI ACTION (View Internal Chart) === */}
                 {/* Removed external link. Touching card now updates main chart via onSelectSymbol/onViewChart */}
 
+                {/* === V3200: WINNER OVERLAY === */}
+                {isWin && (
+                    <div className="absolute inset-x-0 top-0 bg-yellow-500/20 text-yellow-500 text-[10px] font-black uppercase tracking-widest text-center py-1 z-20 backdrop-blur-sm animate-in slide-in-from-top-2">
+                        🏆 WINNER TARGET HIT
+                    </div>
+                )}
+
                 {/* === HOT ZONE HEADER (Only for Elite Signals) === */}
-                {isHot && !isAuditing && (
+                {isHot && !isAuditing && !isWin && (
                     <div className="w-full h-1 bg-orange-600/50"></div>
                 )}
 

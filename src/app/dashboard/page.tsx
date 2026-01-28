@@ -129,7 +129,9 @@ export default function Dashboard() {
                         confidence: Number(s.ai_confidence),
                         timestamp: s.created_at,
                         atr_value: Number(s.atr_value || 0),
-                        volume_ratio: Number(s.volume_ratio || 0)
+                        volume_ratio: Number(s.volume_ratio || 0),
+                        status: s.status, // ACTIVE or CLOSED
+                        pnl: Number(s.result_pnl || 0)
                     };
                 });
                 setSignals(getUniqueSignals(formatted));
@@ -159,7 +161,9 @@ export default function Dashboard() {
                     confidence: Number(s.ai_confidence),
                     timestamp: s.created_at,
                     atr_value: Number(s.atr_value || 0),
-                    volume_ratio: Number(s.volume_ratio || 0)
+                    volume_ratio: Number(s.volume_ratio || 0),
+                    status: s.status,
+                    pnl: Number(s.result_pnl || 0)
                 }));
                 setSignals(getUniqueSignals(formatted));
                 const unique = getUniqueSignals(formatted);
