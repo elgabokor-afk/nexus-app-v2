@@ -195,7 +195,7 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
                     <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-full bg-white/5 p-1">
-                                <img src={logoUrl} alt={coin} className="w-full h-full object-contain opacity-80" />
+                                <img src={logoUrl} alt={symbol} className="w-full h-full object-contain opacity-80" />
                             </div>
                             <div>
                                 <h3 className="text-sm font-bold text-white leading-none">{symbol}</h3>
