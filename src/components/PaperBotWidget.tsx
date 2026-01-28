@@ -243,6 +243,8 @@ export default function PaperBotWidget({
                                 <th className="p-3">Side</th>
                                 <th className="p-3 text-right">Notional</th>
                                 <th className="p-3 text-right">Entry</th>
+                                <th className="p-3 text-right">SL</th>
+                                <th className="p-3 text-right">TP</th>
                                 <th className="p-3 text-right">Mark</th>
                                 <th className="p-3 text-right text-red-500/80">Liq.</th>
                                 <th className="p-3 text-right">Margin</th>
@@ -283,6 +285,12 @@ export default function PaperBotWidget({
                                         </td>
                                         <td className="p-3 text-right font-mono text-xs text-gray-400">
                                             ${pos.entry_price.toLocaleString()}
+                                        </td>
+                                        <td className="p-3 text-right font-mono text-xs text-red-500/80">
+                                            ${pos.bot_stop_loss?.toLocaleString() || '---'}
+                                        </td>
+                                        <td className="p-3 text-right font-mono text-xs text-[#00ffa3]/80">
+                                            ${pos.bot_take_profit?.toLocaleString() || '---'}
                                         </td>
                                         <td className={`p-3 text-right font-mono text-xs font-bold ${isPosGreen ? 'text-[#00ffa3]' : 'text-red-500'}`}>
                                             <div className="flex flex-col items-end">
