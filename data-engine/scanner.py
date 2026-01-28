@@ -473,6 +473,19 @@ def get_top_vol_pairs(limit=15):
         # V3001: Defensive Check - Handle Error Responses (Dict instead of List)
         if not isinstance(data, list):
             print(f"   [DYNAMIC] Binance API Warning: Expected List, got {type(data)}. Payload: {str(data)[:100]}")
+            print("   [FALLBACK] Switching to CoinCap API for Top Volume Scan...")
+            try:
+                # CoinCap Fallback (No Geo-Block)
+                cc_res = requests.get("https://api.coincap.io/v2/assets?limit=20", timeout=10)
+                if cc_res.status_code == 200:
+                    cc_data = cc_res.json()['data']
+                    # Map CoinCap 'symbol' (BTC) to 'BTC/USDT'
+                    pairs = [f"{item['symbol']}/USDT" for item in cc_data if item['symbol'] not in ['USDT', 'USDC']]
+                    print(f"   [FALLBACK] Success. Found {len(pairs)} pairs via CoinCap.")
+                    return pairs
+            except Exception as e:
+                print(f"   [FALLBACK] Error: {e}")
+            
             return []
 
         # Filter USDT, exclude leveraged tokens
