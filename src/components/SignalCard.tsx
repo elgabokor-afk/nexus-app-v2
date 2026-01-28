@@ -40,8 +40,11 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
     const isHot = confidence >= 80;
     const isAuditing = !!audit_alert; // True if AI just updated this
 
-    const coin = symbol ? symbol.split('/')[0] : 'BTC';
-    const logoUrl = coin ? `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${coin.toLowerCase()}.png` : '';
+    // V2800: Robust Logo Logic (Strip '1000' prefix, etc.)
+    const cleanSymbol = symbol ? symbol.split('/')[0].replace('1000', '') : 'BTC';
+    // Use CoinGecko or another high-quality source if SpotHQ is missing, but SpotHQ is usually good.
+    // Fallback included in the IMG tag via onError.
+    const logoUrl = `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${cleanSymbol.toLowerCase()}.png`;
 
     let borderColor = 'border-white/5';
     let textColor = 'text-white'; // Default to white
