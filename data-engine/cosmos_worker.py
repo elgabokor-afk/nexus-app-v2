@@ -114,7 +114,7 @@ def main_loop():
             if 'worker_started' not in locals():
                 supabase.table("error_logs").insert({
                     "message": "COSMOS WORKER RESTARTED (v3.0)", 
-                    "severity": "INFO",
+                    "error_level": "INFO", 
                     "service": "COSMOS_WORKER"
                 }).execute()
                 worker_started = True
