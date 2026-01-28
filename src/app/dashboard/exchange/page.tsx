@@ -158,8 +158,8 @@ export default function ExchangePage() {
                 </div>
             </div>
 
-            {/* Table Container */}
-            <div className="bg-[#0a0a0c] border border-white/5 rounded-[2.5rem] overflow-hidden shadow-2xl relative">
+            {/* Desktop Table View (Hidden on Mobile) */}
+            <div className="hidden md:block bg-[#0a0a0c] border border-white/5 rounded-[2.5rem] overflow-hidden shadow-2xl relative">
                 {/* Gloss Effect */}
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#00ffa3]/20 to-transparent"></div>
 
@@ -229,6 +229,46 @@ export default function ExchangePage() {
                         </tbody>
                     </table>
                 </div>
+            </div>
+
+            {/* V2800: Mobile Card View (Visible ONLY on Mobile) */}
+            <div className="md:hidden space-y-3">
+                {loading ? (
+                    Array.from({ length: 6 }).map((_, i) => (
+                        <div key={i} className="h-24 bg-white/5 rounded-3xl animate-pulse border border-white/5"></div>
+                    ))
+                ) : (
+                    filteredTickers.map((t) => {
+                        const change = parseFloat(t.priceChangePercent);
+                        const isPositive = change >= 0;
+                        const symbol = t.symbol.replace('USDT', '');
+                        const rawSymbol = t.symbol.replace('USDT', '').toLowerCase();
+
+                        return (
+                            <div key={t.symbol} className="bg-[#0a0a0c] border border-white/5 p-4 rounded-3xl flex items-center justify-between active:scale-95 transition-transform">
+                                <div className="flex items-center gap-4">
+                                    <div className="relative">
+                                        <CryptoLogo symbol={rawSymbol} />
+                                        {/* Mini Rank Badge could go here */}
+                                    </div>
+                                    <div>
+                                        <h3 className="text-sm font-black text-white leading-none mb-1">{symbol}</h3>
+                                        <span className="text-[10px] mobile-label font-bold text-gray-500">VOL: ${formatVolume(t.quoteVolume)}</span>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <div className="text-sm font-mono font-bold text-white mb-1">
+                                        {formatCurrency(t.lastPrice)}
+                                    </div>
+                                    <div className={`inline-flex items-center gap-1 font-bold text-[10px] px-2 py-0.5 rounded-full ${isPositive ? 'bg-[#00ffa3]/10 text-[#00ffa3]' : 'bg-red-500/10 text-red-500'}`}>
+                                        {isPositive ? <ArrowUpRight size={10} /> : <ArrowDownRight size={10} />}
+                                        {Math.abs(change).toFixed(2)}%
+                                    </div>
+                                </div>
+                            </div>
+                        )
+                    })
+                )}
             </div>
         </div>
     );
