@@ -31,11 +31,22 @@ class RedisEngine:
                 print("   [REDIS] No Railway Vars found. Localhost fallback selected.")
         else:
              print(f"   [REDIS] Auto-detected URL: {self.redis_url[:15]}...")
+        # Try primary connection
         try:
             print(f"   [REDIS] Attempting connect to: {self.redis_url.split('@')[-1] if '@' in self.redis_url else 'LOCALHOST'}")
-            self.client = redis.from_url(self.redis_url, decode_responses=True, socket_connect_timeout=5)
-            self.client.ping()
-            print(f"   [REDIS] Connected Successfully!")
+            
+            # ATTEMPT 1: Standard
+            try:
+                self.client = redis.from_url(self.redis_url, decode_responses=True, socket_connect_timeout=3)
+                self.client.ping()
+                print(f"   [REDIS] Connected Successfully (Standard)!")
+            except Exception as e:
+                print(f"   [REDIS] Standard connection failed ({e}). Retrying with SSL strict=False...")
+                # ATTEMPT 2: SSL Relaxed (For Public Proxy)
+                self.client = redis.from_url(self.redis_url, decode_responses=True, socket_connect_timeout=3, ssl_cert_reqs=None)
+                self.client.ping()
+                print(f"   [REDIS] Connected Successfully (SSL Relaxed)!")
+
         except Exception as e:
             # V1501: Enhanced Diagnostics for Internal vs External
             if ".railway.internal" in self.redis_url:
