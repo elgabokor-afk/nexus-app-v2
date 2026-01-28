@@ -256,9 +256,5 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
         </>
     );
 };
-            </div >
-        </>
-    );
-};
 
 export default SignalCard;

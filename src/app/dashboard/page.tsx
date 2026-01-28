@@ -336,12 +336,11 @@ export default function Dashboard() {
                     </button>
 
                     <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-black flex items-center justify-center border border-[#1d1f23] shadow-sm shadow-[#00ffa3]/20">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src="/nexus-logo.png" alt="Nexus" className="w-6 h-6 object-contain" />
-                        </div>
-                        <div className="hidden sm:block">
-                            <span className="font-bold tracking-tight text-lg leading-none block">NEXUS<span className="text-[#00ffa3]">AI</span></span>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src="/logo.png" alt="NEXUS AI" className="h-8 w-8 object-contain" />
+                        <div className="hidden md:flex flex-col">
+                            <span className="text-lg font-black tracking-tighter text-white leading-none">NEXUS</span>
+                            <span className="text-[9px] font-bold text-[#00ffa3] tracking-widest uppercase">AI Architect v3.0</span>
                         </div>
                     </div>
 
