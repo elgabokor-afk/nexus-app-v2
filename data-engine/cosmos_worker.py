@@ -187,9 +187,26 @@ def main_loop():
                             "time": int(time.time())
                         })
                         
+                        # V3300: CRITICAL - Fetch Real-Time Price for Signal Generation
+                        # Candle Close (p_5m) is too stale for precise Entry/TP/SL
+                        try:
+                            ticker = live_trader.fetch_ticker(symbol)
+                            real_price = float(ticker['last']) if ticker and 'last' in ticker else p_5m
+                        except Exception as e:
+                            logger.warning(f"   [SYNC] Failed to fetch live ticker for {symbol}: {e}. Using Candle Close.")
+                            real_price = p_5m
+
                         # AI + Quant Analysis
                         # V1400: Pass df_4h for Multi-Timeframe Logic
-                        quant_signal = analyze_quant_signal(symbol, techs_5m, sentiment_score=fng_index, df_confluence=df_5m, df_htf=df_4h)
+                        # V3300: Pass real_price
+                        quant_signal = analyze_quant_signal(
+                            symbol, 
+                            techs_5m, 
+                            sentiment_score=fng_index, 
+                            df_confluence=df_5m, 
+                            df_htf=df_4h,
+                            current_price=real_price
+                        )
                         
                         if quant_signal:
                             # 15m Trend Filter

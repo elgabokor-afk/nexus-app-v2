@@ -259,15 +259,17 @@ def check_news_blackout():
     # Let's keep it simple: No blackout unless manually added here.
     return False
 
-def analyze_quant_signal(symbol, tech_analysis, sentiment_score=50, df_confluence=None, df_htf=None):
+def analyze_quant_signal(symbol, tech_analysis, sentiment_score=50, df_confluence=None, df_htf=None, current_price=None):
     """
     Combines Technicals (RSI/EMA/MACD) with Quant Data (Order Book)
     using DYNAMIC WEIGHTS from the Optimizer.
     V14: Added df_htf for H4 S/R checks.
+    V15: Added current_price override for Real-Time Execution.
     """
     if not tech_analysis: return None
     
-    price = tech_analysis['price']
+    # Use Real-Time Price if available, else fallback to Candle Close
+    price = current_price if current_price else tech_analysis['price']
     rsi = tech_analysis['rsi']
     
     # 1. Fetch Liquidity Data
