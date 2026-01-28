@@ -24,7 +24,10 @@ logger = logging.getLogger(__name__)
 try:
     from cosmos_engine import brain
     from redis_engine import redis_engine
-    from scanner import scanner_engine # Hypothetical scanner import, falling back if not found
+    from scanner import scanner_engine # Hypothetical
+    # V3400: Quant Engines
+    from macro_feed import macro_brain
+    from cosmos_quant import quant_engine
 except ImportError:
     logger.warning("Components missing. Running in Skeleton Mode.")
 
@@ -158,6 +161,15 @@ def main_loop():
             else:
                 logger.info(f"   [SELF-OPTIMIZACIÓN] Win Rate ({current_win_rate}%) saludable. Exigencia estándar.")
             
+            # V3400: MACRO SENTIMENT CHECK
+            macro_sentiment = macro_brain.get_macro_sentiment()
+            if macro_sentiment == "RISK_OFF":
+                min_confidence_threshold += 15
+                logger.warning(f"   [MACRO] ALERT: RISK_OFF DETECTED (DXY Strong). Increasing Confidence Req by +15%.")
+            elif macro_sentiment == "RISK_ON":
+                min_confidence_threshold -= 5
+                logger.info(f"   [MACRO] RISK_ON (Dollar Weak). Confidence Bonus Applied (-5%).")
+            
             # Combine symbols: Priority + Static + Dynamic
             symbols_to_scan = list(set(PRIORITY_ASSETS + SYMBOLS + dynamic_pairs))
             logger.info(f"Scanning {len(symbols_to_scan)} Assets: {symbols_to_scan}")
@@ -215,6 +227,30 @@ def main_loop():
                             elif "SELL" in quant_signal['signal'] and trend_15m != "BEARISH":
                                 continue
                                 
+                            # V3400: ORDER FLOW & WHALE CHECK
+                            flow_analysis = quant_engine.analyze_order_flow(symbol)
+                            if flow_analysis['valid']:
+                                # If Buying but Bearish Flow -> Reject
+                                if "BUY" in quant_signal['signal'] and flow_analysis['sentiment'] == 'BEARISH':
+                                    logger.info(f"   [QUANT] Signal {symbol} BLOCKED by Bearish Order Flow (Imb: {flow_analysis['imbalance']})")
+                                    continue
+                                # If Selling but Bullish Flow -> Reject
+                                if "SELL" in quant_signal['signal'] and flow_analysis['sentiment'] == 'BULLISH':
+                                    logger.info(f"   [QUANT] Signal {symbol} BLOCKED by Bullish Order Flow (Imb: {flow_analysis['imbalance']})")
+                                    continue
+                                    
+                                # If Whale Walls against us -> Reject
+                                # Logic: If BUY, check for SELL_WALL
+                                walls = flow_analysis.get('whale_walls', [])
+                                if "BUY" in quant_signal['signal'] and any("SELL_WALL" in w for w in walls):
+                                     logger.warning(f"   [QUANT] {symbol} BUY BLOCKED: Whale Sell Wall Detected!")
+                                     continue
+
+                                # Add Logic Note
+                                quant_signal['quant_note'] = f"Flow: {flow_analysis['sentiment']} (Imb: {flow_analysis['imbalance']})"
+                            else:
+                                logger.warning(f"   [QUANT] Could not analyze flow for {symbol}")
+
                             # Convert to Worker Signal Format
                             # analyze_quant_signal returns keys: signal, confidence, price, take_profit, stop_loss...
                             sig_payload = {
