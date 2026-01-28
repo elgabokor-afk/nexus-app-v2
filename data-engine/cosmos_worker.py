@@ -50,7 +50,7 @@ def save_signal_to_db(signal_data):
     try:
         # Map Engine Dict to SQL Schema
         db_record = {
-            "pair": signal_data.get('symbol'),
+            "symbol": signal_data.get('symbol'),
             "direction": "LONG" if "BUY" in signal_data.get('signal_type', '') else "SHORT",
             "entry_price": signal_data.get('price'),
             "tp_price": signal_data.get('take_profit'),
@@ -114,7 +114,8 @@ def main_loop():
             if 'worker_started' not in locals():
                 supabase.table("error_logs").insert({
                     "message": "COSMOS WORKER RESTARTED (v3.0)", 
-                    "severity": "INFO"
+                    "severity": "INFO",
+                    "service": "COSMOS_WORKER"
                 }).execute()
                 worker_started = True
                 logger.info("   >>> [DB] Logged Startup Event")

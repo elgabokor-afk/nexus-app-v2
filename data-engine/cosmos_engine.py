@@ -509,7 +509,7 @@ class CosmosBrain:
         """V500: Writes valid signals to the Strict Schema 'signals' table."""
         try:
             db_record = {
-                "pair": signal_data.get('symbol'),
+                "symbol": signal_data.get('symbol'),
                 "direction": "LONG" if "BUY" in signal_data.get('signal_type', '') else "SHORT",
                 "entry_price": signal_data.get('price'),
                 "tp_price": signal_data.get('take_profit'),
