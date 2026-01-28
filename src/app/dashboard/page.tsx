@@ -563,7 +563,7 @@ export default function Dashboard() {
                                         <span className="text-[10px] text-[#00ffa3] font-black font-mono">{signals.length} ANALYZED</span>
                                     </div>
                                 </div>
-                                <div className="flex-1 overflow-y-auto space-y-4 pr-3 custom-scrollbar-wide pb-4 relative z-10">
+                                <div className="flex-1 overflow-y-auto overflow-x-hidden space-y-4 pr-3 custom-scrollbar-wide pb-4 relative z-10">
                                     {loading ? (
                                         <div className="space-y-4">
                                             {[1, 2, 3, 4].map(i => <div key={i} className="h-32 rounded-3xl bg-white/5 animate-pulse border border-white/5"></div>)}
