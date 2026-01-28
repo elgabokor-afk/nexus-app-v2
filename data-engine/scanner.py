@@ -468,10 +468,15 @@ def get_top_vol_pairs(limit=15):
         res = requests.get(url, timeout=10)
         data = res.json()
         
+        # V3001: Defensive Check - Handle Error Responses (Dict instead of List)
+        if not isinstance(data, list):
+            print(f"   [DYNAMIC] Binance API Warning: Expected List, got {type(data)}. Payload: {str(data)[:100]}")
+            return []
+
         # Filter USDT, exclude leveraged tokens
         usdt_pairs = [
             t for t in data 
-            if t['symbol'].endswith('USDT') 
+            if isinstance(t, dict) and 'symbol' in t and t['symbol'].endswith('USDT') 
             and 'UP' not in t['symbol'] 
             and 'DOWN' not in t['symbol']
         ]
