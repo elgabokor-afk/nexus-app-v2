@@ -51,6 +51,22 @@ interface Signal {
     }[];
 }
 
+const SidebarLink = ({ active, onClick, icon, label }: any) => (
+    <button
+        onClick={onClick}
+        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 group
+            ${active
+                ? 'bg-[#1d1f23] text-white border border-[#2f3336]'
+                : 'text-gray-500 hover:text-white hover:bg-white/[0.03] border border-transparent'
+            }
+        `}
+    >
+        <span className={active ? 'text-[#00ffa3]' : 'text-gray-500 group-hover:text-white'}>{icon}</span>
+        <span className="text-sm font-medium">{label}</span>
+        {active && <div className="ml-auto w-1 h-1 rounded-full bg-[#00ffa3]"></div>}
+    </button>
+);
+
 export default function Dashboard() {
     const [signals, setSignals] = useState<Signal[]>([]);
     const [loading, setLoading] = useState(true);
@@ -300,84 +316,59 @@ export default function Dashboard() {
     );
 
     return (
-        <div className="h-screen bg-[#050505] text-white font-sans overflow-hidden flex flex-col">
+        <div className="h-screen bg-black text-white font-sans overflow-hidden flex flex-col selection:bg-[#00ffa3] selection:text-black">
 
             {/* TOP BAR / HEADER */}
-            <header className="h-20 border-b border-white/5 flex items-center justify-between px-6 bg-[#0a0a0c]/80 backdrop-blur-2xl z-[60] sticky top-0">
+            <header className="h-16 border-b border-[#2f3336] flex items-center justify-between px-6 bg-black z-[60] sticky top-0">
                 <div className="flex items-center gap-6">
                     {/* Hamburger Toggle */}
                     <button
                         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                        className="p-3 hover:bg-white/5 rounded-2xl transition-all active:scale-95 group border border-white/5"
+                        className="p-2 hover:bg-[#1d1f23] rounded-md transition-all active:scale-95 group"
                     >
-                        <div className="space-y-1.5">
-                            <div className={`h-0.5 w-5 bg-gray-400 group-hover:bg-[#00ffa3] transition-all ${isSidebarOpen ? 'rotate-45 translate-y-2' : ''}`}></div>
-                            <div className={`h-0.5 w-5 bg-gray-400 group-hover:bg-[#00ffa3] transition-all ${isSidebarOpen ? 'opacity-0' : ''}`}></div>
-                            <div className={`h-0.5 w-5 bg-gray-400 group-hover:bg-[#00ffa3] transition-all ${isSidebarOpen ? '-rotate-45 -translate-y-1' : ''}`}></div>
+                        <div className="space-y-1">
+                            <div className={`h-0.5 w-4 bg-gray-400 group-hover:bg-white transition-all ${isSidebarOpen ? 'rotate-45 translate-y-1.5' : ''}`}></div>
+                            <div className={`h-0.5 w-4 bg-gray-400 group-hover:bg-white transition-all ${isSidebarOpen ? 'opacity-0' : ''}`}></div>
+                            <div className={`h-0.5 w-4 bg-gray-400 group-hover:bg-white transition-all ${isSidebarOpen ? '-rotate-45 -translate-y-1.5' : ''}`}></div>
                         </div>
                     </button>
 
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl overflow-hidden bg-black flex items-center justify-center shadow-[0_0_30px_rgba(0,255,163,0.3)] border border-[#00ffa3]/20 relative">
-                            <img
-                                src="/logo.png"
-                                alt="Nexus Logo"
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                    e.currentTarget.style.display = 'none';
-                                    e.currentTarget.parentElement?.classList.add('bg-gradient-to-br', 'from-[#00ffa3]', 'to-[#00ce82]');
-                                    const fallback = document.createElement('div');
-                                    fallback.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-zap text-black"><path d="M4 14.71 14.5 4H15l-1.5 5.29H20l-10.5 10.71H9l1.5-5.29H4z"/></svg>';
-                                    e.currentTarget.parentElement?.appendChild(fallback.firstChild as Node);
-                                }}
-                            />
+                        <div className="w-8 h-8 rounded-lg bg-black flex items-center justify-center border border-[#1d1f23] shadow-sm shadow-[#00ffa3]/20">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src="/nexus-logo.png" alt="Nexus" className="w-6 h-6 object-contain" />
                         </div>
                         <div className="hidden sm:block">
-                            <span className="font-black tracking-tighter text-xl">NEXUS<span className="text-[#00ffa3]">AI</span></span>
-                            <p className="text-[10px] text-gray-500 font-bold tracking-widest leading-none">TERMINAL V2</p>
+                            <span className="font-bold tracking-tight text-lg leading-none block">NEXUS<span className="text-[#00ffa3]">AI</span></span>
                         </div>
                     </div>
 
-                    <div className="h-10 w-px bg-white/5 mx-2 hidden md:block"></div>
+                    <div className="h-6 w-px bg-[#2f3336] mx-2 hidden md:block"></div>
 
 
                     {/* Selected Symbol Display */}
                     {selectedSignal && (
-                        <div className="hidden md:flex items-center gap-5 animate-in fade-in slide-in-from-left-6 duration-700">
-                            <div className="flex items-center gap-3 bg-white/[0.03] border border-white/5 px-4 py-2 rounded-2xl">
-                                <img
-                                    src={`https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${selectedSignal.symbol.split('/')[0].toLowerCase()}.png`}
-                                    alt={selectedSignal.symbol}
-                                    className="w-10 h-10 object-contain drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]"
-                                    onError={(e) => (e.target as HTMLImageElement).style.display = 'none'}
-                                />
-                                <div>
-                                    <h2 className="text-xl font-black tracking-tighter leading-none">{selectedSignal.symbol}</h2>
-                                    <p className="text-[11px] text-[#00ffa3] font-mono mt-0.5 font-bold tracking-tighter">${selectedSignal.price.toLocaleString()}</p>
-                                </div>
+                        <div className="hidden md:flex items-center gap-4 animate-in fade-in slide-in-from-left-2 duration-300">
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm font-bold tracking-tight text-[#E7E9EA]">{selectedSignal.symbol}</span>
+                                <span className={`text-xs font-mono font-medium ${selectedSignal.signal_type === 'BUY' ? 'text-[#00ffa3]' : 'text-[#ff4d4d]'}`}>
+                                    ${selectedSignal.price.toLocaleString()}
+                                </span>
                             </div>
 
-                            <div className="flex flex-col gap-1.5">
-                                <span className="text-[9px] text-gray-500 uppercase tracking-[0.2em] font-black">AI Signal Strength</span>
-                                <div className="flex items-center gap-3">
-                                    <div className="w-32 h-1.5 bg-white/5 rounded-full overflow-hidden border border-white/5">
-                                        <div
-                                            className="h-full bg-gradient-to-r from-[#00ffa3] to-[#00ce82] shadow-[0_0_15px_rgba(0,255,163,0.4)] transition-all duration-1000 ease-out"
-                                            style={{ width: `${selectedSignal.confidence}%` }}
-                                        />
-                                    </div>
-                                    <span className="text-xs font-black text-[#00ffa3]">{selectedSignal.confidence}%</span>
-                                </div>
+                            <div className="flex items-center gap-2 pl-4 border-l border-[#2f3336]">
+                                <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">AI Score</span>
+                                <span className={`text-xs font-bold ${selectedSignal.confidence >= 80 ? 'text-[#00ffa3]' : 'text-gray-300'}`}>{selectedSignal.confidence}%</span>
                             </div>
                         </div>
                     )}
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <div className={`hidden lg:flex items-center gap-3 px-4 py-2 rounded-2xl border ${connectionStatus === 'connected' ? 'bg-white/[0.03] border-white/5 text-[#00ffa3]' : 'bg-red-500/10 border-red-500/20 text-red-500'}`}>
-                        <span className={`w-2 h-2 rounded-full bg-current shadow-[0_0_10px_currentColor] ${connectionStatus === 'connected' ? 'animate-pulse' : ''}`}></span>
-                        <span className="text-[10px] font-black tracking-widest uppercase">
-                            {connectionStatus === 'connected' ? 'LIVE DATA STREAM' : 'CONNECTION LOST'}
+                    <div className={`hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full border ${connectionStatus === 'connected' ? 'bg-[#00ffa3]/10 border-[#00ffa3]/20 text-[#00ffa3]' : 'bg-red-500/10 border-red-500/20 text-red-500'}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full bg-current ${connectionStatus === 'connected' ? 'animate-pulse' : ''}`}></span>
+                        <span className="text-[10px] font-bold tracking-wide uppercase">
+                            {connectionStatus === 'connected' ? 'Live' : 'Offline'}
                         </span>
                     </div>
                 </div>
@@ -385,113 +376,65 @@ export default function Dashboard() {
 
             <div className="flex-1 flex overflow-hidden relative">
 
-                {/* SIDEBAR NAVIGATION - Drawer style */}
+                {/* SIDEBAR NAVIGATION - Minimalist */}
                 <aside className={`
-                    fixed md:relative inset-y-0 left-0 w-72 bg-[#0a0a0c]/95 border-r border-white/5 flex flex-col z-50 transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]
-                    ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:-ml-72'}
-                    backdrop-blur-3xl shadow-2xl
+                    fixed md:relative inset-y-0 left-0 w-64 bg-black border-r border-[#2f3336] flex flex-col z-50 transition-all duration-300 ease-out
+                    ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:-ml-64'}
                 `}>
-                    <nav className="flex-1 p-6 space-y-2 mt-4">
-                        <div className="px-4 py-2 text-[10px] font-black text-gray-600 uppercase tracking-[0.3em] mb-4">Operations</div>
+                    <nav className="flex-1 p-4 space-y-1 mt-2">
+                        <div className="px-3 py-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Platform</div>
 
-                        <button
+                        <SidebarLink
+                            active={currentView === 'dashboard'}
                             onClick={() => setCurrentView('dashboard')}
-                            className={`w-full flex items-center justify-between px-5 py-4 rounded-2xl border transition-all duration-300 group
-                                ${currentView === 'dashboard'
-                                    ? 'bg-gradient-to-r from-[#00ffa3]/10 to-transparent text-[#00ffa3] border-[#00ffa3]/20 shadow-[0_0_20px_-5px_rgba(0,255,163,0.2)]'
-                                    : 'text-gray-500 hover:text-white hover:bg-white/[0.03] border-transparent hover:border-white/5'
-                                }
-                            `}
-                        >
-                            <div className="flex items-center gap-4">
-                                <Activity size={18} className={currentView === 'dashboard' ? "animate-pulse" : ""} />
-                                <span className="text-sm font-black tracking-tight">AI TERMINAL</span>
-                            </div>
-                            {currentView === 'dashboard' && <Zap size={14} fill="currentColor" />}
-                        </button>
-
-                        <button
+                            icon={<Activity size={18} />}
+                            label="Terminal"
+                        />
+                        <SidebarLink
+                            active={false}
                             onClick={() => router.push('/dashboard/market')}
-                            className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-300 border text-gray-500 hover:text-white hover:bg-white/[0.03] border-transparent hover:border-white/5"
-                        >
-                            <Globe size={18} />
-                            <span className="text-sm font-bold tracking-tight">MARKET OVERVIEW</span>
-                        </button>
-
-                        <button
+                            icon={<Globe size={18} />}
+                            label="Market Overview"
+                        />
+                        <SidebarLink
+                            active={false}
                             onClick={() => router.push('/dashboard/exchange')}
-                            className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-300 border text-gray-500 hover:text-white hover:bg-white/[0.03] border-transparent hover:border-white/5"
-                        >
-                            <Activity size={18} />
-                            <span className="text-sm font-bold tracking-tight">LIVE EXCHANGE</span>
-                        </button>
-
-                        <button
+                            icon={<Activity size={18} />}
+                            label="Live Exchange"
+                        />
+                        <SidebarLink
+                            active={currentView === 'bot'}
                             onClick={() => setCurrentView('bot')}
-                            className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-300 border
-                                ${currentView === 'bot'
-                                    ? 'bg-white/[0.05] text-white border-white/10'
-                                    : 'text-gray-500 hover:text-white hover:bg-white/[0.03] border-transparent hover:border-white/5'
-                                }
-                            `}
-                        >
-                            <Zap size={18} />
-                            <span className="text-sm font-bold tracking-tight">PAPER BOT ENGINE</span>
-                        </button>
-
-                        <button
+                            icon={<Zap size={18} />}
+                            label="Paper Engine"
+                        />
+                        <SidebarLink
+                            active={currentView === 'logs'}
                             onClick={() => setCurrentView('logs')}
-                            className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-300 border
-                                ${currentView === 'logs'
-                                    ? 'bg-white/[0.05] text-white border-white/10'
-                                    : 'text-gray-500 hover:text-white hover:bg-white/[0.03] border-transparent hover:border-white/5'
-                                }
-                            `}
-                        >
-                            <Activity size={18} />
-                            <span className="text-sm font-bold tracking-tight">ALGORITHMIC LOGS</span>
-                        </button>
+                            icon={<Activity size={18} />}
+                            label="System Logs"
+                        />
 
-                        <button
-                            onClick={() => window.open('/live', '_blank')}
-                            className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-300 border text-[#00ffa3]/50 hover:text-[#00ffa3] hover:bg-[#00ffa3]/5 border-transparent hover:border-[#00ffa3]/10`}
-                        >
+                        <div className="my-4 border-t border-[#2f3336]"></div>
+
+                        <a href="/live" target="_blank" className="flex items-center gap-3 px-3 py-2.5 rounded-md text-gray-400 hover:text-[#00ffa3] hover:bg-[#00ffa3]/5 transition-colors group">
                             <TrendingUp size={18} />
-                            <span className="text-sm font-bold tracking-tight">LIVE ENGINE WEBLINK</span>
-                        </button>
+                            <span className="text-sm font-medium">Live WebLink</span>
+                            <ExternalLink size={12} className="opacity-0 group-hover:opacity-100 transition-opacity ml-auto" />
+                        </a>
                     </nav>
 
-                    <div className="p-6 space-y-4">
-                        <div className="p-5 rounded-3xl bg-white/[0.03] border border-white/5 relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 w-24 h-24 bg-[#00ffa3]/5 rounded-full blur-3xl -mr-12 -mt-12 transition-all group-hover:bg-[#00ffa3]/10"></div>
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="w-5 h-5 rounded-lg overflow-hidden flex items-center justify-center bg-black border border-white/10 relative">
-                                    <img
-                                        src="/logo.png"
-                                        alt="Node"
-                                        className="w-full h-full object-cover"
-                                        onError={(e) => {
-                                            e.currentTarget.style.display = 'none';
-                                            e.currentTarget.parentElement?.classList.add('bg-[#00ffa3]');
-                                            const dot = document.createElement('div');
-                                            dot.className = 'w-1.5 h-1.5 bg-black rounded-full';
-                                            e.currentTarget.parentElement?.appendChild(dot);
-                                        }}
-                                    />
-                                </div>
-                                <p className="text-[10px] text-gray-500 uppercase tracking-widest font-black flex items-center gap-2">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-[#00ffa3] animate-ping"></span>
-                                    Node Status
-                                </p>
+                    <div className="p-4 border-t border-[#2f3336]">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-8 h-8 rounded-lg bg-[#1d1f23] flex items-center justify-center border border-[#2f3336]">
+                                <User size={16} className="text-gray-400" />
                             </div>
-                            <div className="flex items-end justify-between">
-                                <div>
-                                    <span className="text-sm font-black text-white block">{user?.email?.split('@')[0].toUpperCase() || 'ANONYMOUS'}</span>
-                                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${isVip ? 'bg-[#00ffa3] text-black' : 'bg-gray-700 text-gray-300'}`}>
-                                        {isVip ? 'VIP PLAN' : 'FREE PLAN'}
-                                    </span>
-                                </div>
-                                <span className="text-[9px] font-mono text-gray-600 uppercase">99.9% Uptime</span>
+                            <div className="overflow-hidden">
+                                <p className="text-sm font-bold text-white truncate">{user?.email?.split('@')[0]}</p>
+                                <p className="text-[10px] text-gray-500 font-medium flex items-center gap-1">
+                                    <span className={`w-1.5 h-1.5 rounded-full ${isVip ? 'bg-[#00ffa3]' : 'bg-gray-500'}`}></span>
+                                    {isVip ? 'VIP Pro' : 'Free Plan'}
+                                </p>
                             </div>
                         </div>
 
@@ -500,10 +443,10 @@ export default function Dashboard() {
                                 await supabase.auth.signOut();
                                 router.push('/login');
                             }}
-                            className="w-full flex items-center gap-4 px-5 py-4 text-red-500/50 hover:text-red-500 hover:bg-red-500/5 rounded-2xl transition-all duration-300 border border-transparent hover:border-red-500/10 group"
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold text-gray-400 hover:text-white bg-[#1d1f23] hover:bg-[#2f3336] rounded-lg transition-colors border border-[#2f3336]"
                         >
-                            <LogOut size={18} className="group-hover:rotate-12 transition-transform" />
-                            <span className="text-sm font-black tracking-tight">LOGOUT SYSTEM</span>
+                            <LogOut size={14} />
+                            Sign Out
                         </button>
                     </div>
 
@@ -512,42 +455,32 @@ export default function Dashboard() {
                 {/* Backdrop for sidebar */}
                 {isSidebarOpen && (
                     <div
-                        className="fixed inset-0 bg-black/60 backdrop-blur-md z-40 md:hidden animate-in fade-in duration-500"
+                        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 md:hidden animate-in fade-in duration-300"
                         onClick={() => setIsSidebarOpen(false)}
                     />
                 )}
 
                 {/* MAIN DASHBOARD CONTENT */}
                 <main className="flex-1 flex flex-col relative overflow-hidden bg-black">
-
-                    {/* Background Pattern - subtle grid */}
-                    <div className="absolute inset-0 opacity-[0.05] pointer-events-none"
-                        style={{
-                            backgroundImage: 'linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px)',
-                            backgroundSize: '30px 30px'
-                        }}>
-                    </div>
-
-                    {/* Ambient Glow */}
-                    <div className="absolute top-[-20%] right-[-10%] w-[500px] h-[500px] bg-[#00ffa3]/5 rounded-full blur-[120px] pointer-events-none"></div>
+                    {/* Clean Background - No Patterns */}
 
                     {currentView === 'dashboard' && (
-                        <div className="flex-1 p-4 lg:p-8 grid grid-cols-1 xl:grid-cols-12 gap-8 overflow-y-auto lg:overflow-hidden z-20 custom-scrollbar animate-fade-in">
+                        <div className="flex-1 p-4 lg:p-6 grid grid-cols-1 xl:grid-cols-12 gap-6 overflow-y-auto lg:overflow-hidden z-20 custom-scrollbar animate-fade-in">
 
                             {/* V1500: PERFORMANCE DASHBOARD (Full Width) - PROTECTED */}
                             <div className="xl:col-span-12">
                                 <SubscriptionGuard fallback={
-                                    <div className="w-full h-[100px] bg-[#0e0e10] border border-white/5 rounded-3xl flex items-center justify-between px-8">
+                                    <div className="w-full h-[80px] bg-[#0e0e10] border border-[#2f3336] rounded-xl flex items-center justify-between px-6">
                                         <div className="flex items-center gap-4">
-                                            <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center">
-                                                <Lock className="text-gray-500" size={18} />
+                                            <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center">
+                                                <Lock className="text-gray-500" size={16} />
                                             </div>
                                             <div>
-                                                <h3 className="text-white font-bold">Performance Analytics</h3>
-                                                <p className="text-gray-500 text-xs">Unlock your win-rate and profit stats.</p>
+                                                <h3 className="text-white font-bold text-sm">Performance Analytics</h3>
+                                                <p className="text-gray-500 text-[11px]">Unlock your win-rate and profit stats.</p>
                                             </div>
                                         </div>
-                                        <button className="px-6 py-2 bg-[#00ffa3] text-black font-black text-xs uppercase tracking-widest rounded-full">
+                                        <button className="px-5 py-2 bg-[#00ffa3] hover:bg-[#00ffa3]/90 text-black font-bold text-[11px] uppercase tracking-widest rounded-lg transition-colors">
                                             UNLOCK VIP
                                         </button>
                                     </div>
@@ -557,48 +490,40 @@ export default function Dashboard() {
                             </div>
 
                             {/* COL 1: ADVANCED SIGNALS (3 Columns) */}
-                            <div className="xl:col-span-3 flex flex-col gap-6 overflow-hidden min-h-[400px] lg:min-h-0 bg-white/[0.02] backdrop-blur-xl rounded-[2.5rem] border border-white/5 p-6 shadow-2xl relative group">
-                                <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none group-hover:bg-white/[0.04] transition-colors duration-500"></div>
-                                <div className="flex items-center justify-between px-2 relative z-10">
-                                    <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.4em]">Signal Pulse</h3>
-                                    <div className="flex items-center gap-2 bg-[#00ffa3]/10 px-3 py-1 rounded-full border border-[#00ffa3]/20 shadow-[0_0_10px_rgba(0,255,163,0.1)]">
-                                        <span className="text-[10px] text-[#00ffa3] font-black font-mono">{signals.length} ANALYZED</span>
+                            <div className="xl:col-span-3 flex flex-col gap-4 overflow-hidden min-h-[400px] lg:min-h-0 bg-[#0e0e10] rounded-xl border border-[#2f3336] p-0 flex-1">
+                                <div className="flex items-center justify-between px-4 py-3 border-b border-[#2f3336]">
+                                    <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Signal Pulse</h3>
+                                    <div className="flex items-center gap-2">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-[#00ffa3] animate-pulse"></span>
+                                        <span className="text-[10px] text-[#00ffa3] font-mono font-bold">{signals.length} LIVE</span>
                                     </div>
                                 </div>
-                                <div className="flex-1 overflow-y-auto overflow-x-hidden space-y-4 pr-3 custom-scrollbar-wide pb-4 relative z-10">
+                                <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 custom-scrollbar">
                                     {loading ? (
-                                        <div className="space-y-4">
-                                            {[1, 2, 3, 4].map(i => <div key={i} className="h-32 rounded-3xl bg-white/5 animate-pulse border border-white/5"></div>)}
+                                        <div className="space-y-3">
+                                            {[1, 2, 3, 4].map(i => <div key={i} className="h-24 rounded-lg bg-white/5 animate-pulse"></div>)}
                                         </div>
                                     ) : (
                                         <>
                                             {/* V1300: HOT SIGNALS (80%+ Confidence - VIP Zone) */}
                                             {uniqueSignals.filter(s => s.confidence >= 80).length > 0 && (
-                                                <div className="mb-4 space-y-3">
-                                                    <div className="flex items-center gap-2 px-1">
-                                                        <div className="text-orange-500 animate-fire">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-                                                                <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a5.5 5.5 0 1 1-11 0c0-.536.22-1.072.5-1.5Z" />
-                                                            </svg>
-                                                        </div>
-                                                        <span className="text-[10px] font-black text-orange-500 uppercase tracking-widest animate-pulse">HOT ZONE - ELITE SIGNALS</span>
+                                                <div className="mb-2 space-y-2">
+                                                    <div className="flex items-center gap-2 px-1 py-1">
+                                                        <span className="text-[9px] font-black text-[#00ffa3] uppercase tracking-widest">ELITE OPPORTUNITIES (80%+)</span>
                                                     </div>
 
                                                     {uniqueSignals.filter(s => s.confidence >= 80).map((signal) => (
-                                                        <div key={signal.id} className="relative group/hot">
-                                                            <div className="absolute -inset-1 bg-gradient-to-r from-orange-600 to-red-600 rounded-3xl blur opacity-20 group-hover/hot:opacity-50 transition duration-500 animate-fire"></div>
-                                                            <SignalCard
-                                                                {...signal}
-                                                                imbalance={signal.analytics_signals?.[0]?.imbalance_ratio}
-                                                                depth_score={signal.analytics_signals?.[0]?.depth_score}
-                                                                onViewChart={handleViewChart}
-                                                                onConsultAI={handleConsultAI}
-                                                                compact={true}
-                                                            />
-                                                        </div>
+                                                        <SignalCard
+                                                            key={signal.id}
+                                                            {...signal}
+                                                            imbalance={signal.analytics_signals?.[0]?.imbalance_ratio}
+                                                            depth_score={signal.analytics_signals?.[0]?.depth_score}
+                                                            onViewChart={handleViewChart}
+                                                            onConsultAI={handleConsultAI}
+                                                            compact={true}
+                                                        />
                                                     ))}
-
-                                                    <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent my-4"></div>
+                                                    <div className="h-px bg-[#2f3336] my-3"></div>
                                                 </div>
                                             )}
 
@@ -621,9 +546,8 @@ export default function Dashboard() {
 
                             {/* COL 2: MAIN CHART ENGINE (6 Columns) */}
                             <div id="main-chart-area" className="xl:col-span-6 flex flex-col">
-                                <div className="flex-1 min-h-[500px] rounded-[2rem] border border-white/10 bg-[#0a0a0c]/80 backdrop-blur-3xl relative overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col group/chart transition-all hover:border-white/20">
+                                <div className="flex-1 min-h-[500px] rounded-xl border border-[#2f3336] bg-[#0e0e10] relative overflow-hidden flex flex-col">
                                     <div className="flex-1 w-full h-full relative">
-                                        <div className="absolute inset-0 bg-gradient-to-b from-[#00ffa3]/5 to-transparent pointer-events-none"></div>
                                         <SmartChart
                                             symbol={selectedSignal?.symbol || customSymbol || 'BTC/USD'}
                                             signalData={selectedSignal ? {
@@ -639,7 +563,7 @@ export default function Dashboard() {
                             </div>
 
                             {/* COL 3: OPERATIONS & ORACLE (3 Columns) */}
-                            <div className="xl:col-span-3 flex flex-col gap-6 overflow-hidden min-h-[400px] lg:min-h-0">
+                            <div className="xl:col-span-3 flex flex-col gap-4 overflow-hidden min-h-[400px] lg:min-h-0">
                                 {/* V90: Portfolio Hub - AI Multi-Asset Leaderboard */}
                                 <PortfolioHub />
 
@@ -647,8 +571,7 @@ export default function Dashboard() {
                                 <OracleMonitor />
 
                                 {/* Positions & Wallet */}
-                                <div className="flex-1 flex flex-col rounded-[2.5rem] border border-white/10 bg-[#0a0a0c]/80 backdrop-blur-2xl shadow-2xl relative overflow-hidden group hover:border-[#00ffa3]/30 transition-all duration-500">
-                                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#00ffa3]/40 to-transparent"></div>
+                                <div className="flex-1 flex flex-col rounded-xl border border-[#2f3336] bg-[#0e0e10] relative overflow-hidden">
                                     <div className="flex-1">
                                         <PaperBotWidget onSelectSymbol={handleViewChart} />
                                     </div>
@@ -656,44 +579,48 @@ export default function Dashboard() {
                             </div>
                         </div>
                     )}
-
-                    {currentView === 'bot' && (
-                        <div className="flex-1 p-6 overflow-hidden z-20 animate-slide-up">
-                            <div className="h-full rounded-[2.5rem] border border-white/10 bg-[#0a0a0c]/60 backdrop-blur-2xl shadow-2xl overflow-hidden relative flex flex-col">
-                                <div className="p-6 border-b border-white/5 flex items-center gap-4 bg-white/[0.02]">
-                                    <Zap size={24} className="text-[#00ffa3]" />
-                                    <h1 className="text-2xl font-black tracking-tighter text-white">AUTONOMOUS PAPER ENGINE</h1>
-                                </div>
-                                <div className="flex-1 relative">
-                                    <div className="absolute inset-0">
-                                        <PaperBotWidget onSelectSymbol={handleViewChart} viewMode="pro" />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {currentView === 'logs' && (
-                        <div className="flex-1 p-6 overflow-hidden z-20 flex flex-col animate-slide-up">
-                            <div className="h-full rounded-[2.5rem] border border-white/10 bg-[#0a0a0c]/80 backdrop-blur-md shadow-2xl overflow-hidden relative">
-                                <SystemLogs onClose={() => setCurrentView('dashboard')} />
-                            </div>
-                        </div>
-                    )}
-                </main>
             </div>
+                    )}
 
-            {/* V1600: AI Modal */}
-            {activeChatSignal && (
-                <AIChatModal
-                    signal={activeChatSignal}
-                    isOpen={!!activeChatSignal}
-                    onClose={() => setActiveChatSignal(null)}
-                />
+            {currentView === 'bot' && (
+                <div className="flex-1 p-6 overflow-hidden z-20 animate-slide-up">
+                    <div className="h-full rounded-[2.5rem] border border-white/10 bg-[#0a0a0c]/60 backdrop-blur-2xl shadow-2xl overflow-hidden relative flex flex-col">
+                        <div className="p-6 border-b border-white/5 flex items-center gap-4 bg-white/[0.02]">
+                            <Zap size={24} className="text-[#00ffa3]" />
+                            <h1 className="text-2xl font-black tracking-tighter text-white">AUTONOMOUS PAPER ENGINE</h1>
+                        </div>
+                        <div className="flex-1 relative">
+                            <div className="absolute inset-0">
+                                <PaperBotWidget onSelectSymbol={handleViewChart} viewMode="pro" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
             )}
 
-            {/* V2900: LEGAL COMPLIANCE LAYER */}
-            <RiskModal />
-        </div>
+            {currentView === 'logs' && (
+                <div className="flex-1 p-6 overflow-hidden z-20 flex flex-col animate-slide-up">
+                    <div className="h-full rounded-[2.5rem] border border-white/10 bg-[#0a0a0c]/80 backdrop-blur-md shadow-2xl overflow-hidden relative">
+                        <SystemLogs onClose={() => setCurrentView('dashboard')} />
+                    </div>
+                </div>
+            )}
+        </main>
+            </div >
+
+        {/* V1600: AI Modal */ }
+    {
+        activeChatSignal && (
+            <AIChatModal
+                signal={activeChatSignal}
+                isOpen={!!activeChatSignal}
+                onClose={() => setActiveChatSignal(null)}
+            />
+        )
+    }
+
+    {/* V2900: LEGAL COMPLIANCE LAYER */ }
+    <RiskModal />
+        </div >
     );
 }

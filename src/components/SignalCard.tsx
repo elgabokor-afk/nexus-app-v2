@@ -154,6 +154,8 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
         <>
             {showPaymentModal && <PaymentModal />}
 
+            {showPaymentModal && <PaymentModal />}
+
             <div
                 onClick={() => {
                     if (isLocked) {
@@ -163,12 +165,12 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
                     }
                 }}
                 className={`
-                relative overflow-hidden group transition-all duration-300
+                relative overflow-hidden group transition-all duration-200 cursor-pointer
                 ${compact
-                        ? `mb-3 cursor-pointer bg-[#0e0e10] border ${borderColor} rounded-2xl hover:bg-white/[0.02] active:scale-[0.98]`
-                        : `backdrop-blur-xl bg-[#0e0e10]/90 border ${borderColor} rounded-3xl hover:border-white/10 shadow-2xl`}
-                ${isHot ? glowClass : ''}
-                ${isAuditing ? glowClass : ''} 
+                        ? `mb-2 bg-[#0a0a0c] border border-[#1d1f23] rounded-lg hover:border-[#333]`
+                        : `bg-[#0a0a0c] border border-[#1d1f23] rounded-xl hover:border-[#333] shadow-sm`}
+                ${isHot ? 'border-orange-900/30' : ''}
+                ${isAuditing ? 'border-blue-900/30' : ''} 
             `}
             >
                 {/* === HOVER OVERLAY: AI ACTION (View Internal Chart) === */}
@@ -176,129 +178,85 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
 
                 {/* === HOT ZONE HEADER (Only for Elite Signals) === */}
                 {isHot && !isAuditing && (
-                    <div className={`
-                    w-full py-1.5 px-4 flex items-center gap-2 
-                    bg-gradient-to-r from-red-500/10 to-transparent border-b border-red-500/10
-                `}>
-                        <Flame size={12} className="text-orange-500 fill-orange-500" />
-                        <span className="text-[9px] font-black uppercase tracking-[0.15em] text-orange-400">HOT ZONE - ELITE SIGNALS</span>
-                    </div>
+                    <div className="w-full h-1 bg-orange-600/50"></div>
                 )}
 
                 {/* === AI AUDIT HEADER (Overrides HOT) === */}
                 {isAuditing && (
-                    <div className={`
-                    w-full py-1.5 px-4 flex items-center gap-2 
-                    bg-gradient-to-r from-blue-500/10 to-transparent border-b border-blue-500/10
-                    animate-pulse
-                `}>
-                        <Brain size={12} className="text-blue-500 fill-blue-500/50" />
-                        <span className="text-[9px] font-black uppercase tracking-[0.15em] text-blue-400">
-                            {audit_alert === 'RISK_FREE' ? 'AI: SECURING PROFIT' : 'AI AUDITING LIVE'}
-                        </span>
-                    </div>
+                    <div className="w-full h-1 bg-blue-600/50 animate-pulse"></div>
                 )}
 
                 {/* === MAIN CONTENT === */}
-                <div className={`${compact ? 'p-4' : 'p-6'}`}>
+                <div className={`${compact ? 'p-3' : 'p-5'}`}>
 
                     {/* HEADLINE: Symbol & Status */}
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-white/5 p-1">
-                                <img src={logoUrl} alt={symbol} className="w-full h-full object-contain opacity-80" />
+                            <div className="w-6 h-6 rounded-md bg-[#16181c] p-1 border border-[#2f3336]">
+                                <img src={logoUrl} alt={symbol} className="w-full h-full object-contain" />
                             </div>
                             <div>
-                                <h3 className="text-sm font-bold text-white leading-none">{symbol}</h3>
-                                <p className="text-[9px] text-gray-500 font-mono mt-0.5">{new Date(timestamp).toLocaleTimeString()}</p>
+                                <h3 className="text-sm font-bold text-[#E7E9EA] leading-none tracking-tight">{symbol}</h3>
                             </div>
                         </div>
-                        {isLocked && <Lock size={14} className="text-[#00ffa3] animate-pulse" />}
+                        {isLocked ? (
+                            <Lock size={12} className="text-[#00ffa3]" />
+                        ) : (
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${isBuy ? 'text-[#00ffa3] border-[#00ffa3]/20 bg-[#00ffa3]/5' : 'text-[#ff4d4d] border-[#ff4d4d]/20 bg-[#ff4d4d]/5'}`}>
+                                {actionText}
+                            </span>
+                        )}
                     </div>
 
                     {/* === METRICS GRID === */}
-                    <div className="grid grid-cols-2 gap-4 mt-2 mb-4">
+                    <div className="grid grid-cols-3 gap-2 mt-2">
                         {/* CONFIDENCE */}
-                        <div className="bg-black/40 rounded-2xl p-3 border border-white/5">
-                            <div className="flex items-center gap-2 mb-1">
-                                <Brain size={12} className="text-[#7c3aed]" />
-                                <span className="text-[9px] font-black text-gray-500 uppercase">AI Confidence</span>
-                            </div>
-                            <div className="text-lg font-black text-white">{confidence}%</div>
-                            <div className="w-full bg-gray-800 h-1 rounded-full mt-2 overflow-hidden">
-                                <div className="h-full bg-[#7c3aed]" style={{ width: `${confidence}%` }}></div>
-                            </div>
+                        <div className="flex flex-col">
+                            <span className="text-[10px] text-gray-500 font-medium">Confidence</span>
+                            <span className={`text-xs font-bold ${confidence >= 80 ? 'text-[#00ffa3]' : 'text-gray-300'}`}>{confidence}%</span>
                         </div>
 
-                        {/* RISK/REWARD */}
-                        <div className="bg-black/40 rounded-2xl p-3 border border-white/5 relative overflow-hidden">
-                            {isLocked && (
-                                <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] z-10 flex items-center justify-center cursor-pointer" onClick={() => setShowPaymentModal(true)}>
-                                    <Lock size={14} className="text-gray-500" />
-                                </div>
-                            )}
-                            <div className="flex items-center gap-2 mb-1">
-                                <Activity size={12} className="text-blue-500" />
-                                <span className="text-[9px] font-black text-gray-500 uppercase">Risk : Reward</span>
-                            </div>
-                            <div className="text-lg font-black text-white">1 : 2.0</div>
-                            <div className="text-[9px] text-gray-500 mt-1">Strict Institutional Ratio</div>
+                        {/* RSI */}
+                        <div className="flex flex-col">
+                            <span className="text-[10px] text-gray-500 font-medium">RSI</span>
+                            <span className="text-xs font-bold text-gray-300">{rsi}</span>
+                        </div>
+
+                        {/* TIME */}
+                        <div className="flex flex-col text-right">
+                            <span className="text-[10px] text-gray-500 font-medium">Time</span>
+                            <span className="text-xs font-mono text-gray-400">{new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                         </div>
                     </div>
 
                     {/* === PRICES ROW === */}
-                    <div className="grid grid-cols-3 gap-2 bg-black/40 rounded-2xl p-3 border border-white/5 relative overflow-hidden group/prices">
+                    <div className="mt-3 pt-3 border-t border-[#1d1f23] grid grid-cols-2 gap-4">
 
-                        {/* PAYWALL OVERLAY FOR PRICES */}
-                        {isLocked && (
-                            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/40 backdrop-blur-md transition-all group-hover/prices:bg-black/50 cursor-pointer" onClick={() => setShowPaymentModal(true)}>
-                                <div className="flex items-center gap-2 px-3 py-1.5 bg-[#00ffa3] rounded-full shadow-[0_0_15px_rgba(0,255,163,0.4)] mb-1">
-                                    <Lock size={10} className="text-black" />
-                                    <span className="text-[9px] font-black text-black uppercase tracking-widest leading-none">HIGH CONFIDENCE (85%+)</span>
-                                </div>
-                                <p className="text-[9px] text-gray-300 font-medium mt-1 text-center px-4">
-                                    Desbloquea para ver TP/SL <br />
-                                    <span className="text-[#00ffa3] underline">Click to Upgrade</span>
-                                </p>
-                            </div>
-                        )}
-
-                        {/* ENTRY */}
-                        <div className={`flex flex-col ${isLocked ? 'blur-sm opacity-50' : ''}`}>
-                            <span className="text-[9px] font-black text-gray-500 uppercase mb-1">Entry Zone</span>
-                            <span className="text-sm font-bold text-white font-mono">{formatPrice(price)}</span>
+                        <div className="flex flex-col">
+                            <span className="text-[10px] text-gray-500 font-medium mb-0.5">Target</span>
+                            {isLocked ? (
+                                <div className="h-4 bg-[#1d1f23] rounded animate-pulse w-12"></div>
+                            ) : (
+                                <span className="text-xs font-mono font-medium text-[#00ffa3]">{formatPrice(take_profit)}</span>
+                            )}
                         </div>
 
-                        {/* TP */}
-                        <div className={`flex flex-col ${isLocked ? 'blur-sm opacity-50' : ''}`}>
-                            <span className="text-[9px] font-black text-[#00ffa3] uppercase mb-1">Take Profit</span>
-                            <span className="text-sm font-bold text-[#00ffa3] font-mono">{formatPrice(take_profit)}</span>
+                        <div className="flex flex-col text-right">
+                            <span className="text-[10px] text-gray-500 font-medium mb-0.5">Stop</span>
+                            {isLocked ? (
+                                <div className="h-4 bg-[#1d1f23] rounded animate-pulse w-12 ml-auto"></div>
+                            ) : (
+                                <span className="text-xs font-mono font-medium text-[#ff4d4d]">{formatPrice(stop_loss)}</span>
+                            )}
                         </div>
 
-                        {/* SL */}
-                        <div className={`flex flex-col ${isLocked ? 'blur-sm opacity-50' : ''}`}>
-                            <span className="text-[9px] font-black text-[#ff4d4d] uppercase mb-1">Stop Loss</span>
-                            <span className="text-sm font-bold text-[#ff4d4d] font-mono">{formatPrice(stop_loss)}</span>
-                        </div>
-                    </div>
-
-                    {/* FOOTER */}
-                    <div className="mt-4 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md border ${isBuy ? 'bg-[#00ffa3]/10 border-[#00ffa3]/20 text-[#00ffa3]' : 'bg-[#ff4d4d]/10 border-[#ff4d4d]/20 text-[#ff4d4d]'}`}>
-                                {actionText}
-                            </span>
-                        </div>
-
-                        {!compact && (
-                            <div className="flex items-center gap-2">
-                                <span className="text-[9px] text-gray-600 font-mono uppercase tracking-wider">Vol Ratio</span>
-                                <span className="text-[10px] font-bold text-white">{volume_ratio?.toFixed(2) || '1.24'}x</span>
-                            </div>
-                        )}
                     </div>
                 </div>
             </div>
+        </>
+    );
+};
+            </div >
         </>
     );
 };
