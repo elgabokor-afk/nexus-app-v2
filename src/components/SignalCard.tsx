@@ -43,19 +43,12 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
     // V2800: Robust Logo Logic (Strip '1000' prefix, etc.)
     const cleanSymbol = symbol ? symbol.split('/')[0].replace('1000', '') : 'BTC';
 
-    // V2801: Manual Overrides for newer coins missing in SpotHQ
-    const LOGO_OVERRIDES: Record<string, string> = {
-        'APT': 'https://s2.coinmarketcap.com/static/img/coins/64x64/21794.png',
-        'PEPE': 'https://s2.coinmarketcap.com/static/img/coins/64x64/24478.png',
-        'SUI': 'https://s2.coinmarketcap.com/static/img/coins/64x64/20947.png',
-        'ARB': 'https://s2.coinmarketcap.com/static/img/coins/64x64/11841.png',
-        'WLD': 'https://s2.coinmarketcap.com/static/img/coins/64x64/13502.png',
-        'WIF': 'https://s2.coinmarketcap.com/static/img/coins/64x64/28752.png',
-        'BONK': 'https://s2.coinmarketcap.com/static/img/coins/64x64/23095.png'
-    };
+    // V2802: Reliable Icon Source (CoinCap Assets)
+    const baseIcon = `https://assets.coincap.io/assets/icons/${cleanSymbol.toLowerCase()}@2x.png`;
 
-    // Use Override OR Fallback to SpotHQ
-    const logoUrl = LOGO_OVERRIDES[cleanSymbol.toUpperCase()] || `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${cleanSymbol.toLowerCase()}.png`;
+    // Fallback logic isn't easily doable in pure CSS src without onError, so we trust CoinCap for tops.
+    // If needed, we can add an onError handler in the img tag, but for now CoinCap is very reliable for top 100.
+    const logoUrl = baseIcon;
 
     let borderColor = 'border-white/5';
     let textColor = 'text-white'; // Default to white
@@ -154,8 +147,6 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
         <>
             {showPaymentModal && <PaymentModal />}
 
-            {showPaymentModal && <PaymentModal />}
-
             <div
                 onClick={() => {
                     if (isLocked) {
@@ -170,7 +161,8 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
                         ? `mb-2 bg-[#0a0a0c] border border-[#1d1f23] rounded-lg hover:border-[#333]`
                         : `bg-[#0a0a0c] border border-[#1d1f23] rounded-xl hover:border-[#333] shadow-sm`}
                 ${isHot ? 'border-orange-900/30' : ''}
-                ${isAuditing ? 'border-blue-900/30' : ''} 
+                ${isAuditing ? 'border-blue-900/30' : ''}
+                ${glowClass} 
             `}
             >
                 {/* === HOVER OVERLAY: AI ACTION (View Internal Chart) === */}
@@ -192,39 +184,46 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
                     {/* HEADLINE: Symbol & Status */}
                     <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-3">
-                            <div className="w-6 h-6 rounded-md bg-[#16181c] p-1 border border-[#2f3336]">
-                                <img src={logoUrl} alt={symbol} className="w-full h-full object-contain" />
+                            <div className="w-8 h-8 rounded-full bg-[#16181c] p-0.5 border border-[#2f3336] flex items-center justify-center overflow-hidden">
+                                <img src={logoUrl} alt={symbol} className="w-full h-full object-cover" />
                             </div>
-                            <div>
-                                <h3 className="text-sm font-bold text-[#E7E9EA] leading-none tracking-tight">{symbol}</h3>
+                            <div className="flex flex-col">
+                                <h3 className="text-sm font-black text-[#E7E9EA] leading-none tracking-tight">{symbol}</h3>
+                                <span className="text-[9px] font-mono text-gray-500 mt-0.5">{signal_type}</span>
                             </div>
                         </div>
                         {isLocked ? (
                             <Lock size={12} className="text-[#00ffa3]" />
                         ) : (
-                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${isBuy ? 'text-[#00ffa3] border-[#00ffa3]/20 bg-[#00ffa3]/5' : 'text-[#ff4d4d] border-[#ff4d4d]/20 bg-[#ff4d4d]/5'}`}>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${isBuy ? 'text-[#00ffa3] border-[#00ffa3]/20 bg-[#00ffa3]/5' : 'text-[#ff4d4d] border-[#ff4d4d]/20 bg-[#ff4d4d]/5'}`}>
                                 {actionText}
                             </span>
                         )}
                     </div>
 
-                    {/* === METRICS GRID === */}
-                    <div className="grid grid-cols-3 gap-2 mt-2">
+                    {/* === METRICS GRID (Expanded) === */}
+                    <div className="grid grid-cols-4 gap-2 mt-3 bg-white/[0.02] p-2 rounded-lg border border-white/5">
                         {/* CONFIDENCE */}
                         <div className="flex flex-col">
-                            <span className="text-[10px] text-gray-500 font-medium">Confidence</span>
+                            <span className="text-[9px] text-gray-500 font-bold uppercase">Ai Conf</span>
                             <span className={`text-xs font-bold ${confidence >= 80 ? 'text-[#00ffa3]' : 'text-gray-300'}`}>{confidence}%</span>
                         </div>
 
                         {/* RSI */}
                         <div className="flex flex-col">
-                            <span className="text-[10px] text-gray-500 font-medium">RSI</span>
-                            <span className="text-xs font-bold text-gray-300">{rsi}</span>
+                            <span className="text-[9px] text-gray-500 font-bold uppercase">RSI</span>
+                            <span className={`text-xs font-bold ${rsi > 70 || rsi < 30 ? 'text-orange-400' : 'text-gray-300'}`}>{rsi}</span>
+                        </div>
+
+                        {/* VOL RATIO */}
+                        <div className="flex flex-col">
+                            <span className="text-[9px] text-gray-500 font-bold uppercase">Vol</span>
+                            <span className="text-xs font-bold text-gray-300">{volume_ratio?.toFixed(1) || '-'}x</span>
                         </div>
 
                         {/* TIME */}
                         <div className="flex flex-col text-right">
-                            <span className="text-[10px] text-gray-500 font-medium">Time</span>
+                            <span className="text-[9px] text-gray-500 font-bold uppercase">Time</span>
                             <span className="text-xs font-mono text-gray-400">{new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                         </div>
                     </div>
@@ -233,20 +232,20 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
                     <div className="mt-3 pt-3 border-t border-[#1d1f23] grid grid-cols-2 gap-4">
 
                         <div className="flex flex-col">
-                            <span className="text-[10px] text-gray-500 font-medium mb-0.5">Target</span>
+                            <span className="text-[10px] text-gray-500 font-bold uppercase mb-0.5">Target</span>
                             {isLocked ? (
                                 <div className="h-4 bg-[#1d1f23] rounded animate-pulse w-12"></div>
                             ) : (
-                                <span className="text-xs font-mono font-medium text-[#00ffa3]">{formatPrice(take_profit)}</span>
+                                <span className="text-xs font-mono font-bold text-[#00ffa3]">{formatPrice(take_profit)}</span>
                             )}
                         </div>
 
                         <div className="flex flex-col text-right">
-                            <span className="text-[10px] text-gray-500 font-medium mb-0.5">Stop</span>
+                            <span className="text-[10px] text-gray-500 font-bold uppercase mb-0.5">Stop</span>
                             {isLocked ? (
                                 <div className="h-4 bg-[#1d1f23] rounded animate-pulse w-12 ml-auto"></div>
                             ) : (
-                                <span className="text-xs font-mono font-medium text-[#ff4d4d]">{formatPrice(stop_loss)}</span>
+                                <span className="text-xs font-mono font-bold text-[#ff4d4d]">{formatPrice(stop_loss)}</span>
                             )}
                         </div>
 
