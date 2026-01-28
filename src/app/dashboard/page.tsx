@@ -6,15 +6,17 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Pusher from 'pusher-js';
 import SignalCard from '@/components/SignalCard';
-import SystemLogs from '@/components/SystemLogs';
-import { Zap, Activity, LogOut, User, TrendingUp, Lock, Globe } from 'lucide-react';
-import PaperBotWidget from '@/components/PaperBotWidget';
-import OracleMonitor from '@/components/OracleMonitor';
-import PortfolioHub from '@/components/PortfolioHub';
-import AIChatModal from '@/components/AIChatModal'; // V1600
+// V3100: Lazy Load Heavy Components for Performance
+const SystemLogs = dynamic(() => import('@/components/SystemLogs'), { ssr: false });
+const PaperBotWidget = dynamic(() => import('@/components/PaperBotWidget'), { ssr: false });
+const OracleMonitor = dynamic(() => import('@/components/OracleMonitor'), { ssr: false });
+const PortfolioHub = dynamic(() => import('@/components/PortfolioHub'), { ssr: false });
+const AIChatModal = dynamic(() => import('@/components/AIChatModal'), { ssr: false });
+const PerformanceStats = dynamic(() => import('@/components/PerformanceStats'), { ssr: false });
+
+import { Zap, Activity, LogOut, User, TrendingUp, Lock, Globe, ExternalLink } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
-import PerformanceStats from '@/components/PerformanceStats'; // V1500
 import SubscriptionGuard from '@/components/SubscriptionGuard'; // V1800
 import { useProfile } from '@/hooks/useProfile'; // V1800
 
@@ -579,48 +581,47 @@ export default function Dashboard() {
                             </div>
                         </div>
                     )}
-            </div>
-                    )}
 
-            {currentView === 'bot' && (
-                <div className="flex-1 p-6 overflow-hidden z-20 animate-slide-up">
-                    <div className="h-full rounded-[2.5rem] border border-white/10 bg-[#0a0a0c]/60 backdrop-blur-2xl shadow-2xl overflow-hidden relative flex flex-col">
-                        <div className="p-6 border-b border-white/5 flex items-center gap-4 bg-white/[0.02]">
-                            <Zap size={24} className="text-[#00ffa3]" />
-                            <h1 className="text-2xl font-black tracking-tighter text-white">AUTONOMOUS PAPER ENGINE</h1>
-                        </div>
-                        <div className="flex-1 relative">
-                            <div className="absolute inset-0">
-                                <PaperBotWidget onSelectSymbol={handleViewChart} viewMode="pro" />
+
+                    {currentView === 'bot' && (
+                        <div className="flex-1 p-6 overflow-hidden z-20 animate-slide-up">
+                            <div className="h-full rounded-[2.5rem] border border-white/10 bg-[#0a0a0c]/60 backdrop-blur-2xl shadow-2xl overflow-hidden relative flex flex-col">
+                                <div className="p-6 border-b border-white/5 flex items-center gap-4 bg-white/[0.02]">
+                                    <Zap size={24} className="text-[#00ffa3]" />
+                                    <h1 className="text-2xl font-black tracking-tighter text-white">AUTONOMOUS PAPER ENGINE</h1>
+                                </div>
+                                <div className="flex-1 relative">
+                                    <div className="absolute inset-0">
+                                        <PaperBotWidget onSelectSymbol={handleViewChart} viewMode="pro" />
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </div>
-            )}
+                    )}
 
-            {currentView === 'logs' && (
-                <div className="flex-1 p-6 overflow-hidden z-20 flex flex-col animate-slide-up">
-                    <div className="h-full rounded-[2.5rem] border border-white/10 bg-[#0a0a0c]/80 backdrop-blur-md shadow-2xl overflow-hidden relative">
-                        <SystemLogs onClose={() => setCurrentView('dashboard')} />
-                    </div>
-                </div>
-            )}
-        </main>
+                    {currentView === 'logs' && (
+                        <div className="flex-1 p-6 overflow-hidden z-20 flex flex-col animate-slide-up">
+                            <div className="h-full rounded-[2.5rem] border border-white/10 bg-[#0a0a0c]/80 backdrop-blur-md shadow-2xl overflow-hidden relative">
+                                <SystemLogs onClose={() => setCurrentView('dashboard')} />
+                            </div>
+                        </div>
+                    )}
+                </main>
             </div >
 
-        {/* V1600: AI Modal */ }
-    {
-        activeChatSignal && (
-            <AIChatModal
-                signal={activeChatSignal}
-                isOpen={!!activeChatSignal}
-                onClose={() => setActiveChatSignal(null)}
-            />
-        )
-    }
+            {/* V1600: AI Modal */}
+            {
+                activeChatSignal && (
+                    <AIChatModal
+                        signal={activeChatSignal}
+                        isOpen={!!activeChatSignal}
+                        onClose={() => setActiveChatSignal(null)}
+                    />
+                )
+            }
 
-    {/* V2900: LEGAL COMPLIANCE LAYER */ }
-    <RiskModal />
+            {/* V2900: LEGAL COMPLIANCE LAYER */}
+            <RiskModal />
         </div >
     );
 }

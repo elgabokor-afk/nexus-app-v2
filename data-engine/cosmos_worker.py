@@ -262,10 +262,20 @@ def main_loop():
             # V2700: COSMOS AI AUDITOR INTEGRATION
             try:
                 from cosmos_auditor import audit_active_signals
+                from cosmos_oracle import run_oracle_step
+                
                 logger.info("Running AI Signal Audit...")
                 audit_active_signals()
+
+                # V3000: Neural Link Activator
+                # Randomly pick a priority asset to analyze for the "Thought Stream"
+                import random
+                target = random.choice(['BTC/USDT', 'ETH/USDT', 'SOL/USDT'])
+                logger.info(f"Running Oracle Thought Process on {target}...")
+                run_oracle_step(target)
+
             except Exception as e:
-                logger.error(f"Audit Cycle Failed: {e}")
+                logger.error(f"Audit/Oracle Cycle Failed: {e}")
 
             # Sleep remainder of minute
             elapsed = time.time() - start_time
