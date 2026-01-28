@@ -2,58 +2,65 @@
 
 import { useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { Zap, Mail, Chrome, ArrowRight, Loader2 } from 'lucide-react';
+import { Zap, Mail, Chrome, ArrowRight, Loader2, Lock, Eye, EyeOff, Globe } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import LegalModal from '@/components/LegalModal';
 
 export default function LoginPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [isRegistering, setIsRegistering] = useState(false);
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
     const [lang, setLang] = useState<'en' | 'es'>('en');
-    const [legalModal, setLegalModal] = useState<'terms' | 'privacy' | 'risk' | null>(null); // Modal State
+    const [legalModal, setLegalModal] = useState<'terms' | 'privacy' | 'risk' | null>(null);
     const router = useRouter();
 
     const t = {
         en: {
-            title_login: 'Access Terminal',
-            title_register: 'Initialize Node',
-            subtitle_login: 'Enter credentials to proceed',
-            subtitle_register: 'Create your secure identity',
-            email_placeholder: 'Email Address',
-            pass_placeholder: 'Password',
-            btn_login: 'Authenticate',
-            btn_register: 'Deploy Account',
-            switch_to_register: 'New System? Initialize',
-            switch_to_login: 'Already have a node? Login',
-            or_text: 'or integrate with',
-            google_btn: 'Continue with Google',
-            terms_text: 'I certify that I have read and accept the',
-            terms_link: 'Terms of Service',
+            title_login: 'Welcome Back',
+            title_register: 'Create Information',
+            subtitle_login: 'Log in with your email and password.',
+            subtitle_register: 'Register a new account.',
+            email_label: 'Email',
+            email_placeholder: 'Enter your email',
+            pass_label: 'Password',
+            pass_placeholder: 'Enter your password',
+            btn_login: 'Log In',
+            btn_register: 'Register',
+            switch_to_register: 'Not registered yet? Create an Account',
+            switch_to_login: 'Already have an account? Log In',
+            or_text: 'Or continue with',
+            google_btn: 'Google',
+            terms_text: 'By registering, I agree to the',
+            terms_link: 'Terms of Use',
             privacy_link: 'Privacy Policy',
-            risk_link: 'Risk Disclaimer',
-            footer: 'Institutional Grade Execution • Optimized for Kraken'
+            risk_link: 'Risk Disclosure',
+            marketing_text: 'I agree to receive marketing updates.',
+            footer_copy: '© 2024 Nexus AI. All rights reserved.'
         },
         es: {
-            title_login: 'Acceder a Terminal',
-            title_register: 'Inicializar Nodo',
-            subtitle_login: 'Ingrese credenciales para proceder',
-            subtitle_register: 'Cree su identidad segura',
-            email_placeholder: 'Correo Electrónico',
-            pass_placeholder: 'Contraseña',
-            btn_login: 'Autenticar',
-            btn_register: 'Desplegar Cuenta',
-            switch_to_register: '¿Sistema Nuevo? Inicializar',
-            switch_to_login: '¿Ya tiene nodo? Ingresar',
-            or_text: 'o integrar con',
-            google_btn: 'Continuar con Google',
-            terms_text: 'Certifico que he leído y acepto el',
-            terms_link: 'Términos de Servicio',
+            title_login: 'Bienvenido de nuevo',
+            title_register: 'Crear Información',
+            subtitle_login: 'Inicia sesión con tu correo y contraseña.',
+            subtitle_register: 'Registra una nueva cuenta.',
+            email_label: 'Correo Electrónico',
+            email_placeholder: 'Introduce tu correo',
+            pass_label: 'Contraseña',
+            pass_placeholder: 'Introduce tu contraseña',
+            btn_login: 'Iniciar Sesión',
+            btn_register: 'Registrarse',
+            switch_to_register: '¿No estás registrado? Crear Cuenta',
+            switch_to_login: '¿Ya tienes cuenta? Iniciar Sesión',
+            or_text: 'O continúa con',
+            google_btn: 'Google',
+            terms_text: 'Al registrarme, acepto los',
+            terms_link: 'Términos de Uso',
             privacy_link: 'Política de Privacidad',
-            risk_link: 'Aviso de Riesgo',
-            footer: 'Ejecución de Grado Institucional • Optimizado para Kraken'
+            risk_link: 'Divulgación de Riesgos',
+            marketing_text: 'Acepto recibir actualizaciones de marketing.',
+            footer_copy: '© 2024 Nexus AI. Todos los derechos reservados.'
         }
     }[lang];
 
@@ -99,140 +106,143 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="min-h-screen bg-[#050505] grid lg:grid-cols-2 relative overflow-hidden">
+        <div className="min-h-screen bg-[#181A20] text-[#EAECEF] font-sans flex relative overflow-hidden">
+            <LegalModal isOpen={!!legalModal} onClose={() => setLegalModal(null)} type={legalModal || 'terms'} />
 
-            {/* Legal Modal */}
-            <LegalModal
-                isOpen={!!legalModal}
-                onClose={() => setLegalModal(null)}
-                type={legalModal || 'terms'}
-            />
-
-            {/* Left: Visual Side (Desktop Only) */}
-            <div className="hidden lg:flex flex-col justify-between p-12 relative overflow-hidden bg-[#0a0a0c] border-r border-white/5">
-                <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10"></div>
-                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#00ffa3]/5 rounded-full blur-[120px]"></div>
-
-                <div className="z-10">
-                    <div className="flex items-center gap-3 mb-6">
-                        <div className="w-10 h-10 bg-[#00ffa3] rounded-xl flex items-center justify-center rotate-3">
-                            <Zap size={20} className="text-black fill-black" strokeWidth={3} />
-                        </div>
-                        <span className="font-black text-xl tracking-tighter text-white">NEXUS<span className="text-[#00ffa3]">AI</span></span>
-                    </div>
-                    <h2 className="text-4xl font-black text-white leading-tight mb-4">
-                        Algo-Trading <br />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00ffa3] to-emerald-500">
-                            Reinvented.
-                        </span>
-                    </h2>
-                    <p className="text-gray-500 max-w-md font-medium">
-                        Deploy institutional-grade strategies with zero latency.
-                        Powered by Cosmos AI 3.0.
-                    </p>
-                </div>
-
-                <div className="z-10 bg-white/5 backdrop-blur-md rounded-2xl p-6 border border-white/10">
-                    <div className="flex items-center gap-4 mb-3">
-                        <div className="flex -space-x-3">
-                            {[1, 2, 3].map(i => (
-                                <div key={i} className="w-8 h-8 rounded-full bg-gray-800 border-2 border-[#0a0a0c] flex items-center justify-center text-[10px] font-bold text-gray-400">
-                                    AI
-                                </div>
-                            ))}
-                        </div>
-                        <div className="text-xs text-gray-400">
-                            <strong className="text-white">1,200+ Traders</strong> deployed nodes today.
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Right: Auth Side */}
-            <div className="flex flex-col items-center justify-center p-6 relative">
-
-                {/* Language Switcher */}
-                <div className="absolute top-6 right-6 flex gap-2">
+            {/* Language Switch */}
+            <div className="absolute top-6 right-6 z-50">
+                <div className="flex bg-[#2B3139] rounded-md p-1">
                     <button
                         onClick={() => setLang('en')}
-                        className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${lang === 'en' ? 'bg-white/10 text-white' : 'text-gray-600 hover:text-white'}`}
+                        className={`px-3 py-1 rounded text-xs font-bold transition-all ${lang === 'en' ? 'bg-[#FCD535] text-black' : 'text-[#848E9C] hover:text-[#EAECEF]'}`}
                     >
                         EN
                     </button>
                     <button
                         onClick={() => setLang('es')}
-                        className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${lang === 'es' ? 'bg-white/10 text-white' : 'text-gray-600 hover:text-white'}`}
+                        className={`px-3 py-1 rounded text-xs font-bold transition-all ${lang === 'es' ? 'bg-[#FCD535] text-black' : 'text-[#848E9C] hover:text-[#EAECEF]'}`}
                     >
                         ES
                     </button>
                 </div>
+            </div>
 
-                <div className="w-full max-w-[400px]">
-                    {/* Header (Mobile) */}
-                    <div className="lg:hidden flex justify-center mb-8">
-                        <div className="w-12 h-12 bg-[#00ffa3] rounded-xl flex items-center justify-center rotate-3 shadow-[0_0_20px_rgba(0,255,163,0.3)]">
-                            <Zap size={24} className="text-black fill-black" strokeWidth={3} />
+            {/* Left Side: Exchange Visual (Desktop) */}
+            <div className="hidden lg:flex flex-col justify-center items-center w-1/2 p-16 relative bg-[#0b0e11]">
+                {/* Decorative Globe/Grid */}
+                <div className="absolute inset-0 opacity-20 pointer-events-none bg-[url('https://upload.wikimedia.org/wikipedia/commons/e/ec/World_map_blank_without_borders.svg')] bg-no-repeat bg-center bg-contain filter invert"></div>
+
+                <div className="z-10 text-center max-w-lg">
+                    <h1 className="text-5xl font-bold mb-6 text-[#EAECEF] tracking-tight">
+                        Trading, <span className="text-[#FCD535]">Simplified.</span>
+                    </h1>
+                    <p className="text-[#848E9C] text-lg leading-relaxed mb-10">
+                        Join the world's leading crypto automation platform.
+                        Trade with confidence, precision, and institutional-grade tools.
+                    </p>
+
+                    {/* Trust Badges */}
+                    <div className="grid grid-cols-3 gap-8 border-t border-[#2B3139] pt-8">
+                        <div>
+                            <div className="text-2xl font-bold text-[#EAECEF]">2.4M</div>
+                            <div className="text-xs text-[#848E9C] uppercase tracking-wide mt-1">Users</div>
+                        </div>
+                        <div>
+                            <div className="text-2xl font-bold text-[#EAECEF]">$12B</div>
+                            <div className="text-xs text-[#848E9C] uppercase tracking-wide mt-1">Volume</div>
+                        </div>
+                        <div>
+                            <div className="text-2xl font-bold text-[#EAECEF]">< 50ms</div>
+                            <div className="text-xs text-[#848E9C] uppercase tracking-wide mt-1">Latency</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Right Side: Form */}
+            <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-[#181A20]">
+                <div className="w-full max-w-[420px]">
+
+                    {/* Header Mobile */}
+                    <div className="lg:hidden mb-8 text-center">
+                        <div className="inline-flex items-center justify-center w-12 h-12 bg-[#FCD535] rounded-xl mb-4">
+                            <Zap className="text-black" size={24} fill="black" />
                         </div>
                     </div>
 
                     <div className="mb-8">
-                        <h1 className="text-3xl font-black tracking-tighter text-white mb-2">
+                        <div className="hidden lg:block mb-6 text-[#FCD535]">
+                            <Zap size={32} fill="#FCD535" />
+                        </div>
+                        <h2 className="text-3xl font-bold mb-2 text-[#EAECEF]">
                             {isRegistering ? t.title_register : t.title_login}
-                        </h1>
-                        <p className="text-gray-500 font-medium">
+                        </h2>
+                        <p className="text-[#848E9C]">
                             {isRegistering ? t.subtitle_register : t.subtitle_login}
                         </p>
                     </div>
 
-                    <form onSubmit={handleAuth} className="space-y-4">
-                        <div className="space-y-4">
-                            <div className="relative group">
-                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-500 group-focus-within:text-[#00ffa3] transition-colors">
-                                    <Mail size={18} />
-                                </div>
+                    <form onSubmit={handleAuth} className="space-y-6">
+
+                        {/* Email Input */}
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-[#EAECEF]">{t.email_label}</label>
+                            <div className="relative">
                                 <input
                                     type="email"
-                                    placeholder={t.email_placeholder}
                                     required
+                                    placeholder={t.email_placeholder}
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full bg-[#0a0a0c] border border-white/10 rounded-xl py-4 pl-12 pr-4 text-white focus:outline-none focus:border-[#00ffa3]/50 focus:ring-1 focus:ring-[#00ffa3]/20 transition-all font-medium text-sm"
-                                />
-                            </div>
-                            <div className="relative group">
-                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-500 group-focus-within:text-[#00ffa3] transition-colors">
-                                    <div className="w-4 h-4 border-2 border-current rounded-sm"></div>
-                                </div>
-                                <input
-                                    type="password"
-                                    placeholder={t.pass_placeholder}
-                                    required
-                                    minLength={6}
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full bg-[#0a0a0c] border border-white/10 rounded-xl py-4 pl-12 pr-4 text-white focus:outline-none focus:border-[#00ffa3]/50 focus:ring-1 focus:ring-[#00ffa3]/20 transition-all font-medium text-sm"
+                                    className="w-full bg-[#2B3139] border border-transparent hover:border-[#474D57] focus:border-[#FCD535] rounded-lg px-4 py-3 text-[#EAECEF] placeholder-[#474D57] outline-none transition-all text-sm font-medium"
                                 />
                             </div>
                         </div>
 
+                        {/* Password Input */}
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-[#EAECEF]">{t.pass_label}</label>
+                            <div className="relative">
+                                <input
+                                    type={showPassword ? 'text' : 'password'}
+                                    required
+                                    minLength={6}
+                                    placeholder={t.pass_placeholder}
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    className="w-full bg-[#2B3139] border border-transparent hover:border-[#474D57] focus:border-[#FCD535] rounded-lg px-4 py-3 text-[#EAECEF] placeholder-[#474D57] outline-none transition-all text-sm font-medium pr-10"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#848E9C] hover:text-[#EAECEF]"
+                                >
+                                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Terms Checkbox (Register Only) */}
                         {isRegistering && (
-                            <div className="flex items-start gap-3 px-1 py-1">
-                                <div className="relative flex items-center pt-0.5">
+                            <div className="space-y-4">
+                                <label className="flex items-start gap-3 cursor-pointer group">
                                     <input
                                         type="checkbox"
-                                        id="terms"
                                         required
-                                        className="peer h-4 w-4 shrink-0 cursor-pointer appearance-none rounded border border-gray-600 bg-[#0a0a0c] checked:border-[#00ffa3] checked:bg-[#00ffa3] focus:outline-none focus:ring-1 focus:ring-[#00ffa3]/50 transition-all"
+                                        className="mt-1 w-4 h-4 rounded border-[#474D57] bg-transparent text-[#FCD535] focus:ring-0 focus:ring-offset-0 cursor-pointer"
                                     />
-                                    <svg className="pointer-events-none absolute left-1/2 top-1/2 -ml-2 -mt-2 hidden h-4 w-4 text-black peer-checked:block" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
-                                        <polyline points="20 6 9 17 4 12"></polyline>
-                                    </svg>
-                                </div>
-                                <label htmlFor="terms" className="text-[11px] text-gray-400 font-medium leading-tight cursor-pointer select-none">
-                                    {t.terms_text}
-                                    <span onClick={(e) => { e.preventDefault(); setLegalModal('risk'); }} className="text-[#00ffa3] hover:underline px-1 cursor-pointer">{t.risk_link}</span>
-                                    &
-                                    <span onClick={(e) => { e.preventDefault(); setLegalModal('terms'); }} className="text-[#00ffa3] hover:underline px-1 cursor-pointer">{t.terms_link}</span>
+                                    <div className="text-xs text-[#848E9C] leading-snug group-hover:text-[#b7bdc6] transition-colors">
+                                        {t.terms_text} <span onClick={(e) => { e.preventDefault(); setLegalModal('terms'); }} className="text-[#FCD535] hover:underline">{t.terms_link}</span> & <span onClick={(e) => { e.preventDefault(); setLegalModal('privacy'); }} className="text-[#FCD535] hover:underline">{t.privacy_link}</span>.
+                                    </div>
+                                </label>
+                                <label className="flex items-start gap-3 cursor-pointer group">
+                                    <input
+                                        type="checkbox"
+                                        className="mt-1 w-4 h-4 rounded border-[#474D57] bg-transparent text-[#FCD535] focus:ring-0 focus:ring-offset-0 cursor-pointer"
+                                    />
+                                    <div className="text-xs text-[#848E9C] leading-snug group-hover:text-[#b7bdc6] transition-colors">
+                                        {t.marketing_text}
+                                    </div>
                                 </label>
                             </div>
                         )}
@@ -240,57 +250,47 @@ export default function LoginPage() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full bg-[#00ffa3] hover:bg-[#00ffa3]/90 text-black font-black py-4 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100 uppercase tracking-wider text-sm shadow-[0_0_20px_rgba(0,255,163,0.3)] hover:shadow-[0_0_30px_rgba(0,255,163,0.5)]"
+                            className="w-full bg-[#FCD535] hover:bg-[#F0C930] text-[#181A20] font-bold py-3 rounded-lg transition-colors disabled:opacity-50 text-base"
                         >
-                            {loading ? (
-                                <Loader2 className="animate-spin" size={18} />
-                            ) : (
-                                <>
-                                    {isRegistering ? t.btn_register : t.btn_login} <ArrowRight size={18} />
-                                </>
-                            )}
+                            {loading ? <Loader2 className="animate-spin mx-auto" size={20} /> : (isRegistering ? t.btn_register : t.btn_login)}
                         </button>
                     </form>
 
-                    <div className="mt-8 text-center">
+                    <div className="relative my-8">
+                        <div className="absolute inset-0 flex items-center">
+                            <div className="w-full border-t border-[#2B3139]"></div>
+                        </div>
+                        <div className="relative flex justify-center text-sm">
+                            <span className="bg-[#181A20] px-4 text-[#848E9C]">{t.or_text}</span>
+                        </div>
+                    </div>
+
+                    <button
+                        onClick={handleGoogleLogin}
+                        className="w-full bg-[#2B3139] hover:bg-[#343a41] text-[#EAECEF] font-medium py-3 rounded-lg transition-colors flex items-center justify-center gap-3 text-sm"
+                    >
+                        <Chrome size={20} />
+                        {t.google_btn}
+                    </button>
+
+                    <div className="mt-8 text-center bg-[#2b3139]/20 p-4 rounded-lg">
                         <button
                             onClick={() => {
                                 setIsRegistering(!isRegistering);
                                 setMessage(null);
                             }}
-                            className="text-xs font-bold text-gray-500 hover:text-white transition-colors"
+                            className="text-[#FCD535] hover:text-[#F0C930] text-sm font-bold transition-colors"
                         >
                             {isRegistering ? t.switch_to_login : t.switch_to_register}
                         </button>
                     </div>
 
-                    <div className="relative flex items-center justify-center py-6">
-                        <div className="absolute w-full h-[1px] bg-white/5"></div>
-                        <span className="relative bg-[#050505] px-4 text-[10px] text-gray-600 font-bold uppercase tracking-widest">{t.or_text}</span>
-                    </div>
-
-                    <button
-                        onClick={handleGoogleLogin}
-                        className="w-full bg-white/[0.03] hover:bg-white/[0.06] border border-white/10 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-3 transition-all active:scale-[0.98]"
-                    >
-                        <Chrome size={18} />
-                        {t.google_btn}
-                    </button>
-
-                    {/* Status Messages */}
                     {message && (
-                        <div className={`mt-6 p-4 rounded-xl border text-xs font-bold text-center animate-in fade-in slide-in-from-top-2 duration-300 ${message.type === 'success'
-                            ? 'bg-green-500/10 border-green-500/20 text-green-400'
-                            : 'bg-red-500/10 border-red-500/20 text-red-400'
-                            }`}>
+                        <div className={`mt-4 p-3 rounded-lg text-sm text-center ${message.type === 'success' ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-500'}`}>
                             {message.text}
                         </div>
                     )}
                 </div>
-
-                <p className="mt-auto pt-10 text-center text-[10px] text-gray-700 font-medium">
-                    {t.footer}
-                </p>
             </div>
         </div>
     );
