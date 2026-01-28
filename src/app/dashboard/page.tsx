@@ -1,8 +1,7 @@
-import RiskModal from '@/components/RiskModal';
-import LegalFooter from '@/components/LegalFooter';
-
 'use client';
 
+import RiskModal from '@/components/RiskModal';
+import LegalFooter from '@/components/LegalFooter';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Pusher from 'pusher-js';
