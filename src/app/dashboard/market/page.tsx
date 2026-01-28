@@ -81,16 +81,21 @@ export default function MarketPage() {
     return (
         <div className="h-screen bg-[#050505] text-white p-6 lg:p-10 font-sans pb-32 overflow-y-auto custom-scrollbar">
 
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
-                <div>
-                    <h1 className="text-3xl font-black tracking-tighter flex items-center gap-3">
-                        <Globe className="text-[#00ffa3]" />
-                        MARKET <span className="text-[#00ffa3]">OVERVIEW</span>
-                    </h1>
-                    <p className="text-gray-500 text-xs font-bold tracking-widest uppercase mt-1">
-                        Powered by CoinMarketCap Pro
-                    </p>
+            {/* Header / Nav */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 sticky top-0 bg-[#050505]/90 backdrop-blur-md z-30 p-4 -mx-4 lg:-mx-10 lg:px-10 border-b border-white/5 md:border-none md:static md:p-0 md:bg-transparent">
+                <div className="flex items-center gap-4">
+                    <a href="/dashboard" className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors">
+                        <ArrowUpRight className="rotate-[-135deg]" size={20} />
+                    </a>
+                    <div>
+                        <h1 className="text-2xl md:text-3xl font-black tracking-tighter flex items-center gap-2 md:gap-3 text-white">
+                            <Globe className="text-[#00ffa3] w-6 h-6 md:w-8 md:h-8" />
+                            MARKET <span className="text-[#00ffa3]">OVERVIEW</span>
+                        </h1>
+                        <p className="text-gray-500 text-[10px] md:text-xs font-bold tracking-widest uppercase mt-0.5">
+                            Powered by CoinMarketCap Pro
+                        </p>
+                    </div>
                 </div>
 
                 <div className="relative w-full md:w-96">

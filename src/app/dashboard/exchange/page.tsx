@@ -126,21 +126,21 @@ export default function ExchangePage() {
     return (
         <div className="h-screen bg-[#050505] text-white p-6 lg:p-10 font-sans pb-32 overflow-y-auto custom-scrollbar">
 
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+            {/* Header / Nav */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 sticky top-0 bg-[#050505]/90 backdrop-blur-md z-30 p-4 -mx-4 lg:-mx-10 lg:px-10 border-b border-white/5 md:border-none md:static md:p-0 md:bg-transparent">
                 <div className="flex items-center gap-4">
                     <button
                         onClick={() => router.back()}
-                        className="p-2 bg-white/5 rounded-full hover:bg-white/10 transition-colors"
+                        className="p-2 bg-white/5 rounded-full hover:bg-white/10 transition-colors text-gray-400 hover:text-white"
                     >
                         <ArrowLeft size={20} />
                     </button>
                     <div>
-                        <h1 className="text-3xl font-black tracking-tighter flex items-center gap-3">
-                            <Activity className="text-[#00ffa3]" />
+                        <h1 className="text-2xl md:text-3xl font-black tracking-tighter flex items-center gap-2 md:gap-3 text-white">
+                            <Activity className="text-[#00ffa3] w-6 h-6 md:w-8 md:h-8" />
                             LIVE <span className="text-[#00ffa3]">EXCHANGE</span>
                         </h1>
-                        <p className="text-gray-500 text-xs font-bold tracking-widest uppercase mt-1">
+                        <p className="text-gray-500 text-[10px] md:text-xs font-bold tracking-widest uppercase mt-0.5">
                             Top 100 Volume Assets (Binance Feed)
                         </p>
                     </div>
