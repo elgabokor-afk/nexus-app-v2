@@ -202,29 +202,37 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
                     </div>
 
                     {/* === METRICS GRID (Expanded) === */}
-                    <div className="grid grid-cols-4 gap-2 mt-3 bg-white/[0.02] p-2 rounded-lg border border-white/5">
+                    <div className="grid grid-cols-4 gap-2 mt-3 bg-white/[0.03] p-2.5 rounded-lg border border-white/5 relative overflow-hidden">
+
+                        {/* Decorative Gradient Background */}
+                        <div className={`absolute inset-0 opacity-10 ${isBuy ? 'bg-gradient-to-br from-[#00ffa3] to-transparent' : 'bg-gradient-to-br from-[#ff4d4d] to-transparent'}`}></div>
+
                         {/* CONFIDENCE */}
-                        <div className="flex flex-col">
-                            <span className="text-[9px] text-gray-500 font-bold uppercase">Ai Conf</span>
-                            <span className={`text-xs font-bold ${confidence >= 80 ? 'text-[#00ffa3]' : 'text-gray-300'}`}>{confidence}%</span>
+                        <div className="flex flex-col relative z-10">
+                            <span className="text-[9px] text-gray-400 font-black uppercase tracking-wider">AI Conf</span>
+                            <span className={`text-sm font-black ${confidence >= 80 ? 'text-[#00ffa3] drop-shadow-[0_0_5px_rgba(0,255,163,0.5)]' : 'text-gray-200'}`}>{confidence}%</span>
                         </div>
 
-                        {/* RSI */}
-                        <div className="flex flex-col">
-                            <span className="text-[9px] text-gray-500 font-bold uppercase">RSI</span>
-                            <span className={`text-xs font-bold ${rsi > 70 || rsi < 30 ? 'text-orange-400' : 'text-gray-300'}`}>{rsi}</span>
+                        {/* RSI (Fixed Precision) */}
+                        <div className="flex flex-col relative z-10">
+                            <span className="text-[9px] text-gray-400 font-black uppercase tracking-wider">RSI</span>
+                            <span className={`text-sm font-bold ${rsi > 70 || rsi < 30 ? 'text-orange-400' : 'text-white'}`}>
+                                {Math.round(rsi)} <span className="text-[9px] text-gray-500 font-normal">/ 100</span>
+                            </span>
                         </div>
 
-                        {/* VOL RATIO */}
-                        <div className="flex flex-col">
-                            <span className="text-[9px] text-gray-500 font-bold uppercase">Vol</span>
-                            <span className="text-xs font-bold text-gray-300">{volume_ratio?.toFixed(1) || '-'}x</span>
+                        {/* SENTIMENT (New) */}
+                        <div className="flex flex-col relative z-10">
+                            <span className="text-[9px] text-gray-400 font-black uppercase tracking-wider">Sentiment</span>
+                            <span className={`text-[10px] font-bold mt-0.5 ${isBuy ? 'text-green-400' : 'text-red-400'}`}>
+                                {confidence > 85 ? 'EXTREME' : 'STRONG'}
+                            </span>
                         </div>
 
                         {/* TIME */}
-                        <div className="flex flex-col text-right">
-                            <span className="text-[9px] text-gray-500 font-bold uppercase">Time</span>
-                            <span className="text-xs font-mono text-gray-400">{new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        <div className="flex flex-col text-right relative z-10">
+                            <span className="text-[9px] text-gray-400 font-black uppercase tracking-wider">Time</span>
+                            <span className="text-xs font-mono text-gray-300">{new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                         </div>
                     </div>
 
