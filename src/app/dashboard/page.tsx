@@ -301,7 +301,7 @@ export default function Dashboard() {
         <div className="h-screen bg-[#050505] text-white font-sans overflow-hidden flex flex-col">
 
             {/* TOP BAR / HEADER */}
-            <header className="h-20 border-b border-white/5 flex items-center justify-between px-6 bg-[#0a0a0c]/80 backdrop-blur-2xl z-[60] relative">
+            <header className="h-20 border-b border-white/5 flex items-center justify-between px-6 bg-[#0a0a0c]/80 backdrop-blur-2xl z-[60] sticky top-0">
                 <div className="flex items-center gap-6">
                     {/* Hamburger Toggle */}
                     <button
