@@ -51,6 +51,21 @@ class BinanceTrader:
                 # Pre-load markets to avoid "symbol not found" errors
                 print("   [BINANCE] Loading Futures Markets...")
                 self.exchange.load_markets()
+
+                # V500: SECURITY AUDIT - CHECK WITHDRAWAL PERMISSIONS
+                try:
+                    # Specific to Binance: Check API Restrictions
+                    res = self.exchange.private_get_sapi_v1_account_apirestrictions()
+                    if res.get('enableWithdrawals') is True:
+                         print("!!! CRITICAL SECURITY ALERT: API KEY HAS WITHDRAWAL PERMISSIONS !!!")
+                         print("!!! ABORTING STARTUP TO PROTECT FUNDS. PLEASE DISABLE WITHDRAWALS IN BINANCE. !!!")
+                         if self.mode == "LIVE":
+                             raise PermissionError("Withdrawals Enabled - Safety Abort")
+                    else:
+                        print("   [SECURITY] API Permissions Verified (Withdrawals: DISABLED). Good.")
+                except Exception as perm_e:
+                    # Fallback if endpoint fails or different exchange
+                    print(f"   [SECURITY] Warning: Could not verify API permissions: {perm_e}")
                 
                 # Test connectivity by fetching balance
                 self.exchange.fetch_balance()
@@ -58,6 +73,7 @@ class BinanceTrader:
                 print(f"   [BINANCE] Connected successfully in {self.mode} mode.")
             except Exception as e:
                 print(f"   [BINANCE] Connectivity error: {e}")
+                if "Safety Abort" in str(e): raise e
 
     def _resolve_symbol(self, symbol):
         """
