@@ -255,7 +255,7 @@ def get_top_vol_oracle(limit=20):
         data = res.json()
         
         # Filter USDT and Exclude Stablecoins
-        STABLECOINS = ['USDC', 'FDUSD', 'TUSD', 'DAI', 'USDP', 'USDE', 'BUSD', 'EUR']
+        STABLECOINS = ['USDC', 'FDUSD', 'TUSD', 'DAI', 'USDP', 'USDE', 'BUSD', 'EUR', 'USD1', 'USDD', 'USTC']
         
         usdt_pairs = []
         for t in data:

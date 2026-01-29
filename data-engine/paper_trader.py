@@ -16,7 +16,7 @@ parent_dir = os.path.dirname(current_dir)
 load_dotenv(dotenv_path=os.path.join(parent_dir, '.env.local'))
 
 # V301: GLOBAL ASSET BLACKLIST
-ASSET_BLACKLIST = ['PEPE', 'PEPE/USDT', 'PEPE/USD']
+ASSET_BLACKLIST = ['PEPE', 'PEPE/USDT', 'PEPE/USD', 'USDC/USDT', 'USD1/USDT', 'FDUSD/USDT', 'TUSD/USDT', 'DAI/USDT']
 
 SUPABASE_URL = os.getenv("NEXT_PUBLIC_SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
