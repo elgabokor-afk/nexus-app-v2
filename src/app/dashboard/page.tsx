@@ -13,6 +13,9 @@ const OracleMonitor = dynamic(() => import('@/components/OracleMonitor'), { ssr:
 const PortfolioHub = dynamic(() => import('@/components/PortfolioHub'), { ssr: false });
 const AIChatModal = dynamic(() => import('@/components/AIChatModal'), { ssr: false });
 const PerformanceStats = dynamic(() => import('@/components/PerformanceStats'), { ssr: false });
+const MacroMonitor = dynamic(() => import('@/components/MacroMonitor'), { ssr: false }); // V3600
+const VolatilityGauge = dynamic(() => import('@/components/VolatilityGauge'), { ssr: false }); // V3600
+const VirtualPortfolio = dynamic(() => import('@/components/VirtualPortfolio'), { ssr: false }); // V3700
 
 import { Zap, Activity, LogOut, User, TrendingUp, Lock, Globe, ExternalLink } from 'lucide-react';
 import dynamic from 'next/dynamic';
@@ -81,6 +84,14 @@ export default function Dashboard() {
     const [currentView, setCurrentView] = useState<'dashboard' | 'bot' | 'logs'>('dashboard');
     const router = useRouter();
     const { profile, isVip } = useProfile(); // V1800
+
+    // V3600: Market Status Engine
+    const [marketStatus, setMarketStatus] = useState({
+        sentiment: "NEUTRAL",
+        dxy_change: 0,
+        spx_change: 0,
+        fng_index: 50
+    });
 
     const handleViewChart = (symbol: string) => {
         const sig = signals.find(s => s.symbol === symbol);
@@ -228,6 +239,25 @@ export default function Dashboard() {
             // If checking "ui" complaints, visible feedback is better.
             // Using standard alert or console if no toast imported, but let's assume valid handle.
             handleNewSignal(data);
+            handleNewSignal(data);
+        });
+
+        // V3600: MARKET STATUS LISTENER
+        // 1. Subscribe to separate channel for Market Data (Traffic separation)
+        const marketChannel = pusher.subscribe('public-market-status');
+
+        marketChannel.bind('update', (data: any) => {
+            // console.log("Market Status:", data);
+            // Backend sends flat payload or nested 'update' depending on library version, 
+            // but based on cosmos_worker it sends raw dict as the data for the event.
+            // cosmos_worker: pusher_client.trigger("...", "...", status_payload)
+            // So 'data' IS 'status_payload'.
+            setMarketStatus({
+                sentiment: data.sentiment || "NEUTRAL",
+                dxy_change: data.dxy_change || 0,
+                spx_change: data.spx_change || 0,
+                fng_index: data.fng_index || 50
+            });
         });
 
         // V2700: LIVE AUDITOR LISTENER
@@ -309,6 +339,7 @@ export default function Dashboard() {
 
         return () => {
             pusher.unsubscribe('public-signals');
+            pusher.unsubscribe('public-market-status'); // V3600
             if (isVip) pusher.unsubscribe('private-vip-signals');
             pusher.disconnect();
         };
@@ -430,7 +461,10 @@ export default function Dashboard() {
                     </nav>
 
                     <div className="p-4 border-t border-[#2f3336]">
-                        <div className="flex items-center gap-3 mb-4">
+                        <div
+                            className="flex items-center gap-3 mb-4 cursor-pointer hover:bg-[#1d1f23] p-2 rounded-lg transition-colors"
+                            onClick={() => router.push('/dashboard/profile')}
+                        >
                             <div className="w-8 h-8 rounded-lg bg-[#1d1f23] flex items-center justify-center border border-[#2f3336]">
                                 <User size={16} className="text-gray-400" />
                             </div>
@@ -473,25 +507,34 @@ export default function Dashboard() {
                         <div className="flex-1 p-4 lg:p-6 grid grid-cols-1 xl:grid-cols-12 gap-6 overflow-y-auto lg:overflow-hidden z-20 custom-scrollbar animate-fade-in">
 
                             {/* V1500: PERFORMANCE DASHBOARD (Full Width) - PROTECTED */}
-                            <div className="xl:col-span-12">
-                                <SubscriptionGuard fallback={
-                                    <div className="w-full h-[80px] bg-[#0e0e10] border border-[#2f3336] rounded-xl flex items-center justify-between px-6">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center">
-                                                <Lock className="text-gray-500" size={16} />
-                                            </div>
-                                            <div>
-                                                <h3 className="text-white font-bold text-sm">Performance Analytics</h3>
-                                                <p className="text-gray-500 text-[11px]">Unlock your win-rate and profit stats.</p>
-                                            </div>
+                            {/* V3600: BLOOMBERG DARK BENTO GRID (MACRO + FNG + PERFORMANCE) */}
+                            <div className="xl:col-span-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 h-auto md:h-48 mb-2">
+                                {/* 1. Macro Monitor */}
+                                <div className="col-span-1 h-full">
+                                    <MacroMonitor
+                                        sentiment={marketStatus.sentiment as any}
+                                        dxyChange={marketStatus.dxy_change}
+                                        spxChange={marketStatus.spx_change}
+                                    />
+                                </div>
+
+                                {/* 2. Volatility Gauge */}
+                                <div className="md:col-span-1 h-full">
+                                    <VolatilityGauge fngIndex={marketStatus.fng_index} />
+                                </div>
+
+                                {/* 3. Performance Stats (Wide) */}
+                                <div className="col-span-1 sm:col-span-2 lg:col-span-2 h-full">
+                                    <SubscriptionGuard fallback={
+                                        <div className="w-full h-full bg-[#0e0e10] border border-[#2f3336] rounded-xl flex items-center justify-center flex-col gap-2">
+                                            <Lock className="text-gray-500 mb-2" size={24} />
+                                            <h3 className="text-white font-bold text-sm">Performance Locked</h3>
+                                            <p className="text-gray-500 text-[11px] uppercase tracking-widest">VIP Access Only</p>
                                         </div>
-                                        <button className="px-5 py-2 bg-[#00ffa3] hover:bg-[#00ffa3]/90 text-black font-bold text-[11px] uppercase tracking-widest rounded-lg transition-colors">
-                                            UNLOCK VIP
-                                        </button>
-                                    </div>
-                                }>
-                                    <PerformanceStats />
-                                </SubscriptionGuard>
+                                    }>
+                                        <PerformanceStats />
+                                    </SubscriptionGuard>
+                                </div>
                             </div>
 
                             {/* COL 1: ADVANCED SIGNALS (3 Columns) */}
@@ -569,8 +612,10 @@ export default function Dashboard() {
 
                             {/* COL 3: OPERATIONS & ORACLE (3 Columns) */}
                             <div className="xl:col-span-3 flex flex-col gap-4 overflow-hidden min-h-[400px] lg:min-h-0">
-                                {/* V90: Portfolio Hub - AI Multi-Asset Leaderboard */}
-                                <PortfolioHub />
+                                {/* V3700: Virtual Portfolio Audit (Replaces PortfolioHub) */}
+                                <div className="h-[300px]">
+                                    <VirtualPortfolio />
+                                </div>
 
                                 {/* Oracle Insights - High Priority Realtime Feed */}
                                 <OracleMonitor />
