@@ -140,6 +140,13 @@ export default function PaperBotWidget({
                 forceTLS: true,
             });
 
+            // V3800: Price Channel (Replaces WebSocket Bridge)
+            const priceChannel = pusherClient.subscribe('public-price-feed');
+            priceChannel.bind('price-update', (data: any) => {
+                const { symbol, price } = data;
+                setPrices(prev => ({ ...prev, [symbol]: price }));
+            });
+
             const channel = pusherClient.subscribe('public-paper-positions');
             channel.bind('position-update', (event: any) => {
                 const { type, data } = event;
@@ -217,7 +224,7 @@ export default function PaperBotWidget({
                     <div className="flex items-center gap-2">
                         <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-[#00ffa3] animate-pulse shadow-[0_0_8px_#00ffa3]' : 'bg-red-500'}`}></div>
                         <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">
-                            {isConnected ? 'Railway Price Bridge: Connected' : 'Railway Bridge: Offline'}
+                            {isConnected || Object.keys(prices).length > 0 ? 'Live Market Feed: Active' : 'Market Feed: Syncing...'}
                         </span>
                     </div>
                 </div>

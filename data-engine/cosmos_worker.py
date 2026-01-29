@@ -209,11 +209,24 @@ def main_loop():
                         trend_15m = "BULLISH" if p_5m > ma_15m else "BEARISH"
                         
                         # V1500: Always broadcast live price to UI during scan
+                        # REDIS (Legacy/Internal)
                         redis_engine.publish("live_prices", {
                             "symbol": symbol.upper(),
                             "price": p_5m,
                             "time": int(time.time())
                         })
+
+                        # V3800: PUSHER BROADCAST (Direct to Frontend)
+                        # Vital for PaperBot PnL & Charts without WS Bridge
+                        try:
+                            from pusher_client import pusher_client
+                            pusher_client.trigger("public-price-feed", "price-update", {
+                                "symbol": symbol.upper(),
+                                "price": p_5m,
+                                "time": int(time.time())
+                            })
+                        except Exception as e:
+                            logger.warning(f"Failed to broadcast price to Pusher: {e}")
                         
                         # V3300: CRITICAL - Fetch Real-Time Price for Signal Generation
                         # Candle Close (p_5m) is too stale for precise Entry/TP/SL
