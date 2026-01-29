@@ -430,24 +430,50 @@ def analyze_quant_signal(symbol, tech_analysis, sentiment_score=50, df_confluenc
     # V3500: SAFETY NET - Prevent Flat Signals (Entry=TP=SL)
     # If ATR is 0 (due to API failure or flat market), assume 0.5% volatility default
     if atr == 0 or atr is None:
-        logger_msg = f"   [RISK] Warning: ATR is 0 for {symbol}. Forcing 0.5% Minimum Volatility."
+        logger_msg = f"   [RISK] Warning: ATR is 0 for {symbol}. Forcing 1.0% Minimum Volatility."
         print(logger_msg)
-        atr = price * 0.005 # 0.5% Move (Reasonable for 5m Scalp)
+        atr = price * 0.01 # 1% Minimum Volatility Base
+        
     if "BUY" in signal_type:
         stop_loss = price - (atr * 1.5) # User requested 1.5x
         take_profit = price + (atr * 3.0) # User requested 3.0x (1:2 Ratio)
+        
+        # V3600: HARD FLOOR - Ensure TP is at least +2% and SL at least -1%
+        # This protects against ultra-low volatility or bad ATR/Rounding
+        min_tp = price * 1.02
+        max_sl = price * 0.99
+        
+        if take_profit < min_tp: take_profit = min_tp
+        if stop_loss > max_sl: stop_loss = max_sl
+        
     else:
         stop_loss = price + (atr * 1.5)
         take_profit = price - (atr * 3.0)
         
+        # Short Logic
+        min_tp_short = price * 0.98
+        max_sl_short = price * 1.01
+        
+        if take_profit > min_tp_short: take_profit = min_tp_short
+        if stop_loss < max_sl_short: stop_loss = max_sl_short
+
+    # DYNAMIC PRECISION ROUNDING
+    # For SHIB (0.00001) vs BTC (50000)
+    decimals = 2
+    if price < 0.01: decimals = 8
+    elif price < 1.0: decimals = 6
+    elif price < 10.0: decimals = 4
+    elif price < 1000.0: decimals = 2
+    else: decimals = 2 # Standard for high value (USDT pairs usually 2)
+
     return {
         'signal': signal_type,
         'confidence': final_confidence,
         'price': price,
         'rsi': rsi,
-        'stop_loss': round(stop_loss, 4),
-        'take_profit': round(take_profit, 4),
-        'atr_value': round(atr, 4),
+        'stop_loss': round(stop_loss, decimals),
+        'take_profit': round(take_profit, decimals),
+        'atr_value': round(atr, decimals),
         'ema_200': round(tech_analysis['ema_200'], 4),
         'imbalance': round(imbalance, 4),
         'spread_pct': round(spread_pct, 4),
