@@ -185,6 +185,7 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
                 ${compact
                         ? `mb-2 bg-[#0a0a0c] border border-[#1d1f23] rounded-lg hover:border-[#333]`
                         : `bg-[#0a0a0c] border border-[#1d1f23] rounded-xl hover:border-[#333] shadow-sm`}
+                ${isHot ? 'bg-gradient-to-br from-[#0a0a0c] to-yellow-900/10 border-yellow-500/30' : ''}
                 ${isHot ? 'border-orange-900/30' : ''}
                 ${isAuditing ? 'border-blue-900/30' : ''}
                 ${glowClass} 
@@ -288,16 +289,26 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
                         <div className="flex flex-col">
                             <span className="text-[10px] text-gray-500 font-bold uppercase mb-0.5">Target</span>
                             {isLocked ? (
-                                <div className="h-4 bg-[#1d1f23] rounded animate-pulse w-12"></div>
+                                <div className="relative group/lock">
+                                    <div className="h-5 w-16 bg-[#1d1f23] rounded flex items-center justify-center border border-white/5">
+                                        <Lock size={10} className="text-gray-600 group-hover/lock:text-[#00ffa3] transition-colors" />
+                                    </div>
+                                    <div className="absolute inset-0 backdrop-blur-[2px] cursor-not-allowed"></div>
+                                </div>
                             ) : (
                                 <span className="text-xs font-mono font-bold text-[#00ffa3]">{formatPrice(take_profit)}</span>
                             )}
                         </div>
 
-                        <div className="flex flex-col text-right">
+                        <div className="flex flex-col text-right items-end">
                             <span className="text-[10px] text-gray-500 font-bold uppercase mb-0.5">Stop</span>
                             {isLocked ? (
-                                <div className="h-4 bg-[#1d1f23] rounded animate-pulse w-12 ml-auto"></div>
+                                <div className="relative group/lock">
+                                    <div className="h-5 w-16 bg-[#1d1f23] rounded flex items-center justify-center border border-white/5">
+                                        <Lock size={10} className="text-gray-600 group-hover/lock:text-[#ff4d4d] transition-colors" />
+                                    </div>
+                                    <div className="absolute inset-0 backdrop-blur-[2px] cursor-not-allowed"></div>
+                                </div>
                             ) : (
                                 <span className="text-xs font-mono font-bold text-[#ff4d4d]">{formatPrice(stop_loss)}</span>
                             )}
