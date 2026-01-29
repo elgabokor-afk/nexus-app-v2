@@ -23,24 +23,26 @@ interface SignalProps {
     // V3200: Winner Effect
     status?: string;
     pnl?: number;
+    // V3800: Real-Time Ticker
+    livePrice?: number;
 }
 
 const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
-    symbol, price, rsi, signal_type, confidence, timestamp, stop_loss, take_profit, atr_value, volume_ratio, imbalance, depth_score, audit_alert, onViewChart, onConsultAI, compact = false, status, pnl
+    symbol, price, rsi, signal_type, confidence, timestamp, stop_loss, take_profit, atr_value, volume_ratio, imbalance, depth_score, audit_alert, onViewChart, onConsultAI, compact = false, status, pnl, livePrice
 }) => {
 
     // V2400: VISUAL REPLICATION + HOT ZONE
-    // V1800: PAYWALL & VIP LOGIC
     const { isVip, loading: profileLoading } = useProfile();
     const [showPaymentModal, setShowPaymentModal] = useState(false);
 
-    // VIP Signal Detection (Confidence >= 80)
-    const isVipSignal = confidence >= 80;
+    // VIP Signal Detection (Confidence >= 75)
+    // Adjusted per user feedback (79% should be VIP)
+    const isVipSignal = confidence >= 75;
     const isLocked = !isVip && isVipSignal && !profileLoading;
 
     const isBuy = signal_type.includes('BUY');
     const isSell = signal_type.includes('SELL');
-    const isHot = confidence >= 80;
+    const isHot = confidence >= 75;
     const isAuditing = !!audit_alert; // True if AI just updated this
 
     // V2800: Robust Logo Logic (Strip '1000' prefix, etc.)
@@ -48,10 +50,18 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
 
     // V2802: Reliable Icon Source (CoinCap Assets)
     const baseIcon = `https://assets.coincap.io/assets/icons/${cleanSymbol.toLowerCase()}@2x.png`;
-
-    // Fallback logic isn't easily doable in pure CSS src without onError, so we trust CoinCap for tops.
-    // If needed, we can add an onError handler in the img tag, but for now CoinCap is very reliable for top 100.
     const logoUrl = baseIcon;
+
+    // PRICES LOGIC
+    // Prefer Live Price if available, else static entry
+    const currentPrice = livePrice || price;
+    // Calculate PnL vs Entry for Color
+    const entryPrice = price;
+    const pnlPct = entryPrice > 0 ? ((currentPrice - entryPrice) / entryPrice) * 100 : 0;
+
+    // Determine color based on Direction vs Movement
+    const isProfitable = (isBuy && currentPrice > entryPrice) || (isSell && currentPrice < entryPrice);
+    const tickColor = isProfitable ? 'text-[#00ffa3]' : (currentPrice === entryPrice ? 'text-gray-400' : 'text-[#ff4d4d]');
 
     let borderColor = 'border-white/5';
     let textColor = 'text-white'; // Default to white
@@ -100,7 +110,7 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
     }
 
     const formatPrice = (p: number | undefined) =>
-        p ? `$${Number(p).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '---';
+        p ? `$${Number(p).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}` : '---';
 
     // Payment Modal Component
     const PaymentModal = () => {
@@ -235,7 +245,12 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
                                 <h3 className="text-sm font-black text-[#E7E9EA] leading-none tracking-tight">{symbol}</h3>
                                 <div className="flex items-center gap-2 mt-0.5">
                                     <span className="text-[9px] font-mono text-gray-500">{signal_type}</span>
-                                    <span className={`text-[10px] font-mono font-bold ${isBuy ? 'text-[#00ffa3]' : 'text-[#ff4d4d]'}`}>@ {formatPrice(price)}</span>
+                                    <span className={`text-[10px] font-mono font-bold ${tickColor}`}>@ {formatPrice(currentPrice)}</span>
+                                    {livePrice && (
+                                        <span className={`text-[8px] font-mono px-1 rounded ${isProfitable ? 'bg-[#00ffa3]/10 text-[#00ffa3]' : 'bg-red-500/10 text-red-500'}`}>
+                                            {isProfitable ? '+' : ''}{isBuy ? pnlPct.toFixed(2) : (pnlPct * -1).toFixed(2)}%
+                                        </span>
+                                    )}
                                 </div>
                             </div>
                         </div>

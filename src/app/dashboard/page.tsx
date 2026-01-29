@@ -285,6 +285,23 @@ export default function Dashboard() {
             }
         });
 
+        // V3800: REAL-TIME PRICE ENGINE (TICKER)
+        const [livePrices, setLivePrices] = useState<Record<string, number>>({});
+
+        // ... inside existing useEffect ...
+
+        // 3. Price Feed (High Frequency)
+        const priceChannel = pusher.subscribe('public-price-feed');
+        priceChannel.bind('price-update', (data: any) => {
+            // data: { symbol: 'BTC/USDT', price: 95000, time: ... }
+            if (data?.symbol && data?.price) {
+                setLivePrices(prev => ({
+                    ...prev,
+                    [data.symbol]: Number(data.price)
+                }));
+            }
+        });
+
         // 2. VIP Channel (Conditional)
         if (isVip) {
             console.log("Subscribing to VIP Channel...");
@@ -295,12 +312,25 @@ export default function Dashboard() {
             privateChannel.bind('new-signal', (data: any) => {
                 console.log('Pusher VIP Event:', data);
                 handleNewSignal(data);
+                // V5000: VISIBLE ALERT
+                try {
+                    // Simple browser notification or custom UI could trigger here
+                    const audio = new Audio('/sounds/signal_alert.mp3');
+                    audio.play().catch(e => console.log('Audio blocked', e));
+                } catch (e) { }
             });
             privateChannel.bind('pusher:subscription_error', (status: any) => {
                 console.error("VIP Auth Failed:", status);
-                // Could act here to force logout or show error
             });
         }
+
+        return () => {
+            pusher.unsubscribe('public-signals');
+            pusher.unsubscribe('public-market-status');
+            pusher.unsubscribe('public-price-feed'); // Unsubscribe ticker
+            if (isVip) pusher.unsubscribe('private-vip-signals');
+            pusher.disconnect();
+        };
 
         const handleNewSignal = (s: any) => {
             const newSignal: Signal = {
@@ -565,6 +595,7 @@ export default function Dashboard() {
                                                         <SignalCard
                                                             key={signal.id}
                                                             {...signal}
+                                                            livePrice={livePrices[signal.symbol]} // V3800: Real-Time Price
                                                             imbalance={signal.analytics_signals?.[0]?.imbalance_ratio}
                                                             depth_score={signal.analytics_signals?.[0]?.depth_score}
                                                             onViewChart={handleViewChart}
@@ -581,6 +612,7 @@ export default function Dashboard() {
                                                 <SignalCard
                                                     key={signal.id}
                                                     {...signal}
+                                                    livePrice={livePrices[signal.symbol]} // V3800: Real-Time Price
                                                     imbalance={signal.analytics_signals?.[0]?.imbalance_ratio}
                                                     depth_score={signal.analytics_signals?.[0]?.depth_score}
                                                     onViewChart={handleViewChart}

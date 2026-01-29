@@ -552,18 +552,41 @@ def get_top_vol_pairs(limit=15):
             
             usdt_pairs.append(t)
         
-        # Sort by Volume Desc
-        sorted_pairs = sorted(usdt_pairs, key=lambda x: float(x['quoteVolume']), reverse=True)
-        
+      # V301: GLOBAL ASSET BLACKLIST (V412: Added DOGE)
+ASSET_BLACKLIST = ['PEPE', 'PEPE/USDT', 'PEPE/USD', 'DOGE', 'DOGE/USDT', 'USD1', 'USD1/USDT', 'USDC', 'USDC/USDT', 'FDUSD', 'FDUSD/USDT', 'USDE', 'USDE/USDT', 'FOGO', 'FOGO/USD', 'FOGO/USDT']
+
         # Extract symbols, format to CCXT standard (BTC/USDT)
         top_symbols = []
-        for p in sorted_pairs[:limit]:
+        
+        # Ensure markets are loaded for validation
+        if not live_trader.exchange.markets:
+             try: live_trader.exchange.load_markets()
+             except: pass
+
+        for p in sorted_pairs[:limit*2]: # Check more candidates in case of filtering
+            if len(top_symbols) >= limit: break
+            
             sym = p['symbol']
             # Convert BTCUSDT -> BTC/USDT
             # Fix V3100: prevent UNIUSD/USDT
             base = sym.replace('USDT', '')
             formatted = f"{base}/USDT"
-            top_symbols.append(formatted)
+            
+            # V420: DEFINITIVE VALIDATION
+            # Check if this symbol ACTUALLY exists in our connection
+            # Try both "BTC/USDT" and "BTC/USDT:USDT" formats
+            is_valid = False
+            if live_trader.exchange.markets:
+                if formatted in live_trader.exchange.markets: is_valid = True
+                elif f"{formatted}:USDT" in live_trader.exchange.markets: is_valid = True
+            else:
+                # If markets failed to load, basic heuristic fallback
+                is_valid = True 
+            
+            if is_valid:
+                top_symbols.append(formatted)
+            else:
+                print(f"   [DYNAMIC] Skipping {formatted} (Not tradable on current connection)")
             
         print(f"   [DYNAMIC] Top {limit} Vol Assets: {top_symbols}")
         return top_symbols

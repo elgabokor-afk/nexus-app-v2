@@ -360,6 +360,22 @@ def main_loop():
                     # We send the RAW signal data to the private channel
                     pusher_client.trigger("private-vip-signals", "new-signal", sig)
 
+                    # V5000: NEXUS EXECUTOR BRIDGE (Critical for Live Trading)
+                    # We must publish to 'trade_signal' for nexus_executor.py to react
+                    try:
+                        redis_engine.publish("trade_signal", json.dumps({
+                            "symbol": sig['symbol'],
+                            "signal": sig['signal_type'], # 'BUY' or 'SELL'
+                            "price": sig['price'],
+                            "take_profit": sig['take_profit'],
+                            "stop_loss": sig['stop_loss'],
+                            "confidence": sig['confidence'],
+                            "timestamp": int(time.time())
+                        }))
+                        logger.info(f"   [REDIS] >>> Sent Signal {sig['symbol']} to Nexus Executor")
+                    except Exception as re:
+                        logger.error(f"Failed to publish to Nexus Executor: {re}")
+
                     # Legacy Redis (Optional: Keep for internal tools/PaperBot if needed)
                     # redis_engine.publish("live_signals", { "type": "NEW_SIGNAL", "data": public_payload })
 

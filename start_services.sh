@@ -19,6 +19,10 @@ python cosmos_oracle.py &
 # V3600: Start Macro Brain (Correlation Engine)
 python macro_feed.py &
 
+# V5000: NEXUS EXECUTOR (LIVE EXECUTION ENGINE)
+# Runs the actual trading logic listening to Redis
+python -u nexus_executor.py &
+
 # Wait for any process to exit
 wait -n
 

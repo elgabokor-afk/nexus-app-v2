@@ -23,6 +23,14 @@ CREATE POLICY "Public Read Audit"
     ON public.signal_audit_history FOR SELECT
     USING (true);
 
-CREATE POLICY "Service Write Audit"
-    ON public.signal_audit_history FOR ALL
+CREATE POLICY "Service Insert Audit"
+    ON public.signal_audit_history FOR INSERT
+    WITH CHECK ((select auth.role()) = 'service_role');
+
+CREATE POLICY "Service Update Audit"
+    ON public.signal_audit_history FOR UPDATE
+    USING ((select auth.role()) = 'service_role');
+
+CREATE POLICY "Service Delete Audit"
+    ON public.signal_audit_history FOR DELETE
     USING ((select auth.role()) = 'service_role');

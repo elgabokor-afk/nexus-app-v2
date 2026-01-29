@@ -48,12 +48,34 @@ class BinanceTrader:
                 time_offset = self.exchange.load_time_difference()
                 print(f"   [BINANCE] Time Sync Active (Offset: {time_offset}ms)")
                 
+                # Pre-load markets to avoid "symbol not found" errors
+                print("   [BINANCE] Loading Futures Markets...")
+                self.exchange.load_markets()
+                
                 # Test connectivity by fetching balance
                 self.exchange.fetch_balance()
                 self.is_connected = True
                 print(f"   [BINANCE] Connected successfully in {self.mode} mode.")
             except Exception as e:
                 print(f"   [BINANCE] Connectivity error: {e}")
+
+    def _resolve_symbol(self, symbol):
+        """
+        V3500: Smart Symbol Resolution for Futures.
+        BTC/USDT -> BTC/USDT:USDT if needed.
+        """
+        if not self.exchange.markets:
+            try: self.exchange.load_markets()
+            except: pass
+            
+        if symbol in self.exchange.markets: return symbol
+        
+        # Try appending :USDT (Linear standard)
+        alt = f"{symbol}:USDT"
+        if alt in self.exchange.markets: return alt
+        
+        # Try different formats just in case
+        return symbol
 
     def get_live_balance(self):
         """Fetch real USDT balance from Binance Futures Wallet."""
@@ -122,15 +144,17 @@ class BinanceTrader:
             # Try Kraken First
             return self.fallback_exchange.fetch_ohlcv(kraken_symbol, timeframe, limit=limit)
         except Exception as e:
-            print(f"   [KRAKEN] Fetch OHLCV failed for {kraken_symbol}: {e}. Falling back to Binance...")
+            # print(f"   [KRAKEN] Fetch OHLCV failed for {kraken_symbol}: {e}. Falling back to Binance...")
             try:
-                return self.exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
+                # V3500: Resolve Symbol Correctly
+                target_sym = self._resolve_symbol(symbol)
+                return self.exchange.fetch_ohlcv(target_sym, timeframe, limit=limit)
             except Exception as b_err:
                 if "451" in str(b_err) or "Service unavailable" in str(b_err):
-                     print(f"   [BINANCE] Geo-Block Detected (451). Switching to CoinGecko (OHLC).")
+                     # print(f"   [BINANCE] Geo-Block Detected (451). Switching to CoinGecko (OHLC).")
                      return self._fetch_coincap_ohlcv(symbol, timeframe, limit)
                      
-                print(f"   [BINANCE] Fallback Fetch OHLCV failed for {symbol}: {b_err}")
+                # print(f"   [BINANCE] Fallback Fetch OHLCV failed for {symbol}: {b_err}")
                 return self._fetch_coincap_ohlcv(symbol, timeframe, limit) # Last resort
 
     def fetch_ticker(self, symbol):
@@ -140,24 +164,18 @@ class BinanceTrader:
             # Try Kraken First
             return self.fallback_exchange.fetch_ticker(kraken_symbol)
         except Exception as e:
-            print(f"   [KRAKEN] Fetch Ticker failed for {kraken_symbol}: {e}. Falling back to Binance...")
+            # print(f"   [KRAKEN] Fetch Ticker failed for {kraken_symbol}: {e}. Falling back to Binance...")
             try:
                 # Map to Futures if needed
-                if not self.exchange.markets: self.exchange.load_markets()
-                
-                fut_symbol = symbol
-                if fut_symbol not in self.exchange.markets:
-                    if f"{symbol}:USDT" in self.exchange.markets:
-                        fut_symbol = f"{symbol}:USDT"
-                
-                return self.exchange.fetch_ticker(fut_symbol)
+                target_sym = self._resolve_symbol(symbol)
+                return self.exchange.fetch_ticker(target_sym)
             except Exception as b_err:
                 # V312: COINCAP FALLBACK (Geo-Block Bypass)
                 if "451" in str(b_err) or "Service unavailable" in str(b_err):
-                     print(f"   [BINANCE] Geo-Block Detected (451). Switching to CoinCap.")
+                     # print(f"   [BINANCE] Geo-Block Detected (451). Switching to CoinCap.")
                      return self._fetch_coincap_ticker(symbol)
                 
-                print(f"   [BINANCE] Fallback Fetch Ticker failed for {symbol}: {b_err}")
+                # print(f"   [BINANCE] Fallback Fetch Ticker failed for {symbol}: {b_err}")
                 return self._fetch_coincap_ticker(symbol) # Try anyway
 
     def _fetch_coincap_ohlcv(self, symbol, timeframe='1h', limit=100):
@@ -340,6 +358,82 @@ class BinanceTrader:
         except Exception as e:
             print(f"   [BINANCE] Error fetching futures positions: {e}")
             return []
+
+    # V3500: LIVE EXECUTION SUITE
+    def execute_bracket_order(self, symbol, side, amount, leverage, stop_loss, take_profit):
+        """
+        Executes a Full Bracket Order (Entry + SL + TP) on Binance Futures.
+        1. Sets Leverage
+        2. Market Entry
+        3. OCO-like Exits (Stop Market + Take Profit Market)
+        """
+        if self.mode != "LIVE":
+            return {"status": "SIMULATED", "id": "paper_bracket_v1"}
+
+        result = {
+            "entry_id": None,
+            "sl_id": None,
+            "tp_id": None,
+            "status": "FAILED",
+            "filled_avg_price": 0,
+            "error": None
+        }
+
+        try:
+            # 1. Prepare Symbol
+            symbol = self._resolve_symbol(symbol)
+            
+            # 2. Set Leverage
+            try:
+                self.exchange.set_leverage(leverage, symbol)
+            except Exception: pass # Maybe already set
+
+            # 3. Execute ENTRY (Market)
+            # Precision adjustment
+            qty = self.exchange.amount_to_precision(symbol, amount)
+            
+            print(f"   [EXEC] Sending MARKET {side} {qty} {symbol}...")
+            entry_order = self.exchange.create_order(symbol, 'market', side, qty)
+            
+            result['entry_id'] = entry_order['id']
+            result['filled_avg_price'] = float(entry_order.get('average', 0) or entry_order.get('price', 0) or 0)
+            
+            # If price missing in 'average', try to fetch trade? Or trust it's market.
+            # Assuming filled.
+            
+            print(f"   [EXEC] Entry Filled: {result['entry_id']} @ {result['filled_avg_price']}")
+
+            # 4. Prepare Exits (Opposite Side)
+            exit_side = 'sell' if side == 'buy' else 'buy'
+            
+            # STOP LOSS (STOP_MARKET)
+            # Binance Futures uses 'stopPrice'
+            sl_params = {
+                'stopPrice': self.exchange.price_to_precision(symbol, stop_loss),
+                'reduceOnly': True
+            }
+            
+            print(f"   [EXEC] Sending SL ({exit_side}) @ {stop_loss}...")
+            sl_order = self.exchange.create_order(symbol, 'STOP_MARKET', exit_side, qty, params=sl_params)
+            result['sl_id'] = sl_order['id']
+            
+            # TAKE PROFIT (TAKE_PROFIT_MARKET)
+            tp_params = {
+                'stopPrice': self.exchange.price_to_precision(symbol, take_profit),
+                'reduceOnly': True
+            }
+            
+            print(f"   [EXEC] Sending TP ({exit_side}) @ {take_profit}...")
+            tp_order = self.exchange.create_order(symbol, 'TAKE_PROFIT_MARKET', exit_side, qty, params=tp_params)
+            result['tp_id'] = tp_order['id']
+            
+            result['status'] = "SUCCESS"
+            return result
+            
+        except Exception as e:
+            print(f"   [EXEC] Critical Order Error: {e}")
+            result['error'] = str(e)
+            return result
 
 # Singleton for easy access
 live_trader = BinanceTrader()

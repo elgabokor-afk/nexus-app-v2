@@ -81,25 +81,20 @@ alter table public.academic_papers enable row level security;
 alter table public.academic_chunks enable row level security;
 alter table public.academic_alpha enable row level security;
 
-create policy "Service Role can manage papers"
-  on public.academic_papers for all
-  using ( auth.role() = 'service_role' );
+-- Papers
+create policy "Service Insert Papers" on public.academic_papers for insert with check ((select auth.role()) = 'service_role');
+create policy "Service Update Papers" on public.academic_papers for update using ((select auth.role()) = 'service_role');
+create policy "Service Delete Papers" on public.academic_papers for delete using ((select auth.role()) = 'service_role');
 
-create policy "Service Role can manage chunks"
-  on public.academic_chunks for all
-  using ( auth.role() = 'service_role' );
+-- Chunks
+create policy "Service Insert Chunks" on public.academic_chunks for insert with check ((select auth.role()) = 'service_role');
+create policy "Service Update Chunks" on public.academic_chunks for update using ((select auth.role()) = 'service_role');
+create policy "Service Delete Chunks" on public.academic_chunks for delete using ((select auth.role()) = 'service_role');
 
-create policy "Public/Bot can read papers"
-  on public.academic_papers for select
-  using ( true );
-
-create policy "Public/Bot can read chunks"
-  on public.academic_chunks for select
-  using ( true );
-
-create policy "Service Role can manage alpha"
-  on public.academic_alpha for all
-  using ( auth.role() = 'service_role' );
+-- Alpha
+create policy "Service Insert Alpha" on public.academic_alpha for insert with check ((select auth.role()) = 'service_role');
+create policy "Service Update Alpha" on public.academic_alpha for update using ((select auth.role()) = 'service_role');
+create policy "Service Delete Alpha" on public.academic_alpha for delete using ((select auth.role()) = 'service_role');
 
 create policy "Public/Bot can read alpha"
   on public.academic_alpha for select
