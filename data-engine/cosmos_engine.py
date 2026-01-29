@@ -460,9 +460,14 @@ class CosmosBrain:
         
         validation_result = validator.validate_signal_logic(thesis_context)
         
-        if not validation_result['approved'] and prob < 0.85:
-            # If academic backing is weak AND confidence is not super high -> Reject
-            return False, prob, f"REJECTED by Cosmos PhD: {validation_result['reason']}"
+        if not validation_result['approved']:
+            # V4400: PhD Relaxed Mode. 
+            # If no academic backing, we still allow the trade if the AI is reasonably confident (> 65%).
+            # We don't want to paralyze the system just because Harvard hasn't written about this specific crypto pattern yet.
+            if prob < 0.65:
+                 return False, prob, f"REJECTED by Cosmos PhD: {validation_result['reason']} (and Conf {prob*100:.1f}% < 65%)"
+            else:
+                 print(f"       [PhD BYPASS] Academic support missing, but AI Confidence ({prob*100:.1f}%) is sufficient.")
             
 
         if validation_result['approved']:

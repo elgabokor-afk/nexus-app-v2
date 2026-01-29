@@ -41,15 +41,27 @@ class OpenAIEngine:
             Provide a direct, high-conviction institutional thesis.
             """
 
-            response = self.client.chat.completions.create(
-                model="gpt-5-nano",
-                messages=[
-                    {"role": "system", "content": "You provide sharp, concise crypto trading insights like a Bloomberg terminal."},
-                    {"role": "user", "content": prompt},
-                ],
-                max_tokens=60,
-                temperature=0.5
-            )
+            try:
+                response = self.client.chat.completions.create(
+                    model="gpt-5-nano",
+                    messages=[
+                        {"role": "system", "content": "You provide sharp, concise crypto trading insights like a Bloomberg terminal."},
+                        {"role": "user", "content": prompt},
+                    ],
+                    max_tokens=60,
+                    temperature=0.5
+                )
+            except Exception as ml_err:
+                 print(f"   [OPENAI WARN] GPT-5 Nano unavailable ({ml_err}). Falling back to GPT-4o-mini.")
+                 response = self.client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": "You provide sharp, concise crypto trading insights like a Bloomberg terminal."},
+                        {"role": "user", "content": prompt},
+                    ],
+                    max_tokens=60,
+                    temperature=0.5
+                )
 
             narrative = response.choices[0].message.content.strip()
             return narrative.replace('"', '').replace("'", "")
