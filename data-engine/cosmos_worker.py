@@ -31,14 +31,28 @@ live_trader = None
 
 try:
     from cosmos_engine import brain
+except ImportError as e:
+    logger.warning(f"Cosmos Brain missing: {e}")
+
+try:
     from redis_engine import redis_engine
-    from scanner import scanner_engine # Hypothetical
-    # V3400: Quant Engines
+except ImportError as e:
+    logger.warning(f"Redis Engine missing: {e}")
+
+try:
     from macro_feed import macro_brain
+except ImportError as e:
+    logger.warning(f"Macro Feed missing: {e}")
+
+try:
     from cosmos_quant import quant_engine
+except ImportError as e:
+    logger.warning(f"Quant Engine missing: {e}")
+    
+try:
     from binance_engine import live_trader
 except ImportError as e:
-    logger.warning(f"Components missing ({e}). Running in Skeleton Mode.")
+    logger.warning(f"Binance Engine missing: {e}")
 
 # Database Setup
 from supabase import create_client, Client
