@@ -11,7 +11,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the entire data-engine and necessary SQL files
 COPY data-engine/ ./data-engine/
-COPY .env.local .
+# Note: We do NOT copy .env.local. Secrets must be injected by Railway/Docker Env.
 
 # Default command (overridden by docker-compose)
 CMD ["python", "data-engine/cosmos_worker.py"]
