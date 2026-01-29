@@ -310,14 +310,25 @@ if __name__ == "__main__":
             dynamic_assets = get_top_vol_oracle(limit=20)
             last_asset_update = time.time()
 
-        # V410: Priority Pulse (BTC/SOL first)
-        active_assets = get_active_assets()
-        
-        # Merge: Priority (Config) + Active (DB) + Dynamic (Binance) + Standard (Config)
-        all_unique_assets = list(set(active_assets + PRIORITY_ASSETS + dynamic_assets + SYMBOLS))
-        
-        # Ensure Priority Assets are scanned FIRST
-        target_assets = PRIORITY_ASSETS + [a for a in dynamic_assets if a not in PRIORITY_ASSETS] + [a for a in all_unique_assets if a not in PRIORITY_ASSETS and a not in dynamic_assets]
+    # V410: Priority Pulse (BTC/SOL first)
+    active_assets = get_active_assets()
+    
+    # Merge: Priority (Config) + Active (DB) + Dynamic (Binance) + Standard (Config)
+    all_unique_assets = list(set(active_assets + PRIORITY_ASSETS + dynamic_assets + SYMBOLS))
+    
+    # V500: Initial Heartbeat Insight (Wake up UI)
+    from db import insert_oracle_insight
+    insert_oracle_insight(
+        symbol="SYSTEM", 
+        timeframe="1s", 
+        trend="ONLINE", 
+        prob=1.0, 
+        reasoning="Neural Link Established. Beginning Analysis...", 
+        technical={"status": "BOOT_COMPLETE"}
+    )
+    
+    # Ensure Priority Assets are scanned FIRST
+    target_assets = PRIORITY_ASSETS + [a for a in dynamic_assets if a not in PRIORITY_ASSETS] + [a for a in all_unique_assets if a not in PRIORITY_ASSETS and a not in dynamic_assets]
         
         print(f"\n>>> Starting Recursive Pulse for {len(target_assets)} assets...")
         print(f"    [PRIORITY]: {PRIORITY_ASSETS}")
