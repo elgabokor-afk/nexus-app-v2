@@ -33,6 +33,7 @@ from smc_engine import smc_engine # V560
 from deepseek_engine import deepseek_engine # V700
 from openai_engine import openai_engine # V800
 from cosmos_validator import validator # V900 (PhD Upgrade)
+from redis_engine import redis_engine # V1000 (Liquidity Check)
 
 class CosmosBrain:
     def __init__(self):
@@ -432,7 +433,24 @@ class CosmosBrain:
              print("       [TOXIC FLOW] High VPIN detected. Reducing position size request.")
              # Logic to reduce size would happen in PaperTrader, here we just note it.
 
-        # 7. FINAL WEIGHTED DECISION
+        # 7. [NEW] LIQUIDITY CASCADE CHECK (Execution Layer)
+        # Query Redis for cached order book depth
+        liq_data = redis_engine.get_liquidity(symbol)
+        if liq_data:
+            bid_vol = liq_data.get('bid', 0)
+            ask_vol = liq_data.get('ask', 0)
+            
+            # Simple Rule: Need at least $50k depth to enter safely without slippage
+            min_depth_usd = 50000 
+            # Convert volume to USD (approx)
+            depth_usd = (bid_vol if "SELL" in signal_type else ask_vol) * features.get('price', 0)
+            
+            if depth_usd < min_depth_usd:
+                return False, prob, f"REJECTED by Liquidity Filter: Depth ${depth_usd:.0f} < ${min_depth_usd}. Slippage Risk."
+            else:
+                print(f"       [LIQUIDITY OK] Depth ${depth_usd:.0f} sufficient for entry.")
+
+        # 8. FINAL WEIGHTED DECISION
         required_prob = min_conf
         if trend_aligned and (abs(imb) > 0.4):
             # Only go lower if it's naturally stricter than the user's floor

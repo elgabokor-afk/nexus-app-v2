@@ -88,6 +88,50 @@ class RedisEngine:
             if message['type'] == 'message':
                 yield message['channel'], json.loads(message['data'])
 
+    def set_price(self, symbol, price):
+        """V1000: Cache Price for high-speed read."""
+        if not self.client: return
+        try:
+            # TTL 60s (Prices update fast)
+            self.client.setex(f"price:{symbol}", 60, str(price))
+        except Exception as e:
+            print(f"   [REDIS CACHE FAIL] {e}")
+
+    def get_price(self, symbol):
+        """V1000: Read Price from RAM."""
+        if not self.client: return None
+        try:
+            price = self.client.get(f"price:{symbol}")
+            return float(price) if price else None
+        except:
+            return None
+
+    def set_liquidity(self, symbol, bid_vol, ask_vol):
+        """V1000: Cache Order Book Depth."""
+        if not self.client: return
+        try:
+            data = json.dumps({"bid": bid_vol, "ask": ask_vol})
+            self.client.setex(f"liquidity:{symbol}", 60, data)
+        except: pass
+
+    def get_liquidity(self, symbol):
+        """Returns dict {bid, ask} or None."""
+        if not self.client: return None
+        try:
+            data = self.client.get(f"liquidity:{symbol}")
+            return json.loads(data) if data else None
+        except: return None
+
+    # --- Metrics for Admin Dashboard ---
+    def incr_counter(self, metric_name):
+        if not self.client: return
+        self.client.incr(f"stats:{metric_name}")
+
+    def get_counter(self, metric_name):
+        if not self.client: return 0
+        val = self.client.get(f"stats:{metric_name}")
+        return int(val) if val else 0
+
 redis_engine = RedisEngine()
 
 if __name__ == "__main__":

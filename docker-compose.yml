@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  # 1. CORE BRAIN (RAG + AI)
+  brain:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    command: python data-engine/cosmos_worker.py --role brain
+    environment:
+      - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - REDIS_URL=redis://redis_cache:6379
+    depends_on:
+      - redis_cache
+    restart: always
+
+  # 2. INGESTION ENGINE (Prices + Crawler)
+  ingest:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python data-engine/price_feed.py
+    environment:
+      - REDIS_URL=redis://redis_cache:6379
+    depends_on:
+      - redis_cache
+    restart: always
+  
+  # 3. HIGH SPEED CACHE
+  redis_cache:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --save 60 1 --loglevel warning
+
+  # 4. NOTIFIER (Pusher Bridge)
+  notifier:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python data-engine/pusher_client.py
+    environment:
+      - PUSHER_APP_ID=${PUSHER_APP_ID}
+      - PUSHER_KEY=${PUSHER_KEY}
+      - PUSHER_SECRET=${PUSHER_SECRET}
+      - REDIS_URL=redis://redis_cache:6379
+    depends_on:
+      - redis_cache
+
+networks:
+  default:
+    driver: bridge
