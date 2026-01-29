@@ -316,11 +316,19 @@ def check_new_entries():
         
         
         # V3210: DAILY TRADE LIMIT
-        # We check how many positions were opened since UTC Midnight.
-        # User requested 300 limit override
-        max_daily = GLOBAL_CONFIG.get('max_daily_positions', 300)
-        # Handle case where user might set 0 or None -> Default 300
-        if not max_daily: max_daily = 300
+        # Unlocked by User Request (Cosmos Decision Mode)
+        max_daily = 9999 
+        # Ignore Config Limit if it's too low
+        if GLOBAL_CONFIG.get('max_daily_positions', 0) > 0:
+             # Only respect config if it's high enough, otherwise override
+             cfg_limit = GLOBAL_CONFIG.get('max_daily_positions')
+             if cfg_limit < 100:
+                 print(f"   [OVERRIDE] Config limit {cfg_limit} too low. Boosting to 100.")
+                 max_daily = 100
+             else:
+                 max_daily = cfg_limit
+
+        if not max_daily: max_daily = 9999
         
         today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
         
