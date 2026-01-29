@@ -317,9 +317,10 @@ def check_new_entries():
         
         # V3210: DAILY TRADE LIMIT
         # We check how many positions were opened since UTC Midnight.
-        max_daily = GLOBAL_CONFIG.get('max_daily_positions', 5)
-        # Handle case where user might set 0 or None -> Default 5
-        if not max_daily: max_daily = 5
+        # User requested 300 limit override
+        max_daily = GLOBAL_CONFIG.get('max_daily_positions', 300)
+        # Handle case where user might set 0 or None -> Default 300
+        if not max_daily: max_daily = 300
         
         today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
         
