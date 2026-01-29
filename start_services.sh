@@ -5,13 +5,13 @@ cd data-engine
 
 # Start the Cosmos Worker (Scanner + AI)
 # V2000: Force Retrain to match current container environment
-python force_retrain.py
+python -u force_retrain.py
 
 # V4200: PhD Mode - Seed Academic Knowledge (Arxiv)
-python seed_academic_knowledge.py
+python -u seed_academic_knowledge.py
 
 
-python cosmos_worker.py &
+python -u cosmos_worker.py &
 
 # V410: Start the AI Oracle (Neural Link)
 python cosmos_oracle.py &
