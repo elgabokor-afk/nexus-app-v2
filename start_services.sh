@@ -7,6 +7,10 @@ cd data-engine
 # V2000: Force Retrain to match current container environment
 python force_retrain.py
 
+# V4200: PhD Mode - Seed Academic Knowledge (Arxiv)
+python seed_academic_knowledge.py
+
+
 python cosmos_worker.py &
 
 # V410: Start the AI Oracle (Neural Link)

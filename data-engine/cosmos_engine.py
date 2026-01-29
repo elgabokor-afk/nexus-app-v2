@@ -464,10 +464,7 @@ class CosmosBrain:
             # If academic backing is weak AND confidence is not super high -> Reject
             return False, prob, f"REJECTED by Cosmos PhD: {validation_result['reason']}"
             
-        if not validation_result['approved'] and prob < 0.85:
-            # If academic backing is weak AND confidence is not super high -> Reject
-            return False, prob, f"REJECTED by Cosmos PhD: {validation_result['reason']}"
-            
+
         if validation_result['approved']:
              prob += 0.10
              print(f"       [PhD VALIDATED] {validation_result['citations'][0]} (p={validation_result.get('p_value', 1.0)})")
