@@ -169,7 +169,7 @@ def main_loop():
 
 if __name__ == "__main__":
     if live_trader.mode != "LIVE":
-        print("!!! ERROR: TRADING_MODE is not LIVE. Aborting Executor.")
-        sys.exit(1)
+        print("!!! WARNING: TRADING_MODE is set to PAPER. Executor running in SIMULATION ONLY.")
+        # We allow it to proceed because binance_engine handles simulation internally.
         
     main_loop()
