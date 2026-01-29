@@ -145,6 +145,21 @@ def main_loop():
                 }).execute()
                 worker_started = True
                 logger.info("   >>> [DB] Logged Startup Event")
+                
+            # V6: GLOBAL OPTIMIZER (Every 4 Hours)
+            # Adjusts Weights & Leverage based on Regime (Volatile vs Ranging)
+            if 'last_optimization' not in locals():
+                last_optimization = 0
+                
+            if time.time() - last_optimization > 14400: # 4 Hours
+                logger.info("   [OPTIMIZER] Running Global Parameter Tuning...")
+                try:
+                    from optimizer import run_optimization
+                    run_optimization()
+                    last_optimization = time.time()
+                except Exception as opt_e:
+                     logger.error(f"Optimizer Failed: {opt_e}")
+                     
         except Exception as e:
             logger.error(f"Failed to log startup: {e}")
 
@@ -165,41 +180,19 @@ def main_loop():
             # but here we can just fetch if the variable is empty or time elapsed)
             # Since 'main_loop' is a while loop, we define this outside in a better structure, 
             # but to minimize diff size:
-            if 'last_asset_update' not in locals():
-                last_asset_update = 0
-                dynamic_pairs = []
+            # V42: RECURSIVE LEARNING LOOP (Every 1 Hour)
+            if 'last_training_time' not in locals():
+                last_training_time = 0
 
-            if time.time() - last_asset_update > 1800: # 30 mins
-                logger.info("Refeshing Dynamic Top-20 Priority List...")
-                dynamic_pairs = get_top_vol_pairs(limit=20)
-                last_asset_update = time.time()
-
-            # V1700: SELF-OPTIMIZATION LOOP
-            current_win_rate = fetch_win_rate()
-            min_confidence_threshold = 0 # Base
-            
-            if current_win_rate < 50.0:
-                min_confidence_threshold = 5
-                logger.info(f"   [SELF-OPTIMIZACIÓN] Win Rate ({current_win_rate}%) < 50%. Aumentando exigencia (+5%).")
-            else:
-                logger.info(f"   [SELF-OPTIMIZACIÓN] Win Rate ({current_win_rate}%) saludable. Exigencia estándar.")
-            
-            # V3400: MACRO SENTIMENT CHECK
-            macro_sentiment = "NEUTRAL" # Default
-            if macro_brain:
+            if time.time() - last_training_time > 3600:
+                logger.info("   [RECURSIVE AI] Fetching Trade History & Updating Theses (Biases)...")
                 try:
-                    macro_sentiment = macro_brain.get_macro_sentiment()
-                    if macro_sentiment == "RISK_OFF":
-                        min_confidence_threshold += 15
-                        logger.warning(f"   [MACRO] ALERT: RISK_OFF DETECTED (DXY Strong). Increasing Confidence Req by +15%.")
-                    elif macro_sentiment == "RISK_ON":
-                        min_confidence_threshold -= 5
-                        logger.info(f"   [MACRO] RISK_ON (Dollar Weak). Confidence Bonus Applied (-5%).")
+                    history = brain.fetch_training_data()
+                    brain.update_asset_bias(history.to_dict('records') if not history.empty else [])
+                    last_training_time = time.time()
                 except Exception as e:
-                    logger.error(f"Macro Brain Error: {e}")
-            else:
-                 logger.warning("   [MACRO] Engine Offline. Using Neutral baseline.")
-            
+                    logger.error(f"Recursive Training Failed: {e}")
+
             # Combine symbols: Priority + Static + Dynamic
             symbols_to_scan = list(set(PRIORITY_ASSETS + SYMBOLS + dynamic_pairs))
             logger.info(f"Scanning {len(symbols_to_scan)} Assets: {symbols_to_scan}")
@@ -208,6 +201,12 @@ def main_loop():
             
             for symbol in symbols_to_scan:
                 try:
+                    # V310: GLOBAL BLACKLIST CHECK
+                    from scanner import ASSET_BLACKLIST
+                    if any(b in symbol for b in ASSET_BLACKLIST):
+                         # logger.info(f"Skipping Blacklisted Asset: {symbol}")
+                         continue
+
                     # Fetch Data (5m and 15m for confluence)
                     df_5m = fetch_data(symbol, timeframe='5m', limit=100)
                     df_15m = fetch_data(symbol, timeframe='15m', limit=100)
@@ -223,7 +222,6 @@ def main_loop():
                         trend_15m = "BULLISH" if p_5m > ma_15m else "BEARISH"
                         
                         # V1500: Always broadcast live price to UI during scan
-                        # REDIS (Legacy/Internal)
                         redis_engine.publish("live_prices", {
                             "symbol": symbol.upper(),
                             "price": p_5m,
@@ -231,7 +229,6 @@ def main_loop():
                         })
 
                         # V3800: PUSHER BROADCAST (Direct to Frontend)
-                        # Vital for PaperBot PnL & Charts without WS Bridge
                         try:
                             from pusher_client import pusher_client
                             pusher_client.trigger("public-price-feed", "price-update", {
@@ -242,24 +239,21 @@ def main_loop():
                         except Exception as e:
                             logger.warning(f"Failed to broadcast price to Pusher: {e}")
                         
-                        # V3300: CRITICAL - Fetch Real-Time Price for Signal Generation
-                        # Candle Close (p_5m) is too stale for precise Entry/TP/SL
-                        real_price = p_5m # Default fallback
-                        
+                        # V3300: CRITICAL - Fetch Real-Time Price
+                        real_price = p_5m 
                         if live_trader:
                             try:
                                 ticker = live_trader.fetch_ticker(symbol)
                                 real_price = float(ticker['last']) if ticker and 'last' in ticker else p_5m
                             except Exception as e:
-                                logger.warning(f"   [SYNC] Failed to fetch live ticker for {symbol}: {e}. Using Candle Close.")
-                        else:
-                            # Optional: Log once or debug, to avoid spamming warning if known missing
-                            pass 
+                                pass 
 
-
+                        # V42: SMC ORDER BLOCK ANALYSIS
+                        # Import here to avoid circular dep issues at top level if any
+                        from smc_engine import smc_engine
+                        smc_data = smc_engine.analyze(df_5m)
+                        
                         # AI + Quant Analysis
-                        # V1400: Pass df_4h for Multi-Timeframe Logic
-                        # V3300: Pass real_price
                         quant_signal = analyze_quant_signal(
                             symbol, 
                             techs_5m, 
@@ -280,50 +274,73 @@ def main_loop():
                             if quant_engine:
                                 flow_analysis = quant_engine.analyze_order_flow(symbol)
                                 if flow_analysis['valid']:
-                                    # If Buying but Bearish Flow -> Reject
                                     if "BUY" in quant_signal['signal'] and flow_analysis['sentiment'] == 'BEARISH':
-                                        logger.info(f"   [QUANT] Signal {symbol} BLOCKED by Bearish Order Flow (Imb: {flow_analysis['imbalance']})")
                                         continue
-                                    # If Selling but Bullish Flow -> Reject
                                     if "SELL" in quant_signal['signal'] and flow_analysis['sentiment'] == 'BULLISH':
-                                        logger.info(f"   [QUANT] Signal {symbol} BLOCKED by Bullish Order Flow (Imb: {flow_analysis['imbalance']})")
                                         continue
                                         
-                                    # If Whale Walls against us -> Reject
-                                    # Logic: If BUY, check for SELL_WALL
                                     walls = flow_analysis.get('whale_walls', [])
                                     if "BUY" in quant_signal['signal'] and any("SELL_WALL" in w for w in walls):
-                                         logger.warning(f"   [QUANT] {symbol} BUY BLOCKED: Whale Sell Wall Detected!")
                                          continue
 
-                                    # Add Logic Note
                                     quant_signal['quant_note'] = f"Flow: {flow_analysis['sentiment']} (Imb: {flow_analysis['imbalance']})"
-                                else:
-                                    logger.warning(f"   [QUANT] Could not analyze flow for {symbol}")
+                                    
+                                    # V42: Institutional Context Helper
+                                    # Used for the 'Academic Thesis' generation later or simply logging
+                                    inst_context = "Institutional Flow Detected"
                             else:
-                                # Fallback if engine missing
                                 quant_signal['quant_note'] = "Quant Engine Offline"
 
                             # Convert to Worker Signal Format
-                            # analyze_quant_signal returns keys: signal, confidence, price, take_profit, stop_loss...
+                            
+                            # V5000: NORMALIZE CONFIDENCE
+                            raw_conf = quant_signal['confidence']
+                            final_conf = raw_conf
+                            
+                            if "SELL" in quant_signal['signal']:
+                                final_conf = 100 - raw_conf
+                            
+                            # V42: RECURSIVE BIAS APPLICATION (The "Thesis" Multiplier)
+                            asset_bias = brain.get_asset_bias(symbol)
+                            final_conf_boosted = final_conf * asset_bias
+                            
+                            # Log significant boosts
+                            if asset_bias != 1.0:
+                                logger.info(f"   [THESIS] {symbol} Bias {asset_bias:.2f}x applied: {final_conf:.0f}% -> {final_conf_boosted:.0f}%")
+                            
+                            # V42: SMC BOOST
+                            # If Order Block aligns, huge confidence boost
+                            smc_boost = 0
+                            if "BUY" in quant_signal['signal'] and smc_data.get('ob_bullish'): smc_boost = 15
+                            if "SELL" in quant_signal['signal'] and smc_data.get('ob_bearish'): smc_boost = 15
+                            
+                            if smc_boost > 0:
+                                final_conf_boosted += smc_boost
+                                logger.info(f"   [SMC] Order Block Detected! Confidence +{smc_boost}%")
+
+                            # Update Payload
                             sig_payload = {
                                 "symbol": symbol,
                                 "signal_type": quant_signal['signal'],
                                 "price": quant_signal['price'],
                                 "take_profit": quant_signal['take_profit'],
                                 "stop_loss": quant_signal['stop_loss'],
-                                "confidence": quant_signal['confidence'],
+                                "confidence": final_conf_boosted, # Recursive + SMC Enhanced
                                 "rsi": quant_signal.get('rsi'),
                                 "atr_value": quant_signal.get('atr_value'),
-                                "volume_ratio": quant_signal.get('volume_ratio')
+                                "volume_ratio": quant_signal.get('volume_ratio'),
+                                # "smc_details": smc_data # Optional: Store in DB if schema supports it
                             }
                             
                             # V1700: Apply Dynamic Threshold
-                            if sig_payload['confidence'] >= (50 + min_confidence_threshold) or ("STRONG" in sig_payload['signal_type']):
+                            # Now using Normalized & Boosted Confidence
+                            # The threshold acts as the "Wall Street Gatekeeper"
+                            if sig_payload['confidence'] >= (60 + min_confidence_threshold): 
                                  generated_signals.append(sig_payload)
-                                 logger.info(f"   >>> SIGNAL FOUND: {symbol} {quant_signal['signal']} (Conf: {sig_payload['confidence']}%)")
+                                 logger.info(f"   >>> SIGNAL FOUND: {symbol} {quant_signal['signal']} (Conf: {sig_payload['confidence']:.0f}%)")
                             else:
-                                 logger.info(f"   [FILTER] Signal {symbol} discarded by Optimization Threshold (Req: {50+min_confidence_threshold}%)")
+                                 pass
+                                 # logger.info(f"   [FILTER] Signal {symbol} discarded (Conf {sig_payload['confidence']:.0f}% < {60+min_confidence_threshold}%)")
                 
                 except Exception as e:
                     logger.error(f"Error scanning {symbol}: {e}")

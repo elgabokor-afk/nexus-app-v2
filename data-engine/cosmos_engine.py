@@ -551,6 +551,11 @@ class CosmosBrain:
         sorted_assets = sorted(biases.items(), key=lambda x: x[1], reverse=True)
         return [sym for sym, bias in sorted_assets[:limit]]
 
+    def get_asset_bias(self, symbol):
+        """V90: Returns the Recursive Learning Multiplier for a specific asset."""
+        if not hasattr(self, 'asset_biases'): return 1.0
+        return self.asset_biases.get(symbol, 1.0)
+
     def rank_assets(self, asset_data_list):
         """
         V80/V90: Multi-Asset Ranking Engine.
