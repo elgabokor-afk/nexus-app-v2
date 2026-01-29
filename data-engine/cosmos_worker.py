@@ -21,6 +21,13 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Import Internal Engines
+# Import Internal Engines
+brain = None
+redis_engine = None
+scanner_engine = None
+macro_brain = None
+quant_engine = None
+
 try:
     from cosmos_engine import brain
     from redis_engine import redis_engine
@@ -28,8 +35,8 @@ try:
     # V3400: Quant Engines
     from macro_feed import macro_brain
     from cosmos_quant import quant_engine
-except ImportError:
-    logger.warning("Components missing. Running in Skeleton Mode.")
+except ImportError as e:
+    logger.warning(f"Components missing ({e}). Running in Skeleton Mode.")
 
 # Database Setup
 from supabase import create_client, Client
@@ -162,13 +169,20 @@ def main_loop():
                 logger.info(f"   [SELF-OPTIMIZACIÓN] Win Rate ({current_win_rate}%) saludable. Exigencia estándar.")
             
             # V3400: MACRO SENTIMENT CHECK
-            macro_sentiment = macro_brain.get_macro_sentiment()
-            if macro_sentiment == "RISK_OFF":
-                min_confidence_threshold += 15
-                logger.warning(f"   [MACRO] ALERT: RISK_OFF DETECTED (DXY Strong). Increasing Confidence Req by +15%.")
-            elif macro_sentiment == "RISK_ON":
-                min_confidence_threshold -= 5
-                logger.info(f"   [MACRO] RISK_ON (Dollar Weak). Confidence Bonus Applied (-5%).")
+            macro_sentiment = "NEUTRAL" # Default
+            if macro_brain:
+                try:
+                    macro_sentiment = macro_brain.get_macro_sentiment()
+                    if macro_sentiment == "RISK_OFF":
+                        min_confidence_threshold += 15
+                        logger.warning(f"   [MACRO] ALERT: RISK_OFF DETECTED (DXY Strong). Increasing Confidence Req by +15%.")
+                    elif macro_sentiment == "RISK_ON":
+                        min_confidence_threshold -= 5
+                        logger.info(f"   [MACRO] RISK_ON (Dollar Weak). Confidence Bonus Applied (-5%).")
+                except Exception as e:
+                    logger.error(f"Macro Brain Error: {e}")
+            else:
+                 logger.warning("   [MACRO] Engine Offline. Using Neutral baseline.")
             
             # Combine symbols: Priority + Static + Dynamic
             symbols_to_scan = list(set(PRIORITY_ASSETS + SYMBOLS + dynamic_pairs))
@@ -228,28 +242,32 @@ def main_loop():
                                 continue
                                 
                             # V3400: ORDER FLOW & WHALE CHECK
-                            flow_analysis = quant_engine.analyze_order_flow(symbol)
-                            if flow_analysis['valid']:
-                                # If Buying but Bearish Flow -> Reject
-                                if "BUY" in quant_signal['signal'] and flow_analysis['sentiment'] == 'BEARISH':
-                                    logger.info(f"   [QUANT] Signal {symbol} BLOCKED by Bearish Order Flow (Imb: {flow_analysis['imbalance']})")
-                                    continue
-                                # If Selling but Bullish Flow -> Reject
-                                if "SELL" in quant_signal['signal'] and flow_analysis['sentiment'] == 'BULLISH':
-                                    logger.info(f"   [QUANT] Signal {symbol} BLOCKED by Bullish Order Flow (Imb: {flow_analysis['imbalance']})")
-                                    continue
-                                    
-                                # If Whale Walls against us -> Reject
-                                # Logic: If BUY, check for SELL_WALL
-                                walls = flow_analysis.get('whale_walls', [])
-                                if "BUY" in quant_signal['signal'] and any("SELL_WALL" in w for w in walls):
-                                     logger.warning(f"   [QUANT] {symbol} BUY BLOCKED: Whale Sell Wall Detected!")
-                                     continue
+                            if quant_engine:
+                                flow_analysis = quant_engine.analyze_order_flow(symbol)
+                                if flow_analysis['valid']:
+                                    # If Buying but Bearish Flow -> Reject
+                                    if "BUY" in quant_signal['signal'] and flow_analysis['sentiment'] == 'BEARISH':
+                                        logger.info(f"   [QUANT] Signal {symbol} BLOCKED by Bearish Order Flow (Imb: {flow_analysis['imbalance']})")
+                                        continue
+                                    # If Selling but Bullish Flow -> Reject
+                                    if "SELL" in quant_signal['signal'] and flow_analysis['sentiment'] == 'BULLISH':
+                                        logger.info(f"   [QUANT] Signal {symbol} BLOCKED by Bullish Order Flow (Imb: {flow_analysis['imbalance']})")
+                                        continue
+                                        
+                                    # If Whale Walls against us -> Reject
+                                    # Logic: If BUY, check for SELL_WALL
+                                    walls = flow_analysis.get('whale_walls', [])
+                                    if "BUY" in quant_signal['signal'] and any("SELL_WALL" in w for w in walls):
+                                         logger.warning(f"   [QUANT] {symbol} BUY BLOCKED: Whale Sell Wall Detected!")
+                                         continue
 
-                                # Add Logic Note
-                                quant_signal['quant_note'] = f"Flow: {flow_analysis['sentiment']} (Imb: {flow_analysis['imbalance']})"
+                                    # Add Logic Note
+                                    quant_signal['quant_note'] = f"Flow: {flow_analysis['sentiment']} (Imb: {flow_analysis['imbalance']})"
+                                else:
+                                    logger.warning(f"   [QUANT] Could not analyze flow for {symbol}")
                             else:
-                                logger.warning(f"   [QUANT] Could not analyze flow for {symbol}")
+                                # Fallback if engine missing
+                                quant_signal['quant_note'] = "Quant Engine Offline"
 
                             # Convert to Worker Signal Format
                             # analyze_quant_signal returns keys: signal, confidence, price, take_profit, stop_loss...
@@ -311,6 +329,21 @@ def main_loop():
                     # redis_engine.publish("live_signals", { "type": "NEW_SIGNAL", "data": public_payload })
 
                     logger.info(f"Published Signal: {sig['symbol']}")
+
+            # V3600: BROADCAST MARKET STATUS (Macro + FNG) for UI Widgets
+            try:
+                from pusher_client import pusher_client
+                status_payload = {
+                    "sentiment": macro_sentiment, 
+                    "dxy_change": macro_brain.cached_data.get('dxy_change', 0) if macro_brain else 0,
+                    "spx_change": macro_brain.cached_data.get('spx_change', 0) if macro_brain else 0,
+                    "fng_index": fng_index,
+                    "active_sum": len(generated_signals), 
+                    "timestamp": int(time.time())
+                }
+                pusher_client.trigger("public-market-status", "update", status_payload)
+            except Exception as e:
+                logger.warning(f"   [PUSHER] Failed to broadcast status: {e}")
 
             # V2700: COSMOS AI AUDITOR INTEGRATION
             try:
