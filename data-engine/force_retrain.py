@@ -45,12 +45,21 @@ def retrain_model():
     clf.fit(X_imputed, y)
     
     # 3. Save Model
-    print(f"   [3/3] Saving to {MODEL_PATH}...")
-    joblib.dump(clf, MODEL_PATH)
-    # Also save imputer if needed, but for now we often just re-init or pipeline it
-    # Ideally should pipeline, but current code loads model directly.
+    # V4: Use Absolute Path for Persistence
+    # Use standard 'xgb_model.pkl' to match what cosmos_engine expects
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    model_path = os.path.join(current_dir, "xgb_model.pkl")
     
-    print("--- RETRAINING COMPLETE (Compatible with current sklearn) ---")
+    print(f"--- SAVING COMPATIBLE MODEL TO: {model_path} ---")
+    joblib.dump(clf, model_path)
+    print("--- RETRAINING COMPLETE (Version 1.6.1 Compatible) ---")
+    
+    # Optional: If engine uses 'xgb_model_v4.pkl', create a copy or symlink
+    # But better to standardise on one name.
+    # Let's write to both to be safe during migration
+    v4_path = os.path.join(current_dir, "xgb_model_v4.pkl")
+    joblib.dump(clf, v4_path)
+    print(f"--- BACKUP SAVED TO: {v4_path} ---")
 
 if __name__ == "__main__":
     try:
