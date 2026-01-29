@@ -243,13 +243,19 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
                             </div>
                             <div className="flex flex-col">
                                 <h3 className="text-sm font-black text-[#E7E9EA] leading-none tracking-tight">{symbol}</h3>
-                                <div className="flex items-center gap-2 mt-0.5">
-                                    <span className="text-[9px] font-mono text-gray-500">{signal_type}</span>
-                                    <span className={`text-[10px] font-mono font-bold ${tickColor}`}>@ {formatPrice(currentPrice)}</span>
+                                <div className="flex flex-col gap-0.5 mt-0.5">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[9px] text-gray-500 font-bold uppercase">ENTRY</span>
+                                        <span className="text-[10px] font-mono font-bold text-gray-300">{formatPrice(entryPrice)}</span>
+                                    </div>
                                     {livePrice && (
-                                        <span className={`text-[8px] font-mono px-1 rounded ${isProfitable ? 'bg-[#00ffa3]/10 text-[#00ffa3]' : 'bg-red-500/10 text-red-500'}`}>
-                                            {isProfitable ? '+' : ''}{isBuy ? pnlPct.toFixed(2) : (pnlPct * -1).toFixed(2)}%
-                                        </span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[9px] text-gray-500 font-bold uppercase">LIVE</span>
+                                            <span className={`text-[10px] font-mono font-bold ${tickColor}`}>{formatPrice(currentPrice)}</span>
+                                            <span className={`text-[8px] font-mono px-1 rounded ${isProfitable ? 'bg-[#00ffa3]/10 text-[#00ffa3]' : 'bg-red-500/10 text-red-500'}`}>
+                                                {isProfitable ? '+' : ''}{isBuy ? pnlPct.toFixed(2) : (pnlPct * -1).toFixed(2)}%
+                                            </span>
+                                        </div>
                                     )}
                                 </div>
                             </div>
