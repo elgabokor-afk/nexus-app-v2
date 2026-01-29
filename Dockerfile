@@ -11,9 +11,14 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the entire data-engine and necessary SQL files
 # Copy the entire data-engine and necessary SQL files
+# Copy the entire data-engine and necessary SQL files
 COPY data-engine/ ./data-engine/
 COPY start_services.sh .
 RUN chmod +x start_services.sh
+
+# FORCE RETRAIN MODEL to match container's scikit-learn version
+RUN python data-engine/force_retrain.py
+
 # Note: We do NOT copy .env.local. Secrets must be injected by Railway/Docker Env.
 
 # Default command (overridden by docker-compose)
