@@ -487,7 +487,13 @@ def get_top_vol_pairs(limit=15):
                 if cc_res.status_code == 200:
                     cc_data = cc_res.json()['data']
                     # Map CoinCap 'symbol' (BTC) to 'BTC/USDT'
-                    pairs = [f"{item['symbol']}/USDT" for item in cc_data if item['symbol'] not in ['USDT', 'USDC']]
+                    pairs = []
+                    for item in cc_data:
+                        sym = item['symbol']
+                        if sym in ['USDT', 'USDC']: continue
+                        if 'USD' in sym and sym != 'USDT': sym = sym.replace('USD', '') # Strip embedded USD
+                        pairs.append(f"{sym}/USDT")
+                        
                     print(f"   [FALLBACK] Success. Found {len(pairs)} pairs via CoinCap.")
                     return pairs
             except Exception as e:
@@ -518,7 +524,9 @@ def get_top_vol_pairs(limit=15):
         for p in sorted_pairs[:limit]:
             sym = p['symbol']
             # Convert BTCUSDT -> BTC/USDT
-            formatted = f"{sym[:-4]}/{sym[-4:]}"
+            # Fix V3100: prevent UNIUSD/USDT
+            base = sym.replace('USDT', '')
+            formatted = f"{base}/USDT"
             top_symbols.append(formatted)
             
         print(f"   [DYNAMIC] Top {limit} Vol Assets: {top_symbols}")
