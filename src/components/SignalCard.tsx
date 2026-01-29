@@ -28,7 +28,6 @@ interface SignalProps {
     livePrice?: number;
 }
 
-import OneClickTradeModal from './OneClickTradeModal';
 
 const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
     symbol, price, rsi, signal_type, confidence, timestamp, stop_loss, take_profit, atr_value, volume_ratio, imbalance, depth_score, audit_alert, onViewChart, onConsultAI, compact = false, status, pnl, livePrice
@@ -37,7 +36,6 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
     // V2400: VISUAL REPLICATION + HOT ZONE
     const { isVip, loading: profileLoading } = useProfile();
     const [showPaymentModal, setShowPaymentModal] = useState(false);
-    const [showExecutionModal, setShowExecutionModal] = useState(false);
     const [showExecutionModal, setShowExecutionModal] = useState(false);
 
     // VIP Signal Detection (Confidence >= 75)
