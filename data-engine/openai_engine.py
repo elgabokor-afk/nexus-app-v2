@@ -42,7 +42,7 @@ class OpenAIEngine:
             """
 
             response = self.client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="gpt-5-nano",
                 messages=[
                     {"role": "system", "content": "You provide sharp, concise crypto trading insights like a Bloomberg terminal."},
                     {"role": "user", "content": prompt},
