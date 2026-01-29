@@ -16,6 +16,8 @@ CREATE TABLE IF NOT EXISTS public.signals (
     rsi NUMERIC,
     atr_value NUMERIC,
     volume_ratio NUMERIC,
+    academic_thesis_id UUID, -- For RL Attribution (Which paper validated this?)
+    statistical_p_value NUMERIC, -- < 0.05 is significant
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

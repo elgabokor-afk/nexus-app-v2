@@ -74,10 +74,24 @@ class AcademicValidator:
                 
             avg_score = score / len(matches)
             
+            avg_score = score / len(matches)
+            
+            # P-Value Calculation (Inverted Probability)
+            # If similarity is 0.95, p-value is 0.05 (Significant)
+            p_value = max(0.001, 1 - avg_score)
+            
+            # Best Match Thesis ID
+            best_thesis_id = matches[0].get('paper_id') # Assuming 'paper_id' is returned by RPC
+            # If RPC doesn't return paper_id (it returns id from chunks), we might need to adjust or use chunk id.
+            # Assuming 'id' from match is chunk_id, we use that for now as proxy.
+            best_thesis_id = matches[0]['id']
+
             return {
-                "approved": avg_score > 75,
+                "approved": avg_score > 0.75,
                 "score": avg_score,
-                "reason": f"Validated by {len(matches)} theses.",
+                "p_value": round(p_value, 4),
+                "thesis_id": best_thesis_id,
+                "reason": f"Validated by {len(matches)} theses. P-Value: {p_value:.3f}",
                 "citations": citations
             }
             

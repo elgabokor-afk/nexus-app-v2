@@ -421,9 +421,17 @@ class CosmosBrain:
             # If academic backing is weak AND confidence is not super high -> Reject
             return False, prob, f"REJECTED by Cosmos PhD: {validation_result['reason']}"
             
+        if not validation_result['approved'] and prob < 0.85:
+            # If academic backing is weak AND confidence is not super high -> Reject
+            return False, prob, f"REJECTED by Cosmos PhD: {validation_result['reason']}"
+            
         if validation_result['approved']:
              prob += 0.10
-             print(f"       [PhD VALIDATED] {validation_result['citations'][0]}")
+             print(f"       [PhD VALIDATED] {validation_result['citations'][0]} (p={validation_result.get('p_value', 1.0)})")
+
+        # Capture P-Value and Thesis ID for DB
+        self.last_p_value = validation_result.get('p_value', 1.0)
+        self.last_thesis_id = validation_result.get('thesis_id', None)
              
         # 6. VPIN TOXICITY CHECK
         # Estimate volume buckets from features if available (mocking for now as we lack granular data in features)
@@ -558,6 +566,8 @@ class CosmosBrain:
                 "ai_confidence": signal_data.get('confidence'),
                 "risk_level": "HIGH" if signal_data.get('confidence', 0) < 80 else "MID",
                 "status": "ACTIVE",
+                "academic_thesis_id": getattr(self, 'last_thesis_id', None),
+                "statistical_p_value": getattr(self, 'last_p_value', 1.0),
                 "created_at": datetime.now(timezone.utc).isoformat()
             }
             res = self.supabase.table("signals").insert(db_record).execute()
