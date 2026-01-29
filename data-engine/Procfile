@@ -4,3 +4,4 @@ worker_scanner: python cosmos_worker.py
 worker_prices: python price_feed.py
 worker_payments: python payment_listener.py
 worker_executor: python nexus_executor.py
+api: uvicorn execution_api:app --host 0.0.0.0 --port $PORT

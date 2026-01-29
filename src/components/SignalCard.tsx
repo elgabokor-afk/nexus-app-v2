@@ -1,7 +1,8 @@
 
 import React, { useState } from 'react';
-import { ArrowUpRight, ArrowDownRight, Activity, Brain, BarChart2, Flame, Lock, Copy, Check, Bot, ExternalLink } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, Activity, Brain, BarChart2, Flame, Lock, Copy, Check, Bot, ExternalLink, Zap } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
+import OneClickTradeModal from './OneClickTradeModal';
 
 interface SignalProps {
     symbol: string;
@@ -27,6 +28,8 @@ interface SignalProps {
     livePrice?: number;
 }
 
+import OneClickTradeModal from './OneClickTradeModal';
+
 const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
     symbol, price, rsi, signal_type, confidence, timestamp, stop_loss, take_profit, atr_value, volume_ratio, imbalance, depth_score, audit_alert, onViewChart, onConsultAI, compact = false, status, pnl, livePrice
 }) => {
@@ -34,6 +37,8 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
     // V2400: VISUAL REPLICATION + HOT ZONE
     const { isVip, loading: profileLoading } = useProfile();
     const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const [showExecutionModal, setShowExecutionModal] = useState(false);
+    const [showExecutionModal, setShowExecutionModal] = useState(false);
 
     // VIP Signal Detection (Confidence >= 75)
     // Adjusted per user feedback (79% should be VIP)
@@ -278,7 +283,32 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
                                 {actionText}
                             </span>
                         )}
+                        {/* V5000: ONE-CLICK TRIGGER */}
+                        {!isLocked && (
+                            <button
+                                onClick={(e) => { e.stopPropagation(); setShowExecutionModal(e.shiftKey ? false : true); }}
+                                className="ml-2 p-1.5 rounded-full bg-white/5 hover:bg-white/10 hover:text-[#00ffa3] transition border border-white/5 group/zap"
+                                title="Quick Execute"
+                            >
+                                <Zap size={12} className="text-gray-400 group-hover/zap:text-[#00ffa3] fill-current" />
+                            </button>
+                        )}
                     </div>
+
+                    {/* ONE-CLICK MODAL */}
+                    {showExecutionModal && (
+                        <OneClickTradeModal
+                            isOpen={showExecutionModal}
+                            onClose={() => setShowExecutionModal(false)}
+                            signal={{
+                                symbol,
+                                side: isBuy ? 'buy' : 'sell',
+                                entry_price: entryPrice,
+                                stop_loss: stop_loss || 0,
+                                take_profit: take_profit || 0
+                            }}
+                        />
+                    )}
 
                     {/* === METRICS GRID (Expanded) === */}
                     <div className="grid grid-cols-4 gap-2 mt-3 bg-white/[0.03] p-2.5 rounded-lg border border-white/5 relative overflow-hidden">
