@@ -27,6 +27,7 @@ redis_engine = None
 scanner_engine = None
 macro_brain = None
 quant_engine = None
+live_trader = None
 
 try:
     from cosmos_engine import brain
@@ -35,6 +36,7 @@ try:
     # V3400: Quant Engines
     from macro_feed import macro_brain
     from cosmos_quant import quant_engine
+    from binance_engine import live_trader
 except ImportError as e:
     logger.warning(f"Components missing ({e}). Running in Skeleton Mode.")
 
@@ -215,12 +217,18 @@ def main_loop():
                         
                         # V3300: CRITICAL - Fetch Real-Time Price for Signal Generation
                         # Candle Close (p_5m) is too stale for precise Entry/TP/SL
-                        try:
-                            ticker = live_trader.fetch_ticker(symbol)
-                            real_price = float(ticker['last']) if ticker and 'last' in ticker else p_5m
-                        except Exception as e:
-                            logger.warning(f"   [SYNC] Failed to fetch live ticker for {symbol}: {e}. Using Candle Close.")
-                            real_price = p_5m
+                        real_price = p_5m # Default fallback
+                        
+                        if live_trader:
+                            try:
+                                ticker = live_trader.fetch_ticker(symbol)
+                                real_price = float(ticker['last']) if ticker and 'last' in ticker else p_5m
+                            except Exception as e:
+                                logger.warning(f"   [SYNC] Failed to fetch live ticker for {symbol}: {e}. Using Candle Close.")
+                        else:
+                            # Optional: Log once or debug, to avoid spamming warning if known missing
+                            pass 
+
 
                         # AI + Quant Analysis
                         # V1400: Pass df_4h for Multi-Timeframe Logic
