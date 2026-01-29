@@ -426,6 +426,13 @@ def analyze_quant_signal(symbol, tech_analysis, sentiment_score=50, df_confluenc
     
     # ATR Risk Logic
     atr = tech_analysis['atr']
+    
+    # V3500: SAFETY NET - Prevent Flat Signals (Entry=TP=SL)
+    # If ATR is 0 (due to API failure or flat market), assume 0.5% volatility default
+    if atr == 0 or atr is None:
+        logger_msg = f"   [RISK] Warning: ATR is 0 for {symbol}. Forcing 0.5% Minimum Volatility."
+        print(logger_msg)
+        atr = price * 0.005 # 0.5% Move (Reasonable for 5m Scalp)
     if "BUY" in signal_type:
         stop_loss = price - (atr * 1.5) # User requested 1.5x
         take_profit = price + (atr * 3.0) # User requested 3.0x (1:2 Ratio)
