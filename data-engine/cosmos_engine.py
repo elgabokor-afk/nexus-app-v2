@@ -4,6 +4,7 @@ import numpy as np
 from datetime import datetime, timezone
 from supabase import create_client, Client
 from dotenv import load_dotenv
+import warnings # V200: Version Guard
 
 # Safe Import for ML Libraries
 try:
@@ -57,13 +58,38 @@ class CosmosBrain:
         
         if os.path.exists(MODEL_PATH):
             try:
-                data = joblib.load(MODEL_PATH)
+                # V200: STRICT VERSION CHECK
+                # If we are loading a model from a different sklearn version, it might warn or crash.
+                # We catch warnings as errors here if possible, or just rely on generic exception if it fails hard.
+                # However, joblib often warns but loads. We need to check if result is usable.
+                
+                with warnings.catch_warnings(record=True) as w:
+                    warnings.simplefilter("always") # Cause all warnings to be caught
+                    data = joblib.load(MODEL_PATH)
+                    
+                    # Check for InconsistentVersionWarning
+                    for warning in w:
+                        if "InconsistentVersionWarning" in str(warning.message):
+                            raise ValueError("Model Version Mismatch detected!")
+
                 self.model = data['model']
                 self.imputer = data['imputer']
                 self.is_trained = True
                 print("   >>> Cosmos Brain: Loaded existing neural pathways.")
+                
             except Exception as e:
-                print(f"   >>> Cosmos Brain: Load failed ({e}). Starting fresh.")
+                print(f"   >>> [BRAIN CORRUPTION] Model Load Failed ({e}). PURGING & RETRAINING...")
+                try:
+                    os.remove(MODEL_PATH)
+                    print("   >>> [BRAIN] Corrupt Model Deleted.")
+                except:
+                    pass
+                
+                # Immediate Emergency Training
+                self.train()
+        else:
+            print("   >>> [BRAIN] No model found. initializing fresh training...")
+            self.train()
     
     def save_model(self):
         if not ML_AVAILABLE or not self.model: return
