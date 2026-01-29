@@ -16,3 +16,4 @@ PyYAML
 openai
 websockets
 yfinance
+lxml>=5.0.0

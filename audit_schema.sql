@@ -25,4 +25,4 @@ CREATE POLICY "Public Read Audit"
 
 CREATE POLICY "Service Write Audit"
     ON public.signal_audit_history FOR ALL
-    USING (auth.role() = 'service_role');
+    USING ((select auth.role()) = 'service_role');

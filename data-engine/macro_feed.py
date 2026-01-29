@@ -111,3 +111,35 @@ class MacroBrain:
 
 # Singleton
 macro_brain = MacroBrain()
+
+if __name__ == "__main__":
+    print("--- MACRO BRAIN V2 (PUSHER EDITION) STARTED ---")
+    print("Broadcasting DXY/SPX Sentiment via 'public-market-status'...")
+    
+    from pusher_client import pusher_client
+    
+    while True:
+        try:
+            # 1. Fetch Data
+            data = macro_brain.fetch_data()
+            sentiment = macro_brain.get_macro_sentiment()
+            
+            # 2. Prepare Payload
+            payload = {
+                "type": "MACRO_UPDATE",
+                "sentiment": sentiment,
+                "dxy_change": data.get("dxy_change", 0.0),
+                "spx_change": data.get("spx_change", 0.0),
+                "timestamp": int(time.time())
+            }
+            
+            # 3. Broadcast Pusher
+            pusher_client.trigger("public-market-status", "macro-update", payload)
+            
+            logger.info(f">>> [PUSHER] Broadcasted Macro: {sentiment} (DXY: {payload['dxy_change']}%)")
+            
+        except Exception as e:
+            logger.error(f"!!! Macro Loop Error: {e}")
+            
+        # Sleep 60 seconds (Macro data doesn't move fast)
+        time.sleep(60)

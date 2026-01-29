@@ -27,21 +27,21 @@ ALTER TABLE public.trade_journal ENABLE ROW LEVEL SECURITY;
 -- Users can View their own journal
 CREATE POLICY "Users can view own journal" 
     ON public.trade_journal FOR SELECT 
-    USING (auth.uid() = user_id);
+    USING ((select auth.uid()) = user_id);
 
 -- Users can Insert into their own journal
 CREATE POLICY "Users can insert own journal" 
     ON public.trade_journal FOR INSERT 
-    WITH CHECK (auth.uid() = user_id);
+    WITH CHECK ((select auth.uid()) = user_id);
 
 -- Users can Update/Delete their own journal
 CREATE POLICY "Users can update own journal" 
     ON public.trade_journal FOR UPDATE 
-    USING (auth.uid() = user_id);
+    USING ((select auth.uid()) = user_id);
 
 CREATE POLICY "Users can delete own journal" 
     ON public.trade_journal FOR DELETE 
-    USING (auth.uid() = user_id);
+    USING ((select auth.uid()) = user_id);
 
 -- 4. Storage Bucket Policy (Conceptual - Setup via UI usually)
 -- Bucket: 'trade-uploads'

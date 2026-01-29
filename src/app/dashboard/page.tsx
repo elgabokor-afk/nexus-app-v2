@@ -247,16 +247,17 @@ export default function Dashboard() {
         const marketChannel = pusher.subscribe('public-market-status');
 
         marketChannel.bind('update', (data: any) => {
-            // console.log("Market Status:", data);
-            // Backend sends flat payload or nested 'update' depending on library version, 
-            // but based on cosmos_worker it sends raw dict as the data for the event.
-            // cosmos_worker: pusher_client.trigger("...", "...", status_payload)
-            // So 'data' IS 'status_payload'.
+            // Legacy or Cosmos Worker Status
+        });
+
+        // V4000: MACRO FEED LISTENER (Dedicated Event)
+        marketChannel.bind('macro-update', (data: any) => {
+            console.log("⚡ [MACRO] Data Received:", data);
             setMarketStatus({
                 sentiment: data.sentiment || "NEUTRAL",
                 dxy_change: data.dxy_change || 0,
                 spx_change: data.spx_change || 0,
-                fng_index: data.fng_index || 50
+                fng_index: 50 // Keep FNG neutral until we fetch it specifically
             });
         });
 
