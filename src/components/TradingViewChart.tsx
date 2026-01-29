@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from 'react';
-import { createChart, ColorType, CrosshairMode, IChartApi } from 'lightweight-charts';
+import { createChart, ColorType, CrosshairMode, IChartApi, CandlestickSeries } from 'lightweight-charts';
 
 interface ChartProps {
     data: { time: string; open: number; high: number; low: number; close: number }[];
@@ -44,8 +44,8 @@ export default function TradingViewChart({ data, entryPrice, tpPrice, slPrice, h
 
         chartRef.current = chart;
 
-        // Add Candlestick Series
-        const candleSeries = (chart as any).addCandlestickSeries({
+        // Add Candlestick Series (v5 Syntax)
+        const candleSeries = chart.addSeries(CandlestickSeries, {
             upColor: '#00ffa3', // Nexus Green
             downColor: '#ef4444', // Red
             borderVisible: false,
