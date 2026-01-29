@@ -14,8 +14,13 @@ sys.path.append(parent_dir)
 load_dotenv(dotenv_path=os.path.join(parent_dir, '.env.local'))
 
 from binance_engine import live_trader
-from db import supabase, log_error
+from db import log_error
+from supabase import create_client
 from pusher_client import pusher_client
+
+SUPABASE_URL = os.getenv("NEXT_PUBLIC_SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 print("/// N E X U S  E X E C U T O R  (Live Trading V1.0) ///")
 print("WARNING: REAL MONEY MODE ACTIVE")
