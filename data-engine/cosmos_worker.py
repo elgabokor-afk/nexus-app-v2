@@ -56,17 +56,9 @@ except ImportError as e:
 
 # Database Setup
 from supabase import create_client, Client
+# V310: Global Config (Immutable)
 SUPABASE_URL = os.getenv("NEXT_PUBLIC_SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-
-# V310: Global Confidence Fallbacks
-min_confidence_threshold = 25
-macro_sentiment = "NEUTRAL"
-dynamic_pairs = []
-last_dynamic_update = 0
-last_training_time = 0
-last_optimization = 0
-worker_started = False
 
 if not SUPABASE_URL or not SUPABASE_KEY:
     logger.error("Supabase credentials missing. Exiting.")
@@ -140,6 +132,15 @@ def fetch_win_rate():
 
 def main_loop():
     logger.info("--- COSMOS AI WORKER STARTED [RAILWAY MODE] ---")
+    
+    # V310: Worker State (Local Scope)
+    worker_started = False
+    last_optimization = 0
+    last_training_time = 0
+    last_dynamic_update = 0
+    dynamic_pairs = []
+    min_confidence_threshold = 25
+    macro_sentiment = "NEUTRAL"
     
     while True:
         # V3000: HEARTBEAT & STARTUP LOGGING
