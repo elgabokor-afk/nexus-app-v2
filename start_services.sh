@@ -23,8 +23,11 @@ python macro_feed.py &
 # Runs the actual trading logic listening to Redis
 python -u nexus_executor.py &
 
-# Wait for any process to exit
-wait -n
+# V6000: NEXUS UNIFIED API (GATEWAY)
+# Handles WebSockets, One-Click Exec, and AI Chat
+# Binding to PORT provided by Railway
+echo "--- [GATEWAY] Starting Nexus Unified API on Port $PORT ---"
+uvicorn nexus_api:app --host 0.0.0.0 --port $PORT
 
-# Exit with status of process that exited first
+# Exit
 exit $?
