@@ -109,8 +109,12 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
         borderColor = 'border-yellow-500';
     }
 
-    const formatPrice = (p: number | undefined) =>
-        p ? `$${Number(p).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}` : '---';
+    const formatPrice = (p: number | undefined) => {
+        if (!p) return '---';
+        const val = Number(p);
+        if (val < 1.0) return `$${val.toLocaleString(undefined, { minimumFractionDigits: 8, maximumFractionDigits: 8 })}`;
+        return `$${val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    };
 
     // Payment Modal Component
     const PaymentModal = () => {
@@ -238,8 +242,15 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
                     {/* HEADLINE: Symbol & Status */}
                     <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-[#16181c] p-0.5 border border-[#2f3336] flex items-center justify-center overflow-hidden">
-                                <img src={logoUrl} alt={symbol} className="w-full h-full object-cover" />
+                            <div className="w-8 h-8 rounded-full bg-white/10 p-0 border border-[#2f3336] flex items-center justify-center overflow-hidden">
+                                <img
+                                    src={logoUrl}
+                                    alt={symbol}
+                                    className="w-full h-full object-cover rounded-full"
+                                    onError={(e) => {
+                                        e.currentTarget.src = "https://cdn-icons-png.flaticon.com/512/12114/12114233.png"; // Generic Crypto Icon
+                                    }}
+                                />
                             </div>
                             <div className="flex flex-col">
                                 <h3 className="text-sm font-black text-[#E7E9EA] leading-none tracking-tight">{symbol}</h3>
