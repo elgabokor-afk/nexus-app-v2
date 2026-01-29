@@ -32,10 +32,13 @@ if os.path.exists(config_path):
     with open(config_path, 'r') as f:
         GLOBAL_CONFIG = json.load(f) or {}
 
-PAPER_TRADE_ENABLED = GLOBAL_CONFIG.get("paper_trade_enabled", True)
-print(f"--- V402 CONFIG: paper_trade_enabled={PAPER_TRADE_ENABLED} ---")
-if not PAPER_TRADE_ENABLED:
-    print("!!! MASTER SWITCH: Paper Trading is DISABLED. Engine restricted to LIVE path only. !!!")
+# USER REQUEST: Paper Bot must ALWAYS run as "Practice Mode", distinct from Executor.
+# Force Simulation Mode for this process overrides any global "LIVE" setting.
+os.environ["TRADING_MODE"] = "PAPER"
+PAPER_TRADE_ENABLED = True
+
+print(f"--- COSMOS TRAINING ENGINE (PAPER BOT) ---")
+print(f"   [MODE] FORCED SIMULATION (Recursive Learning)")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -44,15 +47,12 @@ from db import get_latest_oracle_insight
 from cosmos_engine import brain
 from binance_engine import live_trader
 
-print("--- BINANCE EXECUTION & DATA ENGINE ACTIVE (V310) ---")
+print("--- BINANCE DATA ENGINE CONNECTED ---")
 
-TRADING_MODE = os.getenv("TRADING_MODE", "PAPER").upper()
-# V460: Force LIVE mode if specified in Env, ignoring JSON conflicts
-if TRADING_MODE == "LIVE":
-    PAPER_TRADE_ENABLED = False 
-    print("--- [V402 OVERRIDE] TRADING_MODE is LIVE. Disabling Paper Trade safely. ---")
+# Redundant check removed. We are always in Paper Mode here.
+TRADING_MODE = "PAPER"
 
-print(f"--- NEXUS TRADING ENGINE INITIALIZED [MODE: {TRADING_MODE}] ---")
+print(f"--- SIMULATION ENGINE READY ---")
 
 def get_current_price(symbol):
     """V310: Use Binance for price data. V404: Early exit for blacklist."""
