@@ -4,6 +4,9 @@
 cd data-engine
 
 # Start the Cosmos Worker (Scanner + AI)
+# V2000: Force Retrain to match current container environment
+python force_retrain.py
+
 python cosmos_worker.py &
 
 # Start the paper trader in the background
