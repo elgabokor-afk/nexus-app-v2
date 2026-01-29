@@ -47,7 +47,7 @@ export default function VirtualPortfolio() {
         // V2: Real-time Subscription
         const channel = supabase
             .channel('public:signal_audit_history')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'signal_audit_history' }, (payload) => {
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'signal_audit_history' }, (payload: any) => {
                 console.log("   [AUDIT SYNC] New Audit Log Received:", payload.new);
                 // Append new data and recalculate curve
                 fetchAudit(); // Simplest way to ensure accurate cumulative recalc
