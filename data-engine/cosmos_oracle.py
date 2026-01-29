@@ -330,16 +330,16 @@ if __name__ == "__main__":
     # Ensure Priority Assets are scanned FIRST
     target_assets = PRIORITY_ASSETS + [a for a in dynamic_assets if a not in PRIORITY_ASSETS] + [a for a in all_unique_assets if a not in PRIORITY_ASSETS and a not in dynamic_assets]
         
-        print(f"\n>>> Starting Recursive Pulse for {len(target_assets)} assets...")
-        print(f"    [PRIORITY]: {PRIORITY_ASSETS}")
-        print(f"    [DYNAMIC]:  {len(dynamic_assets)} found")
-        print(f"    [STANDARD]: {len(SYMBOLS)} additional")
+    print(f"\n>>> Starting Recursive Pulse for {len(target_assets)} assets...")
+    print(f"    [PRIORITY]: {PRIORITY_ASSETS}")
+    print(f"    [DYNAMIC]:  {len(dynamic_assets)} found")
+    print(f"    [STANDARD]: {len(SYMBOLS)} additional")
+    
+    for symbol in target_assets:
+        run_oracle_step(symbol)
+        time.sleep(2) # Small delay to avoid rate limits
         
-        for symbol in target_assets:
-            run_oracle_step(symbol)
-            time.sleep(2) # Small delay to avoid rate limits
-            
-        print(f">>> Pulse Complete. Sleeping 30s...")
-        time.sleep(30) 
+    print(f">>> Pulse Complete. Sleeping 30s...")
+    time.sleep(30) 
  
 
