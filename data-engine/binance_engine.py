@@ -142,7 +142,15 @@ class BinanceTrader:
         except Exception as e:
             print(f"   [KRAKEN] Fetch Ticker failed for {kraken_symbol}: {e}. Falling back to Binance...")
             try:
-                return self.exchange.fetch_ticker(symbol)
+                # Map to Futures if needed
+                if not self.exchange.markets: self.exchange.load_markets()
+                
+                fut_symbol = symbol
+                if fut_symbol not in self.exchange.markets:
+                    if f"{symbol}:USDT" in self.exchange.markets:
+                        fut_symbol = f"{symbol}:USDT"
+                
+                return self.exchange.fetch_ticker(fut_symbol)
             except Exception as b_err:
                 # V312: COINCAP FALLBACK (Geo-Block Bypass)
                 if "451" in str(b_err) or "Service unavailable" in str(b_err):
@@ -232,6 +240,21 @@ class BinanceTrader:
                 print(f"   [BINANCE] Fallback Fetch Order Book failed for {symbol}: {b_err}")
                 return None
 
+    # V314: FUTURES SYMBOL MAPPER
+    def _map_to_futures_symbol(self, symbol):
+        """
+        Maps generic symbols to Binance Futures format.
+        BTC/USDT -> BTC/USDT:USDT (Linear)
+        """
+        if ":" in symbol: return symbol
+        if "/USD" in symbol and "/USDT" not in symbol:
+             symbol = symbol.replace("/USD", "/USDT")
+        
+        # Check if we need to append :USDT
+        # For linear contracts, it's often safer to use the standard ID if loaded, 
+        # but let's try the common suffix if simple lookup fails.
+        return symbol
+
     def execute_market_order(self, symbol, side, amount, leverage=1):
         """
         Executes a real MARKET order on Binance Margin.
@@ -245,19 +268,27 @@ class BinanceTrader:
             print("   [BINANCE] Error: Not connected to API.")
             return None
 
-        print(f"   [BINANCE] PRE-ORDER DIAGNOSTICS (MARGIN): {symbol} | Side: {side} | Target Amount: {amount}")
+        # Map to Futures
+        symbol = self._map_to_futures_symbol(symbol)
 
-        # V3002: EXECUTION SYMBOL MAPPING (Kraken USD -> Binance USDT)
-        # Signals coming from Scanner (Kraken) might say 'BTC/USD', but Binance Futures needs 'BTC/USDT'
-        if "/USD" in symbol and "/USDT" not in symbol:
-            symbol = symbol.replace("/USD", "/USDT")
-            print(f"   [V3002] Mapped Execution Symbol to {symbol}")
+        print(f"   [BINANCE] PRE-ORDER DIAGNOSTICS (MARGIN): {symbol} | Side: {side} | Target Amount: {amount}")
 
         try:
             # 1. Load Markets (if not loaded)
             if not self.exchange.markets:
                 print("   [BINANCE] Loading market data...")
                 self.exchange.load_markets()
+            
+            # Check if symbol exists in markets
+            if symbol not in self.exchange.markets:
+                 # Try appending :USDT if missing
+                 alt_symbol = f"{symbol}:USDT"
+                 if alt_symbol in self.exchange.markets:
+                     symbol = alt_symbol
+                     print(f"   [BINANCE] Auto-Corrected Symbol to {symbol}")
+                 else:
+                     print(f"   [BINANCE] CRITICAL: Market {symbol} not found in Futures.")
+                     return None
 
             # V2500: Leverage Upgrade (Cap raised to 10x)
             target_leverage = min(leverage, 10)
