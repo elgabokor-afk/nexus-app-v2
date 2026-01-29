@@ -93,6 +93,9 @@ export default function Dashboard() {
         fng_index: 50
     });
 
+    // V3800: REAL-TIME PRICE ENGINE (TICKER)
+    const [livePrices, setLivePrices] = useState<Record<string, number>>({});
+
     const handleViewChart = (symbol: string) => {
         const sig = signals.find(s => s.symbol === symbol);
         if (sig) {
@@ -286,7 +289,8 @@ export default function Dashboard() {
         });
 
         // V3800: REAL-TIME PRICE ENGINE (TICKER)
-        const [livePrices, setLivePrices] = useState<Record<string, number>>({});
+        // State moved to top level
+
 
         // ... inside existing useEffect ...
 
