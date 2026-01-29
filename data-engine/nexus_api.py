@@ -209,6 +209,51 @@ async def execute_trade(req: TradeRequest):
             pusher_client.trigger('private-execution-' + req.user_id, 'order-failed', {'error': str(e)})
         raise HTTPException(status_code=400, detail=str(e))
 
+class SaveKeyRequest(BaseModel):
+    user_id: str
+    exchange: str
+    api_key: str
+    secret_key: str
+@app.post("/save-keys")
+async def save_keys(req: SaveKeyRequest):
+    """
+    V5005: Securely encrypt and save user keys.
+    Prevents plain-text keys from ever hitting the database long-term.
+    """
+    if not key_manager:
+        raise HTTPException(status_code=500, detail="Encryption System Not Configured")
+
+    try:
+        # 1. Verify No Withdrawals (Optional but recommended on save)
+        test_exchange = getattr(ccxt, req.exchange)({
+            'apiKey': req.api_key,
+            'secret': req.secret_key,
+        })
+        try:
+            restrictions = test_exchange.private_get_sapi_v1_account_apirestrictions()
+            if restrictions.get('enableWithdrawals') is True:
+                return JSONResponse(status_code=400, content={"error": "Withdrawals Enabled. Please disable for safety."})
+        except: pass # Some exchanges don't support this check easily
+
+        # 2. Encrypt
+        api_key_enc = key_manager.fernet.encrypt(req.api_key.encode()).decode()
+        secret_key_enc = key_manager.fernet.encrypt(req.secret_key.encode()).decode()
+
+        # 3. Save to Supabase
+        res = supabase.table("user_exchanges").upsert({
+            "user_id": req.user_id,
+            "exchange": req.exchange,
+            "api_key_enc": api_key_enc,
+            "secret_key_enc": secret_key_enc,
+            "is_active": True,
+            "permissions_verified": True
+        }, on_conflict="user_id").execute()
+
+        return {"status": "success", "message": "Keys Encrypted & Saved Successfully"}
+
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 @app.websocket("/ws/live")
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)

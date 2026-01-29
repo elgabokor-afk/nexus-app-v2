@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { Zap, ShieldCheck, AlertTriangle, CheckCircle, Loader2, X } from 'lucide-react';
+import ExchangeSettings from './ExchangeSettings';
 
 interface TradeSignal {
     symbol: string;
@@ -20,9 +21,28 @@ export default function OneClickTradeModal({
     signal: TradeSignal;
 }) {
     const [confirmed, setConfirmed] = useState(false);
-    const [status, setStatus] = useState<'IDLE' | 'PROCESSING' | 'SUCCESS' | 'ERROR'>('IDLE');
+    const [status, setStatus] = useState<'IDLE' | 'PROCESSING' | 'SUCCESS' | 'ERROR' | 'CONNECT'>('IDLE');
     const [log, setLog] = useState<string>('');
-    const [amount, setAmount] = useState<number>(100); // Default Trade Size USD
+    const [amount, setAmount] = useState<number>(100);
+
+    // V6001: Automatic Risk Ratio Logic (1:2)
+    const calculateRiskParams = () => {
+        let tp = signal.take_profit;
+        let sl = signal.stop_loss;
+        const entry = signal.entry_price;
+
+        if (sl && !tp) {
+            // Target = Entry + (Entry - SL) * 2 (for Long)
+            const risk = Math.abs(entry - sl);
+            tp = signal.side === 'buy' ? entry + risk * 2 : entry - risk * 2;
+        } else if (tp && !sl) {
+            const reward = Math.abs(tp - entry);
+            sl = signal.side === 'buy' ? entry - reward / 2 : entry + reward / 2;
+        }
+        return { tp, sl };
+    };
+
+    const { tp: finalTP, sl: finalSL } = calculateRiskParams();
 
     const executeTrade = async () => {
         if (!confirmed) return;
@@ -33,39 +53,44 @@ export default function OneClickTradeModal({
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error("Authentication Required");
 
-            setLog('Validating Credentials...');
+            // 1. Double check keys exist
+            const { data: keyCheck } = await supabase.table('user_exchanges').select('id').eq('user_id', user.id).maybeSingle();
+            if (!keyCheck) {
+                setStatus('CONNECT');
+                return;
+            }
 
-            // Call Railway API
-            // Note: Replace with your actual deployed Railway URL or Proxy
+            setLog('Connecting to Nexus Gateway...');
+
             const API_URL = process.env.NEXT_PUBLIC_EXECUTION_API_URL || "http://localhost:8000";
-
-            setLog(`Sending Order to ${API_URL}...`);
 
             const res = await fetch(`${API_URL}/execute-trade`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${user.id}` // Simplified Auth
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     user_id: user.id,
                     symbol: signal.symbol,
                     side: signal.side.toLowerCase(),
                     amount_usd: amount,
-                    stop_loss: signal.stop_loss,
-                    take_profit: signal.take_profit
+                    stop_loss: finalSL,
+                    take_profit: finalTP
                 })
             });
 
-            const data = await res.json();
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.detail || "Gateway Execution Error");
+            }
 
-            if (!res.ok) throw new Error(data.detail || "Execution Failed");
-
-            setLog(`Order Filled! ID: ${data.order?.id}`);
             setStatus('SUCCESS');
+            setLog(`Order Placed Successfully`);
 
         } catch (e: any) {
-            setLog(`ERROR: ${e.message}`);
+            if (e.message.includes('fetch')) {
+                setLog("Nexus Gateway UNREACHABLE. Check if Railway service is running.");
+            } else {
+                setLog(e.message);
+            }
             setStatus('ERROR');
         }
     };
@@ -90,26 +115,57 @@ export default function OneClickTradeModal({
                     </button>
                 </div>
 
-                {/* Body */}
                 <div className="p-6 space-y-6">
-
-                    {/* Signal Recap */}
-                    <div className="bg-black/40 p-4 rounded-xl border border-white/5 space-y-2">
-                        <div className="flex justify-between items-center">
-                            <span className="text-xs font-bold text-zinc-500 uppercase">Pair</span>
-                            <span className="text-sm font-black text-white font-mono">{signal.symbol}</span>
+                    {/* Connect State */}
+                    {status === 'CONNECT' && (
+                        <div className="animate-in slide-in-from-bottom-4">
+                            <div className="bg-yellow-500/10 border border-yellow-500/20 p-4 rounded-xl mb-4 flex items-start gap-3">
+                                <AlertTriangle className="text-yellow-500 shrink-0" size={18} />
+                                <p className="text-[10px] text-yellow-200 font-bold uppercase tracking-tight">
+                                    No exchange connected. Please link your Binance API keys to enable One-Click execution.
+                                </p>
+                            </div>
+                            <div className="scale-90 -mx-4 origin-top">
+                                <ExchangeSettings />
+                            </div>
+                            <button
+                                onClick={() => setStatus('IDLE')}
+                                className="w-full mt-4 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl text-xs font-bold transition"
+                            >
+                                Back to Trade
+                            </button>
                         </div>
-                        <div className="flex justify-between items-center">
-                            <span className="text-xs font-bold text-zinc-500 uppercase">Action</span>
-                            <span className={`text-sm font-black uppercase font-mono ${signal.side === 'buy' ? 'text-[#00ffa3]' : 'text-red-500'}`}>
-                                {signal.side}
-                            </span>
-                        </div>
-                    </div>
+                    )}
 
-                    {/* Controls */}
                     {status === 'IDLE' && (
                         <>
+                            {/* Signal Recap */}
+                            <div className="bg-black/40 p-4 rounded-xl border border-white/5 space-y-2">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs font-bold text-zinc-500 uppercase">Pair</span>
+                                    <span className="text-sm font-black text-white font-mono">{signal.symbol}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs font-bold text-zinc-500 uppercase">Action</span>
+                                    <span className={`text-sm font-black uppercase font-mono ${signal.side === 'buy' ? 'text-[#00ffa3]' : 'text-red-500'}`}>
+                                        {signal.side}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-center pt-2 border-t border-white/5">
+                                    <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Entry</span>
+                                    <span className="text-xs font-bold text-white font-mono">{signal.entry_price}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest text-[#00ffa3]">TP (2:1)</span>
+                                    <span className="text-xs font-bold text-[#00ffa3] font-mono">{finalTP.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest text-red-500">Stop Loss</span>
+                                    <span className="text-xs font-bold text-red-500 font-mono">{finalSL.toFixed(2)}</span>
+                                </div>
+                            </div>
+
+                            {/* Controls */}
                             <div className="space-y-4">
                                 <div>
                                     <label className="text-[10px] font-black uppercase text-zinc-500 tracking-wider mb-2 block">Position Size (USD)</label>
@@ -121,7 +177,6 @@ export default function OneClickTradeModal({
                                     />
                                 </div>
 
-                                {/* Legal / Human Check */}
                                 <div className="flex items-center gap-3 p-3 bg-[#00ffa3]/5 rounded-xl border border-[#00ffa3]/10">
                                     <div
                                         onClick={() => setConfirmed(!confirmed)}
