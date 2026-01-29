@@ -54,7 +54,7 @@ export default function OneClickTradeModal({
             if (!user) throw new Error("Authentication Required");
 
             // 1. Double check keys exist
-            const { data: keyCheck } = await supabase.table('user_exchanges').select('id').eq('user_id', user.id).maybeSingle();
+            const { data: keyCheck } = await supabase.from('user_exchanges').select('id').eq('user_id', user.id).maybeSingle();
             if (!keyCheck) {
                 setStatus('CONNECT');
                 return;

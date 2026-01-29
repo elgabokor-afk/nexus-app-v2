@@ -20,7 +20,7 @@ export default function ExchangeSettings() {
         if (!user) return;
 
         const { data } = await supabase
-            .table('user_exchanges')
+            .from('user_exchanges')
             .select('id')
             .eq('user_id', user.id)
             .eq('is_active', true)
@@ -74,7 +74,7 @@ export default function ExchangeSettings() {
     const disconnect = async () => {
         if (!confirm("Are you sure you want to disconnect your exchange?")) return;
         const { data: { user } } = await supabase.auth.getUser();
-        await supabase.table('user_exchanges').delete().eq('user_id', user?.id);
+        await supabase.from('user_exchanges').delete().eq('user_id', user?.id);
         setHasKeys(false);
     };
 
