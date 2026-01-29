@@ -45,7 +45,7 @@ export default function TradingViewChart({ data, entryPrice, tpPrice, slPrice, h
         chartRef.current = chart;
 
         // Add Candlestick Series
-        const candleSeries = chart.addCandlestickSeries({
+        const candleSeries = (chart as any).addCandlestickSeries({
             upColor: '#00ffa3', // Nexus Green
             downColor: '#ef4444', // Red
             borderVisible: false,
