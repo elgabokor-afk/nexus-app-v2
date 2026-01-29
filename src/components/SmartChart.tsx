@@ -1,6 +1,7 @@
-'use client';
+"use client";
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
+import TradingViewChart from './TradingViewChart';
 
 interface SmartChartProps {
     symbol: string;
@@ -13,71 +14,77 @@ interface SmartChartProps {
     } | null;
 }
 
-declare global {
-    interface Window {
-        TradingView: any;
-    }
-}
-
 export const SmartChart: React.FC<SmartChartProps> = ({ symbol, signalData }) => {
-    const containerRef = useRef<HTMLDivElement>(null);
-
-    // Defensive: Return placeholder if no symbol
-    if (!symbol) return <div className="w-full h-full flex items-center justify-center text-gray-700 text-xs">Waiting for Signal...</div>;
+    const [candleData, setCandleData] = useState<any[]>([]);
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        // Dynamic Translation of Symbols (Standardizing for TV)
-        // BTC/USD -> KRAKEN:XBTUSD
-        // ETH/USD -> KRAKEN:ETHUSD
-        // if no slash, assume crypto
+        if (!symbol) return;
 
-        let tvSymbol = "BINANCE:BTCUSDT"; // Default to Binance
+        const fetchCandles = async () => {
+            setLoading(true);
+            try {
+                // Convert symbol for Binance (BTC/USD -> BTCUSDT)
+                let clean = symbol.replace('/', '').replace('USD', 'USDT');
+                if (!clean.endsWith('USDT')) clean += 'USDT';
 
-        if (symbol) {
-            let clean = symbol.replace('/', '');
-            // Standardize for Binance (e.g., BTCUSD -> BTCUSDT, BTC/USD -> BTCUSDT)
-            if (clean.endsWith('USD') && !clean.endsWith('USDT')) {
-                clean = clean.replace('USD', 'USDT');
-            }
-            tvSymbol = `BINANCE:${clean}`;
-        }
+                const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${clean}&interval=15m&limit=100`);
+                const data = await res.json();
 
-        const script = document.createElement('script');
-        script.src = 'https://s3.tradingview.com/tv.js';
-        script.async = true;
-        script.onload = () => {
-            if (window.TradingView && containerRef.current) {
-                new window.TradingView.widget({
-                    "autosize": true,
-                    "symbol": tvSymbol,
-                    "interval": "60",
-                    "timezone": "Etc/UTC",
-                    "theme": "dark",
-                    "style": "1",
-                    "locale": "en",
-                    "enable_publishing": false,
-                    "allow_symbol_change": true,
-                    "container_id": containerRef.current.id,
-                    "toolbar_bg": "#0a0a0c",
-                    "hide_side_toolbar": false,
-                    "studies": [
-                        "RSI@tv-basicstudies",
-                        "MASimple@tv-basicstudies"
-                    ]
-                });
+                if (Array.isArray(data)) {
+                    const formatted = data.map((d: any) => ({
+                        time: new Date(d[0]).toISOString().split('T')[0], // Lightweight charts uses YYYY-MM-DD or Unix
+                        value: d[0] / 1000,
+                        open: parseFloat(d[1]),
+                        high: parseFloat(d[2]),
+                        low: parseFloat(d[3]),
+                        close: parseFloat(d[4]),
+                    })).map(c => ({
+                        time: c.value as any, // Passing unix timestamp (number)
+                        open: c.open,
+                        high: c.high,
+                        low: c.low,
+                        close: c.close
+                    }));
+                    setCandleData(formatted);
+                }
+            } catch (err) {
+                console.error("Failed to fetch candle data:", err);
+            } finally {
+                setLoading(false);
             }
         };
-        document.head.appendChild(script);
 
-        return () => {
-            // Cleanup schema if needed, though TV widget is heavy and self-contained
-            if (script.parentNode) script.parentNode.removeChild(script);
-        };
+        fetchCandles();
+        // Refresh every 60s
+        const interval = setInterval(fetchCandles, 60000);
+        return () => clearInterval(interval);
+
     }, [symbol]);
 
+    if (loading && candleData.length === 0) {
+        return (
+            <div className="w-full h-full flex items-center justify-center bg-[#050505] border border-[#2f3336] rounded-2xl">
+                <span className="text-[#00ffa3] font-mono text-xs animate-pulse">LOADING MARKET DATA...</span>
+            </div>
+        );
+    }
+
     return (
-        <div className="relative w-full h-full border border-[#222] rounded-2xl overflow-hidden bg-[#050505] shadow-2xl">
-            <div id={`tv_chart_container_${symbol.replace('/', '_')}`} ref={containerRef} className="w-full h-full" />
+        <div className="w-full h-full relative group">
+            {/* Header Overlay */}
+            <div className="absolute top-4 left-4 z-20 flex flex-col pointer-events-none">
+                <h2 className="text-2xl font-black text-white tracking-tighter">{symbol}</h2>
+                <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">15M INTERVAL • LIVE</span>
+            </div>
+
+            <TradingViewChart
+                data={candleData}
+                entryPrice={signalData?.entry}
+                tpPrice={signalData?.take_profit}
+                slPrice={signalData?.stop_loss}
+                height={500}
+            />
         </div>
     );
 };
