@@ -20,17 +20,19 @@ def retrain_model():
     
     # 1. Generate Dummy Data (or fetch from DB if available, but for init we want speed)
     print("   [1/3] Generating Synthetic Training Data...")
-    # Features match cosmos_quant.py expected features
+    # Features match cosmos_engine.py expected features
     data = {
-        'rsi': np.random.uniform(20, 80, 500),
-        'atr_value': np.random.uniform(10, 100, 500),
-        'volume_ratio': np.random.uniform(0.5, 5.0, 500),
-        'pump_dump_score': np.random.uniform(0, 1, 500),
-        'target': np.random.randint(0, 2, 500) # 0 or 1
+        'rsi_value': np.random.uniform(20, 80, 500),
+        'imbalance_ratio': np.random.uniform(-1, 1, 500),
+        'spread_pct': np.random.uniform(0.0001, 0.001, 500),
+        'atr_value': np.random.uniform(0.1, 10, 500),
+        'macd_line': np.random.uniform(-10, 10, 500),
+        'histogram': np.random.uniform(-5, 5, 500),
+        'target': np.random.randint(0, 2, 500)
     }
     df = pd.DataFrame(data)
     
-    features = ['rsi', 'atr_value', 'volume_ratio', 'pump_dump_score']
+    features = ['rsi_value', 'imbalance_ratio', 'spread_pct', 'atr_value', 'macd_line', 'histogram']
     
     # 2. Train Model
     print("   [2/3] Training Random Forest...")

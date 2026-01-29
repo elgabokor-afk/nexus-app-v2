@@ -13,8 +13,8 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
 load_dotenv(dotenv_path=os.path.join(parent_dir, '.env.local'))
 
-# V301: GLOBAL ASSET BLACKLIST (V412: Added DOGE)
-ASSET_BLACKLIST = ['PEPE', 'PEPE/USDT', 'PEPE/USD', 'DOGE', 'DOGE/USDT', 'USD1', 'USD1/USDT', 'USDC', 'USDC/USDT', 'FDUSD', 'FDUSD/USDT', 'USDE', 'USDE/USDT']
+# V301: GLOBAL ASSET BLACKLIST (V412: Added DOGE/FOGO)
+ASSET_BLACKLIST = ['PEPE', 'PEPE/USDT', 'PEPE/USD', 'DOGE', 'DOGE/USDT', 'USD1', 'USD1/USDT', 'USDC', 'USDC/USDT', 'FDUSD', 'FDUSD/USDT', 'USDE', 'USDE/USDT', 'FOGO', 'FOGO/USD', 'FOGO/USDT']
 
 # V310: Import Binance Engine for unified data/execution
 from binance_engine import live_trader
@@ -552,9 +552,6 @@ def get_top_vol_pairs(limit=15):
             
             usdt_pairs.append(t)
         
-      # V301: GLOBAL ASSET BLACKLIST (V412: Added DOGE)
-ASSET_BLACKLIST = ['PEPE', 'PEPE/USDT', 'PEPE/USD', 'DOGE', 'DOGE/USDT', 'USD1', 'USD1/USDT', 'USDC', 'USDC/USDT', 'FDUSD', 'FDUSD/USDT', 'USDE', 'USDE/USDT', 'FOGO', 'FOGO/USD', 'FOGO/USDT']
-
         # Extract symbols, format to CCXT standard (BTC/USDT)
         top_symbols = []
         
@@ -571,6 +568,10 @@ ASSET_BLACKLIST = ['PEPE', 'PEPE/USDT', 'PEPE/USD', 'DOGE', 'DOGE/USDT', 'USD1',
             # Fix V3100: prevent UNIUSD/USDT
             base = sym.replace('USDT', '')
             formatted = f"{base}/USDT"
+            
+            # V310: Apply Blacklist
+            if base in ASSET_BLACKLIST or formatted in ASSET_BLACKLIST:
+                continue
             
             # V420: DEFINITIVE VALIDATION
             # Check if this symbol ACTUALLY exists in our connection
