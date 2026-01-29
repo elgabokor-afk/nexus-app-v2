@@ -14,19 +14,28 @@ def seed_knowledge_base():
     logger.info("--- COSMOS LIBRARIAN STARTED ---")
     
     topics = [
-        "quantitative trading strategies",
-        "market microstructure volatility",
-        "transformers flexible time series",
-        "statistical arbitrage crypto"
+        "quantitative trading strategies harvard",
+        "market microstructure volatility mit",
+        "transformers flexible time series stanford",
+        "statistical arbitrage crypto oxford",
+        "deep reinforcement learning finance berkeley",
+        "high frequency trading imperial college"
     ]
     
     for topic in topics:
         logger.info(f">>> Searching Thesis Topic: {topic}")
-        papers = crawl_arxiv(topic, max_results=3)
+        # Fetch more, but filter later if needed.
+        # Adding generic query to ensuring we get PHD level stuff
+        papers = crawl_arxiv(topic + " thesis", max_results=5)
         
         for p in papers:
-            ingest_paper(p)
-            time.sleep(1) # Rate limit politeness
+            # V4300: Strict Prestige Filter
+            # Only ingest if we detected a prestige university OR if it's explicitly a thesis
+            if p['university'] != "Unknown" or "thesis" in p['title'].lower() or "dissertation" in p['title'].lower():
+                 ingest_paper(p)
+                 time.sleep(1) # Rate limit politeness
+            else:
+                 logger.info(f"   [SKIPPED] {p['title'][:30]}... (Low Prestige Confidence)")
 
     logger.info("--- KNOWLEDGE INGESTION COMPLETE ---")
 

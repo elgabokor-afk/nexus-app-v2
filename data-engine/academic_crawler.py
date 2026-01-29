@@ -37,10 +37,34 @@ def crawl_arxiv(query="quantitative trading", max_results=5):
             summary = entry.find('atom:summary', ns).text.strip()
             pdf_url = entry.find('atom:id', ns).text
             
-            # Simple university extraction (Mock since Arxiv doesn't strictly provide affiliation in API list)
+            # Improved University Extraction (Heuristic)
+            summary_lower = summary.lower()
+            title_lower = title.lower()
+            
             uni = "Unknown"
-            if "market" in summary.lower(): uni = "MIT (Inferred)"
-            elif "stochastic" in summary.lower(): uni = "Oxford (Inferred)"
+            prestige_keywords = {
+                "mit": "MIT",
+                "massachusetts institute of technology": "MIT",
+                "harvard": "Harvard",
+                "stanford": "Stanford",
+                "oxford": "Oxford",
+                "cambridge": "Cambridge",
+                "princeton": "Princeton",
+                "chicago": "UChicago",
+                "berkeley": "UC Berkeley",
+                "columbia": "Columbia",
+                "wharton": "Wharton",
+                "imperial college": "Imperial"
+            }
+            
+            # Check Title and Summary for affiliation hints
+            for key, name in prestige_keywords.items():
+                if key in summary_lower or key in title_lower:
+                    uni = name
+                    break
+            
+            # If user demands PRESTIGE only, we can filter here or in the seeder.
+            # For now, we tag them.
             
             papers.append({
                 "title": title,
