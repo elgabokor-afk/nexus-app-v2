@@ -116,9 +116,10 @@ class CosmosBrain:
             sig_ids = [p['signal_id'] for p in positions if p['signal_id']]
             
             # 3. Get Analytics for these signals
-            res_analytics = self.supabase.table("analytics_signals") \
+            # V500: Use signals or market_signals as main source if analytics_signals is locked/missing
+            res_analytics = self.supabase.table("market_signals") \
                 .select("*") \
-                .in_("signal_id", sig_ids) \
+                .in_("symbol", [p.get('symbol') for p in positions if p.get('symbol')]) \
                 .execute()
             
             analytics = res_analytics.data
@@ -136,9 +137,15 @@ class CosmosBrain:
             
             # 5. Feature Reconstruction (Fallback Logic)
             # If rsi_value is NaN (missing analytics), use rsi_entry from position
+            if 'rsi_value' not in df.columns and 'rsi' in df.columns:
+                df['rsi_value'] = df['rsi']
+            
             if 'rsi_value' in df.columns and 'rsi_entry' in df.columns:
                 df['rsi_value'] = df['rsi_value'].fillna(df['rsi_entry'])
                 
+            if 'atr_value' not in df.columns and 'atr' in df.columns:
+                df['atr_value'] = df['atr']
+
             if 'atr_value' in df.columns and 'atr_entry' in df.columns:
                 df['atr_value'] = df['atr_value'].fillna(df['atr_entry'])
             

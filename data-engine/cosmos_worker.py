@@ -59,6 +59,15 @@ from supabase import create_client, Client
 SUPABASE_URL = os.getenv("NEXT_PUBLIC_SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
+# V310: Global Confidence Fallbacks
+min_confidence_threshold = 25
+macro_sentiment = "NEUTRAL"
+dynamic_pairs = []
+last_dynamic_update = 0
+last_training_time = 0
+last_optimization = 0
+worker_started = False
+
 if not SUPABASE_URL or not SUPABASE_KEY:
     logger.error("Supabase credentials missing. Exiting.")
     exit(1)
@@ -137,20 +146,19 @@ def main_loop():
         # This runs ONCE per loop cycle start (or usually just once if we insert before while)
         # But we want to ensure we log at least once.
         try:
-            if 'worker_started' not in locals():
-                supabase.table("error_logs").insert({
-                    "message": "COSMOS WORKER RESTARTED (v3.0)", 
-                    "error_level": "INFO", 
-                    "service": "COSMOS_WORKER"
-                }).execute()
-                worker_started = True
-                logger.info("   >>> [DB] Logged Startup Event")
+            if not worker_started:
+                try:
+                    supabase.table("error_logs").insert({
+                        "message": "COSMOS WORKER RESTARTED (v3.0)", 
+                        "error_level": "INFO", 
+                        "service": "COSMOS_WORKER"
+                    }).execute()
+                    worker_started = True
+                    logger.info("   >>> [DB] Logged Startup Event")
+                except: pass
                 
             # V6: GLOBAL OPTIMIZER (Every 4 Hours)
             # Adjusts Weights & Leverage based on Regime (Volatile vs Ranging)
-            if 'last_optimization' not in locals():
-                last_optimization = 0
-                
             if time.time() - last_optimization > 14400: # 4 Hours
                 logger.info("   [OPTIMIZER] Running Global Parameter Tuning...")
                 try:
@@ -181,9 +189,6 @@ def main_loop():
             # Since 'main_loop' is a while loop, we define this outside in a better structure, 
             # but to minimize diff size:
             # V42: RECURSIVE LEARNING LOOP (Every 1 Hour)
-            if 'last_training_time' not in locals():
-                last_training_time = 0
-
             if time.time() - last_training_time > 3600:
                 logger.info("   [RECURSIVE AI] Fetching Trade History & Updating Theses (Biases)...")
                 try:
@@ -192,6 +197,16 @@ def main_loop():
                     last_training_time = time.time()
                 except Exception as e:
                     logger.error(f"Recursive Training Failed: {e}")
+
+            # V24: Dynamic Asset List Update (Every 30m)
+            if time.time() - last_dynamic_update > 1800:
+                logger.info("   [DYNAMIC] Updating top volume assets...")
+                try:
+                    dynamic_pairs = get_top_vol_pairs(limit=10)
+                    last_dynamic_update = time.time()
+                except Exception as de:
+                    logger.error(f"Dynamic Update Failed: {de}")
+                    if not dynamic_pairs: dynamic_pairs = ["BTC/USDT", "ETH/USDT", "SOL/USDT"]
 
             # Combine symbols: Priority + Static + Dynamic
             symbols_to_scan = list(set(PRIORITY_ASSETS + SYMBOLS + dynamic_pairs))
