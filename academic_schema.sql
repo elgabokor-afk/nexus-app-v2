@@ -49,7 +49,10 @@ returns table (
   university text,
   similarity float
 )
+)
 language plpgsql
+security definer -- (Optional but often good for RPCs, though not strictly required for search_path fix)
+set search_path = public, extensions
 as $$
 begin
   return query(
@@ -92,4 +95,12 @@ create policy "Public/Bot can read papers"
 
 create policy "Public/Bot can read chunks"
   on public.academic_chunks for select
+  using ( true );
+
+create policy "Service Role can manage alpha"
+  on public.academic_alpha for all
+  using ( auth.role() = 'service_role' );
+
+create policy "Public/Bot can read alpha"
+  on public.academic_alpha for select
   using ( true );

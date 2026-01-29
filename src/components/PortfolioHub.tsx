@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { Gauge, TrendingUp, TrendingDown, Target, Zap } from 'lucide-react';
-import { useLiveStream } from '@/hooks/useLiveStream';
+import Pusher from 'pusher-js';
 
 interface AssetRanking {
     id: number;
@@ -26,30 +26,35 @@ export default function PortfolioHub() {
         setLoading(false);
     };
 
-    const { lastMessage } = useLiveStream(['ai_rankings']);
-
+    // V3900: Listen to Pusher Events (No more WebSocket Bridge)
     useEffect(() => {
-        fetchRankings();
-    }, []);
-
-    // V1400: Listen to Redis Rankings
-    useEffect(() => {
-        if (!lastMessage || lastMessage.channel !== 'ai_rankings') return;
-
-        const newRank = lastMessage.data;
-        setRankings(prev => {
-            // Upsert logic: Update if exists, add if new
-            const exists = prev.find(r => r.symbol === newRank.symbol);
-            let updatedList;
-            if (exists) {
-                updatedList = prev.map(r => r.symbol === newRank.symbol ? { ...r, ...newRank } : r);
-            } else {
-                updatedList = [...prev, newRank];
-            }
-            // Always keep sorted by Score
-            return updatedList.sort((a, b) => b.score - a.score).slice(0, 20);
+        const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
+            cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
+            forceTLS: true,
         });
-    }, [lastMessage]);
+
+        const channel = pusher.subscribe('public-rankings');
+
+        channel.bind('ranking-update', (newRank: AssetRanking) => {
+            setRankings(prev => {
+                // Upsert logic: Update if exists, add if new
+                const exists = prev.find(r => r.symbol === newRank.symbol);
+                let updatedList;
+                if (exists) {
+                    updatedList = prev.map(r => r.symbol === newRank.symbol ? { ...r, ...newRank } : r);
+                } else {
+                    updatedList = [...prev, newRank];
+                }
+                // Always keep sorted by Score
+                return updatedList.sort((a, b) => b.score - a.score).slice(0, 20);
+            });
+        });
+
+        return () => {
+            pusher.unsubscribe('public-rankings');
+            pusher.disconnect();
+        };
+    }, []);
 
     if (loading) return null;
 

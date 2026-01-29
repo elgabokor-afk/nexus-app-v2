@@ -237,8 +237,20 @@ def run_oracle_step(symbol='BTC/USDT'):
                 "reasoning": reasoning,
                 "updated_at": time.time()
             })
+            
+            # V3900: PUSHER BROADCAST (Unified Bridge)
+            from pusher_client import pusher_client
+            pusher_client.trigger("public-rankings", "ranking-update", {
+                "symbol": symbol,
+                "score": prob * 100,
+                "confidence": prob,
+                "trend_status": trend,
+                "reasoning": reasoning,
+                "updated_at": time.time()
+            })
+            
         except Exception as e:
-            print(f"!!! Redis Publish Error: {e}")
+            print(f"!!! Redis/Pusher Publish Error: {e}")
         
     except Exception as e:
         print(f"!!! Oracle Error ({symbol}): {e}")

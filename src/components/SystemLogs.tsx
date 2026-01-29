@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { AlertCircle, Terminal, X, RefreshCw, AlertTriangle, ShieldCheck } from 'lucide-react';
-import { useLiveStream } from '@/hooks/useLiveStream'; // V1400
+
 
 interface Log {
     id: number;

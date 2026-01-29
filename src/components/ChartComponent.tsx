@@ -2,7 +2,7 @@
 
 import { createChart, ColorType, ISeriesApi, AreaSeries } from 'lightweight-charts';
 import React, { useEffect, useRef, useState } from 'react';
-import { useLiveStream } from '@/hooks/useLiveStream'; // V900
+import Pusher from 'pusher-js';
 
 interface ChartProps {
     data: { time: string | number; value: number }[];
@@ -29,18 +29,29 @@ export const ChartComponent: React.FC<ChartProps> = (props) => {
 
     const chartContainerRef = useRef<HTMLDivElement>(null);
     const seriesRef = useRef<ISeriesApi<"Area"> | null>(null);
-    const { lastMessage } = useLiveStream(["live_prices"]);
 
+    // V3900: Pusher Live Price Feed
     useEffect(() => {
-        if (lastMessage && lastMessage.channel === "live_prices" && seriesRef.current) {
-            const { price, time } = lastMessage.data;
-            // Append new point
-            seriesRef.current.update({
-                time: time,
-                value: price
-            });
-        }
-    }, [lastMessage]);
+        const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
+            cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
+            forceTLS: true,
+        });
+
+        const channel = pusher.subscribe('public-price-feed');
+        channel.bind('price-update', (data: any) => {
+            if (seriesRef.current) {
+                seriesRef.current.update({
+                    time: data.time,
+                    value: data.price
+                });
+            }
+        });
+
+        return () => {
+            pusher.unsubscribe('public-price-feed');
+            pusher.disconnect();
+        };
+    }, []);
 
     useEffect(() => {
         if (!chartContainerRef.current) return;

@@ -9,17 +9,11 @@ python force_retrain.py
 
 python cosmos_worker.py &
 
-# Start the paper trader in the background
-python paper_trader.py &
-
 # V410: Start the AI Oracle (Neural Link)
 python cosmos_oracle.py &
 
 # V3600: Start Macro Brain (Correlation Engine)
 python macro_feed.py &
-
-# V900/V1000: Start the WebSocket Bridge for real-time UI
-python websocket_bridge.py &
 
 # Wait for any process to exit
 wait -n
