@@ -200,9 +200,20 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
                     </div>
                 )}
 
-                {/* === HOT ZONE HEADER (Only for Elite Signals) === */}
+                {/* === VIP / HOT ZONE HEADER === */}
                 {isHot && !isAuditing && !isWin && (
-                    <div className="w-full h-1 bg-orange-600/50"></div>
+                    <>
+                        {/* Gold Gradient Border for Premium Feel */}
+                        <div className="absolute inset-0 border-2 border-yellow-500/50 rounded-xl z-20 pointer-events-none animate-pulse"></div>
+                        <div className="absolute inset-x-0 top-0 bg-gradient-to-b from-yellow-500/20 to-transparent h-12 z-0 pointer-events-none"></div>
+
+                        <div className="w-full h-1.5 bg-gradient-to-r from-yellow-600 via-yellow-400 to-yellow-600 animate-shimmer bg-[length:200%_100%]"></div>
+                        <div className="absolute top-2 right-2 z-30">
+                            <span className="bg-yellow-500 text-black text-[10px] font-black px-2 py-0.5 rounded shadow-[0_0_15px_rgba(234,179,8,0.8)] flex items-center gap-1">
+                                <Flame size={10} fill="black" /> VIP ALPHA
+                            </span>
+                        </div>
+                    </>
                 )}
 
                 {/* === AI AUDIT HEADER (Overrides HOT) === */}

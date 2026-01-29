@@ -14,7 +14,7 @@ parent_dir = os.path.dirname(current_dir)
 load_dotenv(dotenv_path=os.path.join(parent_dir, '.env.local'))
 
 # V301: GLOBAL ASSET BLACKLIST (V412: Added DOGE)
-ASSET_BLACKLIST = ['PEPE', 'PEPE/USDT', 'PEPE/USD', 'DOGE', 'DOGE/USDT']
+ASSET_BLACKLIST = ['PEPE', 'PEPE/USDT', 'PEPE/USD', 'DOGE', 'DOGE/USDT', 'USD1', 'USD1/USDT', 'USDC', 'USDC/USDT', 'FDUSD', 'FDUSD/USDT', 'USDE', 'USDE/USDT']
 
 # V310: Import Binance Engine for unified data/execution
 from binance_engine import live_trader
