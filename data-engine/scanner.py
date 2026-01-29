@@ -491,9 +491,16 @@ def get_top_vol_pairs(limit=15):
                     print(f"   [FALLBACK] Success. Found {len(pairs)} pairs via CoinCap.")
                     return pairs
             except Exception as e:
-                print(f"   [FALLBACK] Error: {e}")
+                print(f"   [FALLBACK] CoinCap/DNS Error: {e}")
             
-            return []
+            # V3002: HARDCODED SAFETY NET (Survival Mode)
+            # If both Binance and CoinCap fail (DNS/Geo-Block), use these majors.
+            print("   [SURVIVAL] Activating Hardcoded Top 15 Asset List.")
+            return [
+                "BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT", "XRP/USDT", 
+                "ADA/USDT", "DOGE/USDT", "AVAX/USDT", "LINK/USDT", "LTC/USDT",
+                "DOT/USDT", "MATIC/USDT", "SHIB/USDT", "TRX/USDT", "UNI/USDT"
+            ]
 
         # Filter USDT, exclude leveraged tokens
         usdt_pairs = [
