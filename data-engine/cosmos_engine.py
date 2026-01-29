@@ -32,6 +32,7 @@ from deep_brain import deep_brain # V490
 from smc_engine import smc_engine # V560
 from deepseek_engine import deepseek_engine # V700
 from openai_engine import openai_engine # V800
+from cosmos_validator import validator # V900 (PhD Upgrade)
 
 class CosmosBrain:
     def __init__(self):
@@ -409,7 +410,29 @@ class CosmosBrain:
                 prob += smc_boost
                 print(f"       [SMC CONFLUENCE] Institutional footprints detected. Boosted Prob by +{smc_boost*100:.0f}% to {prob*100:.1f}%")
 
-        # 5. FINAL WEIGHTED DECISION
+        # 5. [NEW] ACADEMIC VALIDATION (PhD Layer)
+        # Create a "Paper Thesis" string to check against DB
+        thesis_context = f"Strategy: {signal_type} on {symbol}. Technicals: RSI {features.get('rsi_value')}, Imbalance {features.get('imbalance_ratio', 0)}. Trend: {trend}."
+        
+        validation_result = validator.validate_signal_logic(thesis_context)
+        
+        if not validation_result['approved'] and prob < 0.85:
+            # If academic backing is weak AND confidence is not super high -> Reject
+            return False, prob, f"REJECTED by Cosmos PhD: {validation_result['reason']}"
+            
+        if validation_result['approved']:
+             prob += 0.10
+             print(f"       [PhD VALIDATED] {validation_result['citations'][0]}")
+             
+        # 6. VPIN TOXICITY CHECK
+        # Estimate volume buckets from features if available (mocking for now as we lack granular data in features)
+        # In production, this would use real Order Book flow
+        toxicity = validator.calculate_vpin(0.5, 0.5, 1.0) # Placeholder
+        if toxicity > 0.6:
+             print("       [TOXIC FLOW] High VPIN detected. Reducing position size request.")
+             # Logic to reduce size would happen in PaperTrader, here we just note it.
+
+        # 7. FINAL WEIGHTED DECISION
         required_prob = min_conf
         if trend_aligned and (abs(imb) > 0.4):
             # Only go lower if it's naturally stricter than the user's floor
