@@ -4,6 +4,7 @@ import ccxt
 import json
 import asyncio
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Header
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
@@ -145,7 +146,7 @@ async def execute_trade(req: TradeRequest):
         raise HTTPException(status_code=500, detail="Encryption System Not Configured")
 
     # A. Fetch Encrypted Keys
-    res = supabase.table("user_exchanges").select("*").eq("user_id", req.user_id).eq("is_active", "true").limit(1).execute()
+    res = supabase.table("user_exchanges").select("*").eq("user_id", req.user_id).eq("is_active", True).limit(1).execute()
     if not res.data:
         raise HTTPException(status_code=404, detail="No active Exchange Keys found.")
     
@@ -228,6 +229,7 @@ async def save_keys(req: SaveKeyRequest):
         test_exchange = getattr(ccxt, req.exchange)({
             'apiKey': req.api_key,
             'secret': req.secret_key,
+            'options': {'defaultType': 'swap'}
         })
         try:
             restrictions = test_exchange.private_get_sapi_v1_account_apirestrictions()
