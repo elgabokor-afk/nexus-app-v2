@@ -535,12 +535,22 @@ def get_top_vol_pairs(limit=15):
             ]
 
         # Filter USDT, exclude leveraged tokens
-        usdt_pairs = [
-            t for t in data 
-            if isinstance(t, dict) and 'symbol' in t and t['symbol'].endswith('USDT') 
-            and 'UP' not in t['symbol'] 
-            and 'DOWN' not in t['symbol']
-        ]
+        # Filter USDT and exclude leveraged tokens + stablecoins
+        STABLECOINS = ['USDC', 'FDUSD', 'TUSD', 'DAI', 'USDP', 'USDE', 'BUSD', 'EUR', 'USD1', 'USDD', 'USTC']
+        
+        usdt_pairs = []
+        for t in data:
+            if not isinstance(t, dict) or 'symbol' not in t: continue
+            
+            sym = t['symbol']
+            if not sym.endswith('USDT'): continue
+            if 'UP' in sym or 'DOWN' in sym: continue
+            
+            # Check Base Asset against Stablecoins
+            base = sym.replace('USDT', '')
+            if base in STABLECOINS: continue
+            
+            usdt_pairs.append(t)
         
         # Sort by Volume Desc
         sorted_pairs = sorted(usdt_pairs, key=lambda x: float(x['quoteVolume']), reverse=True)
