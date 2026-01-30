@@ -33,8 +33,11 @@ export function usePusher() {
 
     useEffect(() => {
         // V2100: PUSHER REALTIME CLIENT
-        const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
-            cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
+        const pusherKey = process.env.NEXT_PUBLIC_PUSHER_KEY || "dda05a0dc630ab53ec2e";
+        const pusherCluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER || "mt1";
+
+        const pusher = new Pusher(pusherKey, {
+            cluster: pusherCluster,
             authEndpoint: '/api/pusher/auth',
             forceTLS: true,
         });
