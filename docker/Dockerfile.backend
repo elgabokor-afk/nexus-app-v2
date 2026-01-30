@@ -1,0 +1,36 @@
+FROM python:3.9-slim
+
+WORKDIR /app
+
+# Install system dependencies (gcc for compiling some python libs)
+RUN apt-get update && apt-get install -y \
+    gcc \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Upgrade pip
+RUN pip install --no-cache-dir --upgrade pip
+
+# Copy requirements first to leverage Docker cache
+COPY data-engine/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the entire data-engine directory
+COPY data-engine/ ./data-engine/
+COPY start_services.sh .
+
+# Make startup script executable
+RUN chmod +x start_services.sh
+
+# Environment variables will be injected by Railway
+# But we set a default unbuffered output for logs
+ENV PYTHONUNBUFFERED=1
+
+# Expose API Port
+EXPOSE 8000
+
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/ || exit 1
+
+CMD ["./start_services.sh"]

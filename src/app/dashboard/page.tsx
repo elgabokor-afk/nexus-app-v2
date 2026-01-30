@@ -22,6 +22,7 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import SubscriptionGuard from '@/components/SubscriptionGuard'; // V1800
 import { useProfile } from '@/hooks/useProfile'; // V1800
+import { usePusher } from '@/hooks/usePusher'; // V6000
 
 const SmartChart = dynamic(
     () => import('@/components/SmartChart').then((mod) => mod.SmartChart),
@@ -85,16 +86,14 @@ export default function Dashboard() {
     const router = useRouter();
     const { profile, isVip } = useProfile(); // V1800
 
-    // V3600: Market Status Engine
-    const [marketStatus, setMarketStatus] = useState({
-        sentiment: "NEUTRAL",
-        dxy_change: 0,
-        spx_change: 0,
-        fng_index: 50
-    });
-
-    // V3800: REAL-TIME PRICE ENGINE (TICKER)
-    const [livePrices, setLivePrices] = useState<Record<string, number>>({});
+    // V6000: Use Unified Pusher Hook
+    const {
+        connectionStatus,
+        marketStatus,
+        livePrices,
+        realtimeSignals,
+        auditUpdates
+    } = usePusher();
 
     const handleViewChart = (symbol: string) => {
         const sig = signals.find(s => s.symbol === symbol);
@@ -116,6 +115,31 @@ export default function Dashboard() {
     const handleConsultAI = (signal: any) => {
         setActiveChatSignal(signal);
     };
+
+    // V6000: Sync Realtime Signals from Hook to Local State
+    useEffect(() => {
+        if (realtimeSignals.length > 0) {
+            realtimeSignals.forEach(s => handleNewSignal(s));
+        }
+    }, [realtimeSignals]);
+
+    // V6000: Sync Auditor Updates
+    useEffect(() => {
+        if (auditUpdates) {
+            console.log('⚡ [AUDITOR] Update Received:', auditUpdates);
+            setSignals(prev => prev.map(s => {
+                if (s.id === auditUpdates.id) {
+                    return {
+                        ...s,
+                        stop_loss: auditUpdates.new_sl || s.stop_loss,
+                        take_profit: auditUpdates.new_tp || s.take_profit,
+                        audit_alert: auditUpdates.audit_action
+                    };
+                }
+                return s;
+            }));
+        }
+    }, [auditUpdates]);
 
     const fetchSignals = async () => {
         try {
@@ -199,8 +223,6 @@ export default function Dashboard() {
 
     const uniqueSignals = getUniqueSignals(signals);
 
-    const [connectionStatus, setConnectionStatus] = useState<'connected' | 'connecting' | 'unavailable'>('connecting');
-
     useEffect(() => {
         setMounted(true);
 
@@ -217,168 +239,44 @@ export default function Dashboard() {
         checkAuth();
 
         if (window.innerWidth < 1280) setIsSidebarOpen(false);
+    }, []);
 
-        // V2100: PUSHER REALTIME (Low Latency)
-        // Re-connect whenever 'isVip' changes to ensure we subscribe to the right channels
-        const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
-            cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
-            authEndpoint: '/api/pusher/auth',
-            forceTLS: true,
-        });
+    const handleNewSignal = (s: any) => {
+        const newSignal: Signal = {
+            id: s.id,
+            symbol: s.symbol,
+            price: Number(s.price || s.entry_price || 0),
+            rsi: Number(s.rsi || 50),
+            signal_type: s.signal_type,
+            confidence: Number(s.confidence),
+            timestamp: s.created_at || new Date().toISOString(),
+            // V2588: Fix Key Mapping (Backend sends 'sl'/'tp')
+            stop_loss: Number(s.stop_loss || s.sl_price || s.sl || 0),
+            take_profit: Number(s.take_profit || s.tp_price || s.tp || 0),
+            atr_value: Number(s.atr_value || 0),
+            volume_ratio: Number(s.volume_ratio || 0)
+        };
 
-        pusher.connection.bind('connected', () => {
-            setConnectionStatus('connected');
-            console.log('[Pusher] Connected to ' + process.env.NEXT_PUBLIC_PUSHER_CLUSTER);
-        });
-        pusher.connection.bind('unavailable', () => setConnectionStatus('unavailable'));
-        pusher.connection.bind('failed', () => setConnectionStatus('unavailable'));
-
-        // 1. Public Channel (Always)
-        const publicChannel = pusher.subscribe('public-signals');
-        publicChannel.bind('new-signal', (data: any) => {
-            console.log('Pusher Public Event:', data);
-            // V2588: Visual Confirmation for User
-            // Assuming we have a toast library or similar, otherwise standard console
-            // If checking "ui" complaints, visible feedback is better.
-            // Using standard alert or console if no toast imported, but let's assume valid handle.
-            handleNewSignal(data);
-            handleNewSignal(data);
-        });
-
-        // V3600: MARKET STATUS LISTENER
-        // 1. Subscribe to separate channel for Market Data (Traffic separation)
-        const marketChannel = pusher.subscribe('public-market-status');
-
-        marketChannel.bind('update', (data: any) => {
-            // Legacy or Cosmos Worker Status
-        });
-
-        // V4000: MACRO FEED LISTENER (Dedicated Event)
-        marketChannel.bind('macro-update', (data: any) => {
-            console.log("⚡ [MACRO] Data Received:", data);
-            setMarketStatus({
-                sentiment: data.sentiment || "NEUTRAL",
-                dxy_change: data.dxy_change || 0,
-                spx_change: data.spx_change || 0,
-                fng_index: 50 // Keep FNG neutral until we fetch it specifically
-            });
-        });
-
-        // V2700: LIVE AUDITOR LISTENER
-        publicChannel.bind('signal-update', (data: any) => {
-            console.log('⚡ [AUDITOR] Update Received:', data);
-
-            setSignals(prev => prev.map(s => {
-                if (s.id === data.id) {
-                    // Update TP/SL and add Flash Flag
-                    return {
-                        ...s,
-                        stop_loss: data.new_sl || s.stop_loss,
-                        take_profit: data.new_tp || s.take_profit,
-                        audit_alert: data.audit_action // 'TAKE_PROFIT_TIGHTEN', 'RISK_FREE', 'WARNING'
-                    };
-                }
-                return s;
-            }));
-
-            // Optional: Show Toast
-            if (data.audit_note) {
-                // console.log("Toast:", data.audit_note);
-                // If we had a toast lib: toast(data.audit_note, { icon: '⚡' });
+        setSignals((prev) => {
+            const exists = prev.find(sig => sig.id === newSignal.id);
+            if (exists) {
+                return prev.map(sig => {
+                    if (sig.id === newSignal.id) {
+                        return {
+                            ...sig,
+                            ...newSignal,
+                            price: newSignal.price || sig.price,
+                            stop_loss: newSignal.stop_loss || sig.stop_loss,
+                            take_profit: newSignal.take_profit || sig.take_profit
+                        };
+                    }
+                    return sig;
+                });
             }
+            return [newSignal, ...prev].slice(0, 100);
         });
+    };
 
-        // V3800: REAL-TIME PRICE ENGINE (TICKER)
-        // State moved to top level
-
-
-        // ... inside existing useEffect ...
-
-        // 3. Price Feed (High Frequency)
-        const priceChannel = pusher.subscribe('public-price-feed');
-        priceChannel.bind('price-update', (data: any) => {
-            // data: { symbol: 'BTC/USDT', price: 95000, time: ... }
-            if (data?.symbol && data?.price) {
-                setLivePrices(prev => ({
-                    ...prev,
-                    [data.symbol]: Number(data.price)
-                }));
-            }
-        });
-
-        // 2. VIP Channel (Conditional)
-        if (isVip) {
-            console.log("Subscribing to VIP Channel...");
-            const privateChannel = pusher.subscribe('private-vip-signals');
-            privateChannel.bind('pusher:subscription_succeeded', () => {
-                console.log('[Pusher] Canal Privado conectado exitosamente');
-            });
-            privateChannel.bind('new-signal', (data: any) => {
-                console.log('Pusher VIP Event:', data);
-                handleNewSignal(data);
-                // V5000: VISIBLE ALERT
-                try {
-                    // Simple browser notification or custom UI could trigger here
-                    const audio = new Audio('/sounds/signal_alert.mp3');
-                    audio.play().catch(e => console.log('Audio blocked', e));
-                } catch (e) { }
-            });
-            privateChannel.bind('pusher:subscription_error', (status: any) => {
-                console.error("VIP Auth Failed:", status);
-            });
-        }
-
-        return () => {
-            pusher.unsubscribe('public-signals');
-            pusher.unsubscribe('public-market-status');
-            pusher.unsubscribe('public-price-feed'); // Unsubscribe ticker
-            if (isVip) pusher.unsubscribe('private-vip-signals');
-            pusher.disconnect();
-        };
-
-        const handleNewSignal = (s: any) => {
-            const newSignal: Signal = {
-                id: s.id,
-                symbol: s.symbol,
-                price: Number(s.price || s.entry_price || 0),
-                rsi: Number(s.rsi || 50),
-                signal_type: s.signal_type,
-                confidence: Number(s.confidence),
-                timestamp: s.created_at || new Date().toISOString(),
-                // V2588: Fix Key Mapping (Backend sends 'sl'/'tp')
-                stop_loss: Number(s.stop_loss || s.sl_price || s.sl || 0),
-                take_profit: Number(s.take_profit || s.tp_price || s.tp || 0),
-                atr_value: Number(s.atr_value || 0),
-                volume_ratio: Number(s.volume_ratio || 0)
-            };
-
-            setSignals((prev) => {
-                const exists = prev.find(sig => sig.id === newSignal.id);
-                if (exists) {
-                    return prev.map(sig => {
-                        if (sig.id === newSignal.id) {
-                            return {
-                                ...sig,
-                                ...newSignal,
-                                price: newSignal.price || sig.price,
-                                stop_loss: newSignal.stop_loss || sig.stop_loss,
-                                take_profit: newSignal.take_profit || sig.take_profit
-                            };
-                        }
-                        return sig;
-                    });
-                }
-                return [newSignal, ...prev].slice(0, 100);
-            });
-        };
-
-        return () => {
-            pusher.unsubscribe('public-signals');
-            pusher.unsubscribe('public-market-status'); // V3600
-            if (isVip) pusher.unsubscribe('private-vip-signals');
-            pusher.disconnect();
-        };
-    }, [isVip]); // Re-run when VIP status updates dynamically
 
     if (!mounted) return (
         <div className="h-screen bg-[#050505] flex flex-col items-center justify-center text-[#00ffa3] font-mono">
