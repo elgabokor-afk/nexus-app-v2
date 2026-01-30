@@ -239,7 +239,7 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
                             </span>
                             {academic_thesis_id && (
                                 <span className="bg-[#00ffa3] text-black text-[8px] font-black px-1.5 py-0.5 rounded flex items-center gap-1 shadow-[0_0_10px_rgba(0,255,163,0.5)]">
-                                    <Bot size={8} fill="black" /> PhD VALIDATED
+                                    <Bot size={8} fill="black" /> PhD + INST. AUDIT
                                 </span>
                             )}
                         </div>
