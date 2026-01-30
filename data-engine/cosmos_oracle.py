@@ -14,6 +14,10 @@ parent_dir = os.path.dirname(current_dir)
 load_dotenv(dotenv_path=os.path.join(parent_dir, '.env.local'))
 
 from binance_engine import live_trader
+from dex_scanner import DEXScanner # V4000: Multi-Chain Integration
+
+# Singleton for DEX Scanning
+dex_scanner = DEXScanner()
 
 # V410: Global Config Loading
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -84,7 +88,8 @@ def run_oracle_step(symbol='BTC/USDT'):
             'atr_value': latest['ATR'], 
             'histogram': hist.iloc[-1],
             'macd_line': macd.iloc[-1],
-            'imbalance_ratio': 0 
+            'imbalance_ratio': 0,
+            'dex_force': dex_scanner.calculate_dex_force(symbol.replace('/USDT', '')) # V4000
         }
         
         # 3. BLM ANALYSIS & RANKING (V90)
@@ -215,6 +220,7 @@ def run_oracle_step(symbol='BTC/USDT'):
                 "price": latest['close'],
                 "rsi": latest['RSI'],
                 "ema_200": latest['EMA_200'],
+                "dex_force": features.get('dex_force', 0),
                 "type": "RECURSIVE_RANK_SCAN"
             }
         )

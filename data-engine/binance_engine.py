@@ -451,5 +451,58 @@ class BinanceTrader:
             result['error'] = str(e)
             return result
 
+    def update_stop_loss(self, symbol, new_sl_price):
+        """
+        V4200: Updates the Stop Loss for an existing position.
+        Actually cancels existing SL/TP and recreates them?
+        Or just replaces the SL.
+        """
+        if self.mode != "LIVE": return None
+        try:
+            symbol = self._resolve_symbol(symbol)
+            # 1. Fetch current open orders for this symbol
+            orders = self.exchange.fetch_open_orders(symbol)
+            
+            # 2. Cancel existing STOP_MARKET orders
+            for order in orders:
+                if order['type'] == 'STOP_MARKET':
+                    print(f"   [EXEC] Canceling existing SL order {order['id']}...")
+                    self.exchange.cancel_order(order['id'], symbol)
+            
+            # 3. Get current position size (to match)
+            positions = self.get_open_positions()
+            qty = 0
+            side = 'sell' # Default
+            for pos in positions:
+                if pos['symbol'] == symbol:
+                    qty = pos['contracts']
+                    side = 'sell' if pos['side'] == 'long' else 'buy'
+                    break
+            
+            if qty <= 0: return None
+
+            # 4. Create new STOP_MARKET order
+            params = {
+                'stopPrice': self.exchange.price_to_precision(symbol, new_sl_price),
+                'reduceOnly': True
+            }
+            precision_qty = self.exchange.amount_to_precision(symbol, qty)
+            new_order = self.exchange.create_order(symbol, 'STOP_MARKET', side, precision_qty, params=params)
+            print(f"   [EXEC] SUCCESS: New SL set at {new_sl_price} for {symbol}")
+            return new_order
+        except Exception as e:
+            print(f"   [BINANCE] Error updating SL: {e}")
+            return None
+
+    def cancel_all_orders(self, symbol):
+        """Emergency Wipe of all open orders for a symbol."""
+        if not self.is_connected: return
+        try:
+            symbol = self._resolve_symbol(symbol)
+            return self.exchange.cancel_all_orders(symbol)
+        except Exception as e:
+            print(f"   [BINANCE] Error canceling all orders: {e}")
+            return None
+
 # Singleton for easy access
 live_trader = BinanceTrader()

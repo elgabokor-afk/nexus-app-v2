@@ -80,11 +80,9 @@ class AcademicValidator:
             # If similarity is 0.95, p-value is 0.05 (Significant)
             p_value = max(0.001, 1 - avg_score)
             
-            # Best Match Thesis ID
-            best_thesis_id = matches[0].get('paper_id') # Assuming 'paper_id' is returned by RPC
-            # If RPC doesn't return paper_id (it returns id from chunks), we might need to adjust or use chunk id.
-            # Assuming 'id' from match is chunk_id, we use that for now as proxy.
-            best_thesis_id = matches[0]['id']
+            # Best Match Thesis ID (Prefer paper_id if returned by updated RPC)
+            best_match = matches[0] if matches else {}
+            best_thesis_id = best_match.get('paper_id') or best_match.get('id')
 
             return {
                 "approved": avg_score > 0.75,

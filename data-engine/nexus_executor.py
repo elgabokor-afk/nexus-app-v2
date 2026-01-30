@@ -34,9 +34,9 @@ API_ERROR_LIMIT = 3
 
 r = redis.Redis.from_url(REDIS_URL, decode_responses=True)
 pubsub = r.pubsub()
-pubsub.subscribe('trade_signal')
+pubsub.subscribe('trade_signal', 'whale_alerts') # V4200: Multi-Channel Listening
 
-consecutive_errors = 0
+WHALE_DEFENSE_THRESHOLD = 500000 # $500k USD default fallback
 
 def get_account_stats():
     """Fetches Available Balance and Total Exposure."""
@@ -72,6 +72,36 @@ def validate_signal(data):
         
     return True, "OK"
 
+def handle_whale_defense(alert):
+    """
+    V4200: Autonomous Risk Mitigation
+    If a whale moves large funds to an exchange, we protect our open positions.
+    """
+    try:
+        symbol = f"{alert['symbol']}/USDT"
+        usd_val = alert['usd_value']
+        flow_type = alert['type']
+        
+        if flow_type == "INFLOW" and usd_val >= WHALE_DEFENSE_THRESHOLD:
+            print(f"!!! [WHALE DEFENSE] Significant {symbol} Inflow detected (${usd_val:,.0f})")
+            
+            # Action: Move SL to Breakeven for all matching positions
+            positions = live_trader.get_open_positions()
+            for pos in positions:
+                if pos['symbol'] == symbol and pos['side'] == 'long':
+                    # Logic to update SL via Binance API
+                    entry_p = pos['entry_price']
+                    print(f"    -> Protecting Position {symbol}: Moving SL to Breakeven ({entry_p})")
+                    live_trader.update_stop_loss(symbol, entry_p) # V4200: Live Protection Enabled
+                    
+                    # Notify Dashboard
+                    pusher_client.trigger('dashboard-alerts', 'whale-defense-active', {
+                        'message': f"Defensa Activada para {symbol}: SL movido a Breakeven por flujo de ballena.",
+                        'symbol': symbol
+                    })
+    except Exception as e:
+        print(f"Whale Defense Error: {e}")
+
 def main_loop():
     global consecutive_errors
     
@@ -81,12 +111,15 @@ def main_loop():
         if message['type'] != 'message': continue
         
         try:
+            channel = message['channel']
             data = json.loads(message['data'])
-            # Verify it's a "LIVE" intent signal (or we treat all signals as executable if in LIVE mode?)
-            # Usually scanner sends signals. PaperBot listens. Executor listens.
-            # We filter by confidence or source?
-            # For now, EXECUTE ALL SIGNALS sent to this channel (assuming upstream filtered).
-            
+
+            # ROUTING
+            if channel == 'whale_alerts':
+                handle_whale_defense(data)
+                continue
+
+            # TRADE SIGNAL ROUTING
             symbol = data['symbol']
             side = 'buy' if 'BUY' in data['signal'] else 'sell'
             

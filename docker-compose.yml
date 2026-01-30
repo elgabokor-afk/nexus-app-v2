@@ -54,6 +54,21 @@ services:
     depends_on:
       - nexus-cache
 
+  # 5. NEXUS WEBHOOK (Real-Time Ingest)
+  nexus-webhook:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python data-engine/nexus_webhook.py
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_URL=redis://nexus-cache:6379
+      - PORT=8000
+    depends_on:
+      - nexus-cache
+    restart: always
+
 networks:
   default:
     driver: bridge

@@ -44,6 +44,7 @@ create or replace function match_academic_knowledge (
 )
 returns table (
   id bigint,
+  paper_id bigint,
   content text,
   title text,
   university text,
@@ -58,6 +59,7 @@ begin
   return query(
     select
       ac.id,
+      ac.paper_id,
       ac.content,
       ap.title,
       ap.university,

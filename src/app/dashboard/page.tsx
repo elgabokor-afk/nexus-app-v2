@@ -50,6 +50,11 @@ interface Signal {
     take_profit?: number;
     atr_value?: number;
     volume_ratio?: number;
+    nli_safety_score?: number;
+    dex_force_score?: number;
+    whale_sentiment_score?: number;
+    statistical_p_value?: number;
+    academic_thesis_id?: number | string;
     analytics_signals?: {
         imbalance_ratio: number;
         depth_score: number;

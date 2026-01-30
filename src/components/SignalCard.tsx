@@ -26,11 +26,18 @@ interface SignalProps {
     pnl?: number;
     // V3800: Real-Time Ticker
     livePrice?: number;
+    // V5400: OMNISCIENT METRICS
+    nli_safety_score?: number;
+    dex_force_score?: number;
+    whale_sentiment_score?: number;
+    statistical_p_value?: number;
+    academic_thesis_id?: number | string;
 }
 
 
 const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
-    symbol, price, rsi, signal_type, confidence, timestamp, stop_loss, take_profit, atr_value, volume_ratio, imbalance, depth_score, audit_alert, onViewChart, onConsultAI, compact = false, status, pnl, livePrice
+    symbol, price, rsi, signal_type, confidence, timestamp, stop_loss, take_profit, atr_value, volume_ratio, imbalance, depth_score, audit_alert, onViewChart, onConsultAI, compact = false, status, pnl, livePrice,
+    nli_safety_score, dex_force_score, whale_sentiment_score, statistical_p_value, academic_thesis_id
 }) => {
 
     // V2400: VISUAL REPLICATION + HOT ZONE
@@ -226,10 +233,15 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
                         <div className="absolute inset-x-0 top-0 bg-gradient-to-b from-yellow-500/20 to-transparent h-12 z-0 pointer-events-none"></div>
 
                         <div className="w-full h-1.5 bg-gradient-to-r from-yellow-600 via-yellow-400 to-yellow-600 animate-shimmer bg-[length:200%_100%]"></div>
-                        <div className="absolute top-2 right-2 z-30">
+                        <div className="absolute top-2 right-2 z-30 flex flex-col items-end gap-1">
                             <span className="bg-yellow-500 text-black text-[10px] font-black px-2 py-0.5 rounded shadow-[0_0_15px_rgba(234,179,8,0.8)] flex items-center gap-1">
                                 <Flame size={10} fill="black" /> VIP ALPHA
                             </span>
+                            {academic_thesis_id && (
+                                <span className="bg-[#00ffa3] text-black text-[8px] font-black px-1.5 py-0.5 rounded flex items-center gap-1 shadow-[0_0_10px_rgba(0,255,163,0.5)]">
+                                    <Bot size={8} fill="black" /> PhD VALIDATED
+                                </span>
+                            )}
                         </div>
                     </>
                 )}
@@ -328,11 +340,11 @@ const SignalCard: React.FC<SignalProps & { compact?: boolean }> = ({
                             </span>
                         </div>
 
-                        {/* SENTIMENT (New) */}
+                        {/* OMNI-SCORE (Sentiment/Whale) */}
                         <div className="flex flex-col relative z-10">
-                            <span className="text-[9px] text-gray-400 font-black uppercase tracking-wider">Sentiment</span>
-                            <span className={`text-[10px] font-bold mt-0.5 ${isBuy ? 'text-green-400' : 'text-red-400'}`}>
-                                {confidence > 85 ? 'EXTREME' : 'STRONG'}
+                            <span className="text-[9px] text-gray-400 font-black uppercase tracking-wider">Sovereign</span>
+                            <span className={`text-[10px] font-bold mt-0.5 ${(nli_safety_score || 1) > 0.7 ? 'text-[#00ffa3]' : 'text-red-400'}`}>
+                                {(nli_safety_score || 1) > 0.7 ? 'SECURE' : 'RISKY'}
                             </span>
                         </div>
 

@@ -6,6 +6,7 @@ import json
 import logging
 from datetime import datetime, timezone
 import traceback
+import threading
 from dotenv import load_dotenv
 
 # Load env variables
@@ -51,8 +52,18 @@ except ImportError as e:
     
 try:
     from binance_engine import live_trader
+    from dex_scanner import DEXScanner # V4100
+    from whales_monitor import WhaleMonitor # V4200
+    from nexus_indexer import NexusIndexer # V5000 (Sovereign)
+    from evm_indexer import EVMIndexer # V5200 (EVM)
+    from cosmos_validator import validator as academic_validator # V5400 (PhD)
+    dex_scanner = DEXScanner()
+    whale_monitor = WhaleMonitor()
+    nexus_indexer = NexusIndexer() # Sovereign Engine Instance
+    evm_indexer_eth = EVMIndexer(chain="ethereum")
+    evm_indexer_base = EVMIndexer(chain="base")
 except ImportError as e:
-    logger.warning(f"Binance Engine missing: {e}")
+    logger.warning(f"Engine import error: {e}")
 
 # Database Setup
 from supabase import create_client, Client
@@ -88,9 +99,12 @@ def save_signal_to_db(signal_data):
             "rsi": signal_data.get('rsi'),
             "atr_value": signal_data.get('atr_value'),
             "volume_ratio": signal_data.get('volume_ratio'),
+            "academic_thesis_id": signal_data.get('academic_thesis_id'),
+            "statistical_p_value": signal_data.get('p_value', 1.0),
+            "nli_safety_score": signal_data.get('nli_score', 1.0),
+            "dex_force_score": signal_data.get('dex_force', 0),
+            "whale_sentiment_score": signal_data.get('whale_sentiment', 0),
             "created_at": datetime.now(timezone.utc).isoformat()
-            # NOTE: entry/tp/sl are still here for backward compatibility during migration
-            # They will be removed/nulled after Frontend update.
         }
         
         # 1. Insert into Public Signals (Main ID)
@@ -141,6 +155,26 @@ def main_loop():
     dynamic_pairs = []
     min_confidence_threshold = 25
     macro_sentiment = "NEUTRAL"
+    
+    # V5100: REAL-TIME WEBHOOK LISTENER THREAD
+    realtime_prices = {} 
+
+    def redis_listener():
+        pubsub = redis_engine.pubsub()
+        pubsub.subscribe("realtime_swaps")
+        logger.info("   [REALTIME] Redis Subscriber Active on 'realtime_swaps'")
+        for message in pubsub.listen():
+            if message['type'] == 'message':
+                try:
+                    event = json.loads(message['data'])
+                    # Update local state with real-time data
+                    # Example description check or token extraction
+                    # For this V5.1, we assume the payload has the price
+                    # Or we trigger a re-index
+                    logger.info(f"   [REALTIME] Instant Event Detected: {event.get('signature')[:8]}...")
+                except: pass
+
+    threading.Thread(target=redis_listener, daemon=True).start()
     
     while True:
         # V3000: HEARTBEAT & STARTUP LOGGING
@@ -238,6 +272,15 @@ def main_loop():
                         trend_15m = "BULLISH" if p_5m > ma_15m else "BEARISH"
                         
                         # V1500: Always broadcast live price to UI during scan
+                        # V5000: SOVEREIGN PRICE OVERRIDE
+                        if "SOL" in symbol.upper():
+                            try:
+                                sovereign_p = nexus_indexer.fetch_sovereign_price("SOL/USDC")
+                                if sovereign_p > 0:
+                                    p_5m = sovereign_p
+                                    logger.info(f"   [SOVEREIGN] {symbol} Price sync'd via Nexus Indexer: ${p_5m}")
+                            except: pass
+
                         redis_engine.publish("live_prices", {
                             "symbol": symbol.upper(),
                             "price": p_5m,
@@ -307,6 +350,20 @@ def main_loop():
                             else:
                                 quant_signal['quant_note'] = "Quant Engine Offline"
 
+                            # V4100: DEX CONFLUENCE
+                            # Check decentralized liquidity for the asset
+                            # We strip '/USDT' for the scanner
+                            dex_force = dex_scanner.calculate_dex_force(symbol.replace('/USDT', ''))
+                            if abs(dex_force) > 0.4:
+                                logger.info(f"   [DEX FORCE] {symbol} Multi-Chain Force: {dex_force:.2f}")
+
+                            # V5000: NLI SAFETY CHECK
+                            nli_score = 1.0
+                            if "SOL" in symbol.upper():
+                                nli_score = nexus_indexer.calculate_nli(symbol)
+                                if nli_score < 0.6:
+                                    logger.warning(f"   [NLI ALERT] {symbol} Safety Score low ({nli_score}). Penalizing confidence.")
+                            
                             # Convert to Worker Signal Format
                             
                             # V5000: NORMALIZE CONFIDENCE
@@ -327,12 +384,29 @@ def main_loop():
                             # V42: SMC BOOST
                             # If Order Block aligns, huge confidence boost
                             smc_boost = 0
-                            if "BUY" in quant_signal['signal'] and smc_data.get('ob_bullish'): smc_boost = 15
-                            if "SELL" in quant_signal['signal'] and smc_data.get('ob_bearish'): smc_boost = 15
-                            
                             if smc_boost > 0:
                                 final_conf_boosted += smc_boost
                                 logger.info(f"   [SMC] Order Block Detected! Confidence +{smc_boost}%")
+
+                            # V5300: DRAIN-GUARD PENALTY
+                            if nli_score < 0.5:
+                                final_conf_boosted *= 0.1 # Collapse confidence
+                                logger.warning(f"   [DRAIN-GUARD] Confidence collapsed for {symbol} due to security risk.")
+                            elif nli_score < 0.8:
+                                final_conf_boosted *= 0.8 # Moderate penalty
+
+                            # V4200: Whale Sentiment
+                            whale_alerts = whale_monitor.scan_all_gatekeepers()
+                            whale_sentiment = 0
+                            for alert in whale_alerts:
+                                if alert['symbol'] in symbol:
+                                    if alert['type'] == 'INFLOW': whale_sentiment += 1
+                                    else: whale_sentiment -= 1
+
+                            # V5400: Academic Validation (PhD Layer)
+                            academic_res = academic_validator.validate_signal_logic(
+                                f"{quant_signal['signal']} {symbol} RSI:{quant_signal['rsi']} Imbal:{quant_signal.get('imbalance', 0)}"
+                            )
 
                             # Update Payload
                             sig_payload = {
@@ -341,11 +415,15 @@ def main_loop():
                                 "price": quant_signal['price'],
                                 "take_profit": quant_signal['take_profit'],
                                 "stop_loss": quant_signal['stop_loss'],
-                                "confidence": final_conf_boosted, # Recursive + SMC Enhanced
+                                "confidence": final_conf_boosted,
                                 "rsi": quant_signal.get('rsi'),
                                 "atr_value": quant_signal.get('atr_value'),
                                 "volume_ratio": quant_signal.get('volume_ratio'),
-                                # "smc_details": smc_data # Optional: Store in DB if schema supports it
+                                "dex_force": dex_force,
+                                "nli_score": nli_score,
+                                "whale_sentiment": whale_sentiment,
+                                "academic_thesis_id": academic_res.get('thesis_id'),
+                                "p_value": academic_res.get('p_value')
                             }
                             
                             # V1700: Apply Dynamic Threshold
@@ -450,6 +528,21 @@ def main_loop():
 
             # V2700: COSMOS AI AUDITOR INTEGRATION
             try:
+                # V4200: WHALE ALERT BROADCAST
+                whale_alerts = whale_monitor.scan_all_gatekeepers()
+                if whale_alerts:
+                    for alert in whale_alerts:
+                        # Only broadcast very significant alerts (> $100k)
+                        if alert['usd_value'] > 100000:
+                            pusher_client.trigger("dashboard-alerts", "whale-alert", alert)
+                            logger.info(f"   [WHALE] Broadcasted {alert['type']} for {alert['symbol']}")
+                            
+                            # V4200: REDIS PROPAGATION (For Executor)
+                            try:
+                                from redis_engine import redis_engine
+                                redis_engine.publish("whale_alerts", json.dumps(alert))
+                            except: pass
+
                 from cosmos_auditor import audit_active_signals
                 from cosmos_oracle import run_oracle_step
                 

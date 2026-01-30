@@ -300,12 +300,18 @@ class CosmosBrain:
             insights.append(f"Heavy buy-side order book imbalance ({imb*100:.1f}%) detected.")
         elif imb < -0.4:
             insights.append(f"Strong sell-side pressure ({abs(imb)*100:.1f}%) in the local order book.")
-            
         # 4. Momentum
         if macd_h > 0:
             insights.append("MACD histogram is positive, showing growing bullish momentum.")
         elif macd_h < 0:
             insights.append("Momentum is decelerating as indicated by the negative MACD histogram.")
+            
+        # 5. [V4000] Multi-Chain Force
+        dex_f = features.get('dex_force', 0)
+        if dex_f > 0.4:
+            insights.append(f"Strong on-chain liquidity depth ({dex_f*100:.0f}% bullish) detected across Hyperliquid/DEXs.")
+        elif dex_f < -0.4:
+            insights.append(f"Significant sell-side pressure ({abs(dex_f)*100:.0f}% bearish) detected in on-chain order books.")
 
         # Final Synthesis
         conviction = "Neutral"
@@ -385,6 +391,12 @@ class CosmosBrain:
                 prob += 0.10
                 print(f"       [V600 MOOD] AI on fire ({recent_acc:.1%})! Confidence boosted.")
         
+        # V4000: Multi-Chain Boost
+        dex_f = features.get('dex_force', 0)
+        if abs(dex_f) > 0.5:
+             prob += (0.10 if dex_f > 0 else -0.10)
+             print(f"       [DEX FORCE] Significant Multi-Chain imbalance ({dex_f:.2f}). Adjusting Prob.")
+
         # V115: CRISIS MANAGEMENT & STRATEGY REPAIR
         # Replaced blind "Liquidation Override" with "Confluence Boost" logic.
         
@@ -623,8 +635,14 @@ class CosmosBrain:
                 "ai_confidence": signal_data.get('confidence'),
                 "risk_level": "HIGH" if signal_data.get('confidence', 0) < 80 else "MID",
                 "status": "ACTIVE",
-                "academic_thesis_id": getattr(self, 'last_thesis_id', None),
-                "statistical_p_value": getattr(self, 'last_p_value', 1.0),
+                "rsi": signal_data.get('rsi'),
+                "atr_value": signal_data.get('atr_value'),
+                "volume_ratio": signal_data.get('volume_ratio'),
+                "academic_thesis_id": signal_data.get('academic_thesis_id') or getattr(self, 'last_thesis_id', None),
+                "statistical_p_value": signal_data.get('statistical_p_value') or getattr(self, 'last_p_value', 1.0),
+                "nli_safety_score": signal_data.get('nli_score', 1.0),
+                "dex_force_score": signal_data.get('dex_force', 0),
+                "whale_sentiment_score": signal_data.get('whale_sentiment', 0),
                 "created_at": datetime.now(timezone.utc).isoformat()
             }
             res = self.supabase.table("signals").insert(db_record).execute()
