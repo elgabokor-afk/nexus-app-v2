@@ -219,23 +219,23 @@ print(f"VPIN: {vpin:.3f}")
 - [x] 6.1. Abrir Supabase Dashboard
 - [x] 6.2. Ir a SQL Editor
 - [x] 6.3. Copiar SQL del archivo `database_indexes_optimization.sql`
-- [ ] 6.4. Ejecutar script completo (PENDIENTE - Usuario debe ejecutar)
-- [ ] 6.5. Verificar que todos los índices se crearon:
-  ```sql
-  SELECT indexname, tablename FROM pg_indexes WHERE schemaname = 'public';
-  ```
-- [ ] 6.6. Ejecutar `ANALYZE` en todas las tablas
-- [ ] 6.7. Medir tiempo de consulta antes/después con `EXPLAIN ANALYZE`
+- [x] 6.4. ✅ Scripts creados y corregidos:
+  - [x] `add_missing_columns_signals.sql` - Añadir columnas faltantes
+  - [x] `database_indexes_SAFE_VERSION.sql` - Índices seguros
+  - [x] `QUICK_START_INDICES.md` - Guía rápida
+  - [x] `test_database_performance.sql` - Test de performance
+- [ ] 6.5. ⚠️ USUARIO: Ejecutar `add_missing_columns_signals.sql` en Supabase
+- [ ] 6.6. ⚠️ USUARIO: Ejecutar `database_indexes_SAFE_VERSION.sql` en Supabase
+- [ ] 6.7. ⚠️ USUARIO: Verificar con `test_database_performance.sql`
 
 **Validación**:
 ```sql
--- Antes del índice
-EXPLAIN ANALYZE SELECT * FROM paper_positions WHERE symbol = 'BTC/USDT' AND status = 'CLOSED';
-
--- Después del índice (debe usar Index Scan en lugar de Seq Scan)
+-- Verificar índices creados
+SELECT COUNT(*) FROM pg_indexes WHERE schemaname = 'public' AND indexname LIKE 'idx_%';
+-- Debe retornar: 8-10 índices
 ```
 
-**Estado**: ⚠️ SCRIPT CREADO - Pendiente ejecución por usuario
+**Estado**: ⚠️ SCRIPTS LISTOS - Usuario debe ejecutar en Supabase (ver QUICK_START_INDICES.md)
 
 ---
 
