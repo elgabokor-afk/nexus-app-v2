@@ -9,10 +9,28 @@ from cryptography.fernet import Fernet
 from dotenv import load_dotenv
 from pusher import Pusher
 
+from fastapi.middleware.cors import CORSMiddleware
+
 # Load Env
 load_dotenv()
 
 app = FastAPI()
+
+# V5000: CORS Security (MoE Router Protection)
+origins = [
+    "http://localhost:3000",
+    "https://nexus-ui.up.railway.app",
+    "https://www.nexuscryptosignals.com",
+    "https://nexuscryptosignals.com"
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # 1. Config & Security
 SUPABASE_URL = os.getenv("NEXT_PUBLIC_SUPABASE_URL")

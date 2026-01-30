@@ -417,15 +417,34 @@ def main_loop():
             # V3600: BROADCAST MARKET STATUS (Macro + FNG) for UI Widgets
             try:
                 from pusher_client import pusher_client
+                
+                # V5000: MOE ROUTER STATUS
+                # Determine Active Expert based on Macro Sentiment
+                active_expert = "PARRONDO (Game Theory)"
+                expert_confidence = 88 # Baseline
+                regime = "LOW_VOLATILITY"
+
+                if macro_sentiment == "RISK_ON":
+                    active_expert = "HARVARD (Trend Following)"
+                    expert_confidence = 94
+                    regime = "TRENDING"
+                elif macro_sentiment == "RISK_OFF":
+                     active_expert = "MIT (Mean Reversion)"
+                     expert_confidence = 91
+                     regime = "VOLATILE"
+
                 status_payload = {
                     "sentiment": macro_sentiment, 
+                    "active_expert": active_expert,
+                    "regime": regime,
+                    "expert_confidence": expert_confidence,
                     "dxy_change": macro_brain.cached_data.get('dxy_change', 0) if macro_brain else 0,
                     "spx_change": macro_brain.cached_data.get('spx_change', 0) if macro_brain else 0,
                     "fng_index": fng_index,
                     "active_sum": len(generated_signals), 
                     "timestamp": int(time.time())
                 }
-                pusher_client.trigger("public-market-status", "update", status_payload)
+                pusher_client.trigger("public-market-status", "macro-update", status_payload)
             except Exception as e:
                 logger.warning(f"   [PUSHER] Failed to broadcast status: {e}")
 

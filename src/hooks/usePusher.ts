@@ -4,7 +4,10 @@ import { useProfile } from './useProfile';
 
 // V3600: Market Status Interface
 interface MarketStatus {
-    sentiment: "BULLISH" | "BEARISH" | "NEUTRAL";
+    sentiment: "BULLISH" | "BEARISH" | "NEUTRAL" | "RISK_ON" | "RISK_OFF";
+    active_expert?: string;
+    regime?: string;
+    expert_confidence?: number;
     dxy_change: number;
     spx_change: number;
     fng_index: number;
@@ -15,6 +18,9 @@ export function usePusher() {
     const [connectionStatus, setConnectionStatus] = useState<'connected' | 'connecting' | 'unavailable'>('connecting');
     const [marketStatus, setMarketStatus] = useState<MarketStatus>({
         sentiment: "NEUTRAL",
+        active_expert: "PARRONDO (Game Theory)",
+        regime: "LOW_VOLATILITY",
+        expert_confidence: 88,
         dxy_change: 0,
         spx_change: 0,
         fng_index: 50
@@ -62,8 +68,12 @@ export function usePusher() {
             setMarketStatus(prev => ({
                 ...prev,
                 sentiment: data.sentiment || prev.sentiment,
+                active_expert: data.active_expert || prev.active_expert,
+                regime: data.regime || prev.regime,
+                expert_confidence: data.expert_confidence || prev.expert_confidence,
                 dxy_change: data.dxy_change || prev.dxy_change,
-                spx_change: data.spx_change || prev.spx_change
+                spx_change: data.spx_change || prev.spx_change,
+                fng_index: data.fng_index || prev.fng_index
             }));
         });
 

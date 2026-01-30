@@ -22,7 +22,7 @@
             "source": ".",
             "variables": {
                 "PORT": "3000",
-                "NEXT_PUBLIC_API_URL": "http://nexus-api.railway.internal:8000"
+                "NEXT_PUBLIC_API_URL": "http://nexus-api.railway.internal:8080"
             },
             "startCommand": "node server.js"
         },
@@ -31,7 +31,7 @@
             "dockerfilePath": "docker/Dockerfile.backend",
             "source": ".",
             "variables": {
-                "PORT": "8000",
+                "PORT": "8080",
                 "PYTHONUNBUFFERED": "1"
             },
             "startCommand": "sh start_services.sh"
