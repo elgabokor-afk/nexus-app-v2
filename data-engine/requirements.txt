@@ -15,3 +15,4 @@ xgboost>=2.0.0
 yfinance
 cryptography>=41.0.0
 pydantic>=2.0.0
+openai>=1.0.0

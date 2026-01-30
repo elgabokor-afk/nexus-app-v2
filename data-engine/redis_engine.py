@@ -43,7 +43,8 @@ class RedisEngine:
             except Exception as e:
                 print(f"   [REDIS] Standard connection failed ({e}). Retrying with SSL strict=False...")
                 # ATTEMPT 2: SSL Relaxed (For Public Proxy)
-                self.client = redis.from_url(self.redis_url, decode_responses=True, socket_connect_timeout=3, ssl_cert_reqs=None)
+                # Removed 'ssl_cert_reqs' which causes TypeError in newer redis-py versions using from_url
+                self.client = redis.from_url(self.redis_url, decode_responses=True, socket_connect_timeout=3)
                 self.client.ping()
                 print(f"   [REDIS] Connected Successfully (SSL Relaxed)!")
 
