@@ -173,6 +173,11 @@ export default function Dashboard() {
                         timestamp: s.created_at,
                         atr_value: Number(s.atr_value || 0),
                         volume_ratio: Number(s.volume_ratio || 0),
+                        nli_safety_score: Number(s.nli_safety_score || 1.0),
+                        dex_force_score: Number(s.dex_force_score || 0),
+                        whale_sentiment_score: Number(s.whale_sentiment_score || 0),
+                        statistical_p_value: Number(s.statistical_p_value || 1.0),
+                        academic_thesis_id: s.academic_thesis_id,
                         status: s.status, // ACTIVE or CLOSED
                         pnl: Number(s.result_pnl || 0)
                     };
@@ -205,6 +210,11 @@ export default function Dashboard() {
                     timestamp: s.created_at,
                     atr_value: Number(s.atr_value || 0),
                     volume_ratio: Number(s.volume_ratio || 0),
+                    nli_safety_score: Number(s.nli_safety_score || 1.0),
+                    dex_force_score: Number(s.dex_force_score || 0),
+                    whale_sentiment_score: Number(s.whale_sentiment_score || 0),
+                    statistical_p_value: Number(s.statistical_p_value || 1.0),
+                    academic_thesis_id: s.academic_thesis_id,
                     status: s.status,
                     pnl: Number(s.result_pnl || 0)
                 }));
@@ -259,7 +269,12 @@ export default function Dashboard() {
             stop_loss: Number(s.stop_loss || s.sl_price || s.sl || 0),
             take_profit: Number(s.take_profit || s.tp_price || s.tp || 0),
             atr_value: Number(s.atr_value || 0),
-            volume_ratio: Number(s.volume_ratio || 0)
+            volume_ratio: Number(s.volume_ratio || 0),
+            nli_safety_score: Number(s.nli_score || s.nli_safety_score || 1.0),
+            dex_force_score: Number(s.dex_force || s.dex_force_score || 0),
+            whale_sentiment_score: Number(s.whale_sentiment || s.whale_sentiment_score || 0),
+            statistical_p_value: Number(s.p_value || s.statistical_p_value || 1.0),
+            academic_thesis_id: s.academic_thesis_id || s.thesis_id
         };
 
         setSignals((prev) => {
