@@ -90,7 +90,10 @@ def run_oracle_step(symbol='BTC/USDT'):
         # 3. BLM ANALYSIS & RANKING (V90)
         prob = brain.predict_success(features)
         trend = brain.get_trend_status(features)
-        reasoning = brain.generate_reasoning(features, prob)
+        
+        # V412: Fix Oracle crash by passing required args
+        inferred_signal = "BUY" if prob > 0.5 else "SELL"
+        reasoning = brain.generate_reasoning(symbol, inferred_signal, features, prob)
         
         # Calculate Recursive Ranking Score
         # Matches logic in cosmos_engine.rank_assets

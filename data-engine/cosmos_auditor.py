@@ -1,6 +1,6 @@
 import time
 import os
-import ccxt
+import os
 import pandas as pd
 import numpy as np
 from supabase import create_client
@@ -19,12 +19,15 @@ SUPABASE_URL = os.getenv("NEXT_PUBLIC_SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# Init Binance (Public Data Only)
-exchange = ccxt.binanceusdm()
+# Init Binance (Unified Engine)
+from binance_engine import live_trader
 
 def fetch_market_data(symbol, timeframe='5m', limit=50):
     try:
-        bars = exchange.fetch_ohlcv(symbol, timeframe=timeframe, limit=limit)
+        # V3500: Use robust fetch with fallback
+        bars = live_trader.fetch_ohlcv(symbol, timeframe=timeframe, limit=limit)
+        if not bars: return None
+        
         df = pd.DataFrame(bars, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
         return df
     except Exception as e:
