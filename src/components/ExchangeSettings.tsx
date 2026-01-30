@@ -42,7 +42,8 @@ export default function ExchangeSettings() {
             if (!apiKey || !apiSecret) throw new Error("Please fill both API Key and Secret");
 
             // V5005: CALL BACKEND TO ENCRYPT AND SAVE
-            const API_URL = process.env.NEXT_PUBLIC_EXECUTION_API_URL || "http://localhost:8000";
+            // V5005: CALL BACKEND TO ENCRYPT AND SAVE
+            const API_URL = "/api/py";
 
             const res = await fetch(`${API_URL}/save-keys`, {
                 method: 'POST',

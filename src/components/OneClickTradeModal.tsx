@@ -62,7 +62,10 @@ export default function OneClickTradeModal({
 
             setLog('Connecting to Nexus Gateway...');
 
-            const API_URL = process.env.NEXT_PUBLIC_EXECUTION_API_URL || "http://localhost:8000";
+            setLog('Connecting to Nexus Gateway...');
+
+            // V7000: Use Next.js Proxy to reach internal Railway Service
+            const API_URL = "/api/py";
 
             const res = await fetch(`${API_URL}/execute-trade`, {
                 method: 'POST',
