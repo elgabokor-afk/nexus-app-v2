@@ -1,0 +1,98 @@
+# ============================================================================
+# COSMOS AI - Requirements Semana 2 (Optimizaciones)
+# Fecha: 31 de Enero, 2026
+# ============================================================================
+
+# ============================================================================
+# CORE DEPENDENCIES (Ya existentes)
+# ============================================================================
+ccxt>=4.0.0
+pandas>=2.0.0
+numpy>=1.24.0
+python-dotenv>=1.0.0
+supabase>=2.0.0
+requests>=2.31.0
+
+# Machine Learning
+scikit-learn>=1.3.0
+xgboost>=2.0.0
+joblib>=1.3.0
+
+# OpenAI & Embeddings
+openai>=1.0.0
+
+# ============================================================================
+# NUEVAS DEPENDENCIAS - SEMANA 2
+# ============================================================================
+
+# Rate Limiting (Fix 5)
+ratelimit>=2.2.1
+
+# Structured Logging (Fix 8)
+structlog>=23.1.0
+python-json-logger>=2.0.7
+
+# Testing (Fix 7)
+pytest>=7.4.0
+pytest-cov>=4.1.0
+pytest-asyncio>=0.21.0
+pytest-mock>=3.11.1
+
+# Code Quality
+radon>=6.0.1  # Complejidad ciclomática
+pylint>=3.0.0
+black>=23.7.0
+isort>=5.12.0
+
+# Performance Monitoring
+psutil>=5.9.5  # System metrics
+memory-profiler>=0.61.0
+
+# ============================================================================
+# OPTIONAL DEPENDENCIES (Recomendadas)
+# ============================================================================
+
+# Observability
+prometheus-client>=0.17.1  # Métricas
+opentelemetry-api>=1.20.0  # Tracing distribuido
+opentelemetry-sdk>=1.20.0
+
+# Database
+psycopg2-binary>=2.9.7  # PostgreSQL directo (si necesario)
+
+# Async Support
+aiohttp>=3.8.5
+asyncio>=3.4.3
+
+# Data Validation
+pydantic>=2.0.0
+
+# ============================================================================
+# INSTALACIÓN
+# ============================================================================
+
+# Instalar todas las dependencias:
+# pip install -r requirements_semana2.txt
+
+# Instalar solo las críticas (Semana 2):
+# pip install ratelimit structlog pytest pytest-cov
+
+# Verificar instalación:
+# pip list | grep -E "ratelimit|structlog|pytest"
+
+# ============================================================================
+# NOTAS
+# ============================================================================
+
+# 1. ratelimit: Protege contra rate limiting de Binance API
+# 2. structlog: Logging estructurado en JSON para mejor observabilidad
+# 3. pytest: Suite de testing para validar fixes
+# 4. radon: Medir complejidad ciclomática del código
+
+# ============================================================================
+# COMPATIBILIDAD
+# ============================================================================
+
+# Python: >=3.9
+# OS: Windows, Linux, macOS
+# Arquitectura: x86_64, ARM64

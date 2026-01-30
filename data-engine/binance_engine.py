@@ -4,6 +4,21 @@ import requests
 import json
 from dotenv import load_dotenv
 
+# V2000: Rate Limiting Implementation
+try:
+    from ratelimit import limits, sleep_and_retry
+    RATE_LIMIT_AVAILABLE = True
+except ImportError:
+    print("   [BINANCE] Warning: ratelimit library not installed. Install with: pip install ratelimit")
+    RATE_LIMIT_AVAILABLE = False
+    # Create dummy decorators
+    def limits(calls, period):
+        def decorator(func):
+            return func
+        return decorator
+    def sleep_and_retry(func):
+        return func
+
 # Load credentials
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
@@ -153,8 +168,13 @@ class BinanceTrader:
         return None
 
     # V2600: MARKET DATA CAPABILITIES (Kraken Primary)
+    @sleep_and_retry
+    @limits(calls=1200, period=60)  # Binance limit: 1200 requests/minute
     def fetch_ohlcv(self, symbol, timeframe='1h', limit=100):
-        """Fetch historical candle data (V2600: Kraken Primary)."""
+        """
+        Fetch historical candle data (V2600: Kraken Primary).
+        Rate Limited: 1200 calls/minute (Binance API limit).
+        """
         kraken_symbol = self._map_symbol_to_kraken(symbol)
         try:
             # Try Kraken First
@@ -173,8 +193,13 @@ class BinanceTrader:
                 # print(f"   [BINANCE] Fallback Fetch OHLCV failed for {symbol}: {b_err}")
                 return self._fetch_coincap_ohlcv(symbol, timeframe, limit) # Last resort
 
+    @sleep_and_retry
+    @limits(calls=1200, period=60)  # Binance limit: 1200 requests/minute
     def fetch_ticker(self, symbol):
-        """Fetch real-time price info (V2600: Kraken Primary)."""
+        """
+        Fetch real-time price info (V2600: Kraken Primary).
+        Rate Limited: 1200 calls/minute (Binance API limit).
+        """
         kraken_symbol = self._map_symbol_to_kraken(symbol)
         try:
             # Try Kraken First
@@ -260,8 +285,13 @@ class BinanceTrader:
             print(f"   [COINGECKO] Error: {e}")
         return []
 
+    @sleep_and_retry
+    @limits(calls=1200, period=60)  # Binance limit: 1200 requests/minute
     def fetch_order_book(self, symbol, limit=50):
-        """Fetch L2 Order Book (V2600: Kraken Primary)."""
+        """
+        Fetch L2 Order Book (V2600: Kraken Primary).
+        Rate Limited: 1200 calls/minute (Binance API limit).
+        """
         kraken_symbol = self._map_symbol_to_kraken(symbol)
         try:
             # Try Kraken First

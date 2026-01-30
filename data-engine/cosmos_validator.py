@@ -146,10 +146,11 @@ class AcademicValidator:
         
         return max(0.01, min(0.05, safe_kelly)) # Cap between 1% and 5%
 
-    def calculate_vpin(self, volume_buy, volume_sell, window_volume):
+    def calculate_vpin_simple(self, volume_buy, volume_sell, window_volume):
         """
         VPIN-Lite (Volume-Synchronized Probability of Informed Trading).
         Measures Flow Toxicity.
+        DEPRECATED: Use calculate_vpin_accurate() for production.
         """
         total_vol = volume_buy + volume_sell
         if total_vol == 0: return 0
@@ -159,6 +160,98 @@ class AcademicValidator:
         
         # VPIN > 0.6 usually means Toxic Flow (Informed Traders dumping/pumping)
         return vpin
+    
+    def calculate_vpin_accurate(self, trades_df, bucket_size=50, window=50):
+        """
+        VPIN Implementation according to Easley et al. (2012)
+        "Flow Toxicity and Liquidity in a High Frequency World"
+        
+        Args:
+            trades_df: DataFrame with columns ['timestamp', 'side', 'volume', 'price']
+            bucket_size: Volume per bucket (default: 50 units)
+            window: Number of buckets to calculate VPIN (default: 50)
+        
+        Returns:
+            float: VPIN score (0 to 1, >0.6 indicates toxicity)
+        
+        Theory:
+            VPIN = Average(|V_buy - V_sell| / (V_buy + V_sell)) over N volume buckets
+            
+            High VPIN (>0.6) indicates:
+            - Presence of informed traders
+            - Toxic order flow
+            - Increased adverse selection risk
+            - Potential for flash crashes
+        """
+        import pandas as pd
+        
+        if trades_df is None or trades_df.empty or len(trades_df) < window:
+            print(f"   [VPIN] Insufficient data: {len(trades_df) if trades_df is not None else 0} trades")
+            return 0
+        
+        # 1. Create volume-synchronized buckets
+        buckets = []
+        current_bucket = {'buy': 0, 'sell': 0, 'timestamp': None}
+        cumulative_vol = 0
+        
+        for _, trade in trades_df.iterrows():
+            if current_bucket['timestamp'] is None:
+                current_bucket['timestamp'] = trade['timestamp']
+            
+            # Classify trade side
+            side = 'buy' if trade['side'] in ['buy', 'BUY', 1, True] else 'sell'
+            current_bucket[side] += trade['volume']
+            cumulative_vol += trade['volume']
+            
+            # When bucket reaches target size
+            if cumulative_vol >= bucket_size:
+                buckets.append(current_bucket.copy())
+                current_bucket = {'buy': 0, 'sell': 0, 'timestamp': trade['timestamp']}
+                cumulative_vol = 0
+        
+        # 2. Calculate VPIN over last N buckets
+        if len(buckets) < window:
+            print(f"   [VPIN] Insufficient buckets: {len(buckets)} < {window}")
+            return 0
+        
+        recent_buckets = buckets[-window:]
+        
+        # VPIN = Average(|V_buy - V_sell| / (V_buy + V_sell))
+        vpin_sum = 0
+        valid_buckets = 0
+        
+        for bucket in recent_buckets:
+            total_vol = bucket['buy'] + bucket['sell']
+            if total_vol > 0:
+                imbalance = abs(bucket['buy'] - bucket['sell'])
+                vpin_sum += (imbalance / total_vol)
+                valid_buckets += 1
+        
+        if valid_buckets == 0:
+            return 0
+        
+        vpin = vpin_sum / valid_buckets
+        
+        # Log if VPIN is high (toxic flow detected)
+        if vpin > 0.6:
+            print(f"   [VPIN ALERT] High toxicity detected: {vpin:.3f} (Threshold: 0.6)")
+            print(f"   [VPIN ALERT] Informed traders likely present. Adverse selection risk HIGH.")
+        elif vpin > 0.5:
+            print(f"   [VPIN WARNING] Moderate toxicity: {vpin:.3f}")
+        
+        return vpin
+    
+    def calculate_vpin(self, *args, **kwargs):
+        """
+        Wrapper for backward compatibility.
+        Routes to accurate implementation if DataFrame is provided.
+        """
+        # Check if first argument is a DataFrame
+        if args and hasattr(args[0], 'iterrows'):
+            return self.calculate_vpin_accurate(*args, **kwargs)
+        else:
+            # Legacy call with volume_buy, volume_sell
+            return self.calculate_vpin_simple(*args, **kwargs)
 
 # Singleton
 validator = AcademicValidator()
