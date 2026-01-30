@@ -48,7 +48,7 @@ class OpenAIEngine:
                         {"role": "system", "content": "You provide sharp, concise crypto trading insights like a Bloomberg terminal."},
                         {"role": "user", "content": prompt},
                     ],
-                    max_tokens=60,
+                    max_completion_tokens=60,
                     temperature=0.5
                 )
             except Exception as ml_err:
@@ -59,7 +59,7 @@ class OpenAIEngine:
                         {"role": "system", "content": "You provide sharp, concise crypto trading insights like a Bloomberg terminal."},
                         {"role": "user", "content": prompt},
                     ],
-                    max_tokens=60,
+                    max_completion_tokens=60,
                     temperature=0.5
                 )
 

@@ -57,6 +57,7 @@ try:
     from nexus_indexer import NexusIndexer # V5000 (Sovereign)
     from evm_indexer import EVMIndexer # V5200 (EVM)
     from cosmos_validator import validator as academic_validator # V5400 (PhD)
+    from db import insert_signal, insert_analytics # V5600: Unified Gateway
     dex_scanner = DEXScanner()
     whale_monitor = WhaleMonitor()
     nexus_indexer = NexusIndexer() # Sovereign Engine Instance
@@ -82,40 +83,36 @@ LOOP_INTERVAL = 60 # Seconds
 
 def save_signal_to_db(signal_data):
     """
-    Writes the signal to the strictly defined 'public.signals' table.
-    Schema: pair, direction, entry_price, tp_price, sl_price, ai_confidence, risk_level, status
+    V5600: Wrapper for the unified db.insert_signal gateway.
+    Ensures all sovereign metrics are persisted and broadcasted.
     """
     try:
-        # Map Engine Dict to SQL Schema
-        db_record = {
-            "symbol": signal_data.get('symbol'),
-            "direction": "LONG" if "BUY" in signal_data.get('signal_type', '') else "SHORT",
-            "entry_price": signal_data.get('price'),
-            "tp_price": signal_data.get('take_profit'),
-            "sl_price": signal_data.get('stop_loss'),
-            "ai_confidence": float(signal_data.get('confidence', 0)),
-            "risk_level": "HIGH" if float(signal_data.get('confidence', 0)) < 85 else "MID", 
-            "status": "ACTIVE",
-            "rsi": signal_data.get('rsi'),
-            "atr_value": signal_data.get('atr_value'),
-            "volume_ratio": signal_data.get('volume_ratio'),
-            "academic_thesis_id": signal_data.get('academic_thesis_id'),
-            "statistical_p_value": signal_data.get('p_value', 1.0),
-            "nli_safety_score": signal_data.get('nli_score', 1.0),
-            "dex_force_score": signal_data.get('dex_force', 0),
-            "whale_sentiment_score": signal_data.get('whale_sentiment', 0),
-            "created_at": datetime.now(timezone.utc).isoformat()
-        }
+        # Pass ALL fields to the unified gateway
+        # Note: direction/price/etc mapping happens inside db.py
+        sig_id = insert_signal(
+            symbol=signal_data.get('symbol'),
+            price=signal_data.get('price'),
+            rsi=signal_data.get('rsi'),
+            signal_type=signal_data.get('signal_type'),
+            confidence=signal_data.get('confidence'),
+            stop_loss=signal_data.get('stop_loss'),
+            take_profit=signal_data.get('take_profit'),
+            atr_value=signal_data.get('atr_value'),
+            volume_ratio=signal_data.get('volume_ratio'),
+            academic_thesis_id=signal_data.get('academic_thesis_id'),
+            nli_safety_score=signal_data.get('nli_score', 1.0),
+            dex_force_score=signal_data.get('dex_force', 0),
+            whale_sentiment_score=signal_data.get('whale_sentiment', 0),
+            statistical_p_value=signal_data.get('p_value', 1.0)
+        )
         
-        # 1. Insert into Public Signals (Main ID)
-        res = supabase.table("signals").insert(db_record).execute()
-        
-        if res.data:
-            signal_id = res.data[0]['id']
+        if sig_id:
+            logger.info(f"   [SYNC] Signal {sig_id} processed via unified gateway.")
             
-            # 2. Insert into VIP Secure Table (The Real Vault)
+            # V5600: VIP Vaulting (Proprietary Logic) remains local to worker if needed
+            # but we use the ID from the unified gateway
             vip_record = {
-                "signal_id": signal_id,
+                "signal_id": sig_id,
                 "entry_price": signal_data.get('price'),
                 "tp_price": signal_data.get('take_profit'),
                 "sl_price": signal_data.get('stop_loss'),
@@ -123,14 +120,14 @@ def save_signal_to_db(signal_data):
             }
             try:
                 supabase.table("vip_signal_details").insert(vip_record).execute()
-                logger.info(f"   [SECURE] Signal {signal_id} vaulted in VIP table.")
+                logger.info(f"   [SECURE] Signal {sig_id} vaulted in VIP table.")
             except Exception as e:
                 logger.error(f"Failed to vault VIP details: {e}")
 
-            return signal_id
+            return sig_id
         return None
     except Exception as e:
-        logger.error(f"Failed to save signal DB: {e}")
+        logger.error(f"Failed to save signal DB wrapper: {e}")
         return None
 
 def fetch_win_rate():
@@ -471,21 +468,10 @@ def main_loop():
                     # We send the RAW signal data to the private channel
                     pusher_client.trigger("private-vip-signals", "new-signal", sig)
 
-                    # V5000: NEXUS EXECUTOR BRIDGE (Critical for Live Trading)
-                    # We must publish to 'trade_signal' for nexus_executor.py to react
-                    try:
-                        redis_engine.publish("trade_signal", json.dumps({
-                            "symbol": sig['symbol'],
-                            "signal": sig['signal_type'], # 'BUY' or 'SELL'
-                            "price": sig['price'],
-                            "take_profit": sig['take_profit'],
-                            "stop_loss": sig['stop_loss'],
-                            "confidence": sig['confidence'],
-                            "timestamp": int(time.time())
-                        }))
-                        logger.info(f"   [REDIS] >>> Sent Signal {sig['symbol']} to Nexus Executor")
-                    except Exception as re:
-                        logger.error(f"Failed to publish to Nexus Executor: {re}")
+                    # V5600: REDIS BROADCAST REMOVED FROM WORKER
+                    # Redundant logic is now handled inside db.insert_signal()
+                    # ensuring a single source of truth for the Execution Bridge.
+                    logger.info(f"   [BRIDGE] Signal {sig['symbol']} forwarded via db.insert_signal")
 
                     # Legacy Redis (Optional: Keep for internal tools/PaperBot if needed)
                     # redis_engine.publish("live_signals", { "type": "NEW_SIGNAL", "data": public_payload })

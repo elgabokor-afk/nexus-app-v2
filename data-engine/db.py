@@ -1,16 +1,22 @@
 import os
+import json
 import asyncio
 import requests
 from datetime import datetime, timezone
 from dotenv import load_dotenv
 
-# Load env from parent directory
-load_dotenv(dotenv_path='../.env.local')
+# Robust Path Resolution for .env.local
+current_file_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_file_dir)
+env_path = os.path.join(parent_dir, '.env.local')
+load_dotenv(dotenv_path=env_path)
 
 url: str = os.environ.get("NEXT_PUBLIC_SUPABASE_URL")
 key: str = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
 
-from redis_engine import redis_engine # V900
+if not url or not key:
+    print(f"!!! [DB INIT ERROR] Missing credentials in {env_path}")
+    print(f"    URL: {'Found' if url else 'Missing'} | Key: {'Found' if key else 'Missing'}")
 
 client = None
 
@@ -24,6 +30,7 @@ if url and key:
     client = requests.Session()
     client.headers.update(headers)
     client.base_url = base_url
+    print(f"   [DB INIT] Supabase Client Initialized: {url}")
 
 import threading
 import queue
@@ -77,29 +84,58 @@ class SupabaseBatchWriter:
 # Legal/Historical sync to Supabase every 30 seconds to minimize I/O and costs.
 batch_writer = SupabaseBatchWriter(flush_interval=30.0, batch_size=50)
 
-def insert_signal(symbol, price, rsi, signal_type, confidence, stop_loss=0, take_profit=0, atr_value=0, volume_ratio=0):
+def insert_signal(symbol, price, rsi, signal_type, confidence, stop_loss=0, take_profit=0, atr_value=0, volume_ratio=0, academic_thesis_id=None, nli_safety_score=1.0, dex_force_score=0, whale_sentiment_score=0, statistical_p_value=1.0):
     if not client:
-        return
+        print("!!! [DB ERROR] Insert attempted but client NOT initialized.")
+        return None
     
-    data = {
+    # 1. Map to DB Schema (Signals V2)
+    db_data = {
         "symbol": symbol,
-        "price": price,
+        "direction": "LONG" if "BUY" in str(signal_type).upper() else "SHORT",
+        "entry_price": price,
+        "tp_price": take_profit,
+        "sl_price": stop_loss,
+        "ai_confidence": confidence,
+        "risk_level": "HIGH" if confidence < 85 else "MID",
+        "status": "ACTIVE",
         "rsi": rsi,
-        "signal_type": signal_type,
-        "confidence": confidence,
-        "stop_loss": stop_loss,
-        "take_profit": take_profit,
         "atr_value": atr_value,
-        "volume_ratio": volume_ratio
+        "volume_ratio": volume_ratio,
+        "academic_thesis_id": academic_thesis_id,
+        "statistical_p_value": statistical_p_value,
+        "nli_safety_score": nli_safety_score,
+        "dex_force_score": dex_force_score,
+        "whale_sentiment_score": whale_sentiment_score,
+        "created_at": datetime.now(timezone.utc).isoformat()
     }
     
     try:
-        # V900: INSTANT BROADCAST TO REDIS (Latency < 10ms)
-        redis_engine.publish("live_signals", data)
+        # 2. INSTANT BROADCAST TO REDIS (Latency < 10ms)
+        # Standardized Payload for nexus_executor.py
+        redis_payload = {
+            "symbol": symbol,
+            "signal": signal_type.upper(),
+            "price": price,
+            "stop_loss": stop_loss,
+            "take_profit": take_profit,
+            "confidence": confidence,
+            "timestamp": int(time.time())
+        }
+        redis_engine.publish("trade_signal", json.dumps(redis_payload))
 
-        # Queue for Supabase Batching (persistence)
-        batch_writer.add_to_batch("market_signals", data)
-        return "queued_v9" # Return a placeholder as we don't have the ID yet
+        # 3. IMMEDIATE INSERT TO SUPABASE (No batching for signals)
+        url = f"{client.base_url}/signals"
+        headers = client.headers.copy()
+        headers["Prefer"] = "return=representation"
+        resp = client.post(url, json=db_data, headers=headers)
+        
+        if resp.status_code in [201, 200] and resp.json():
+            print(f"   [DB] Signal {symbol} saved. ID: {resp.json()[0]['id']}")
+            return resp.json()[0]['id']
+        
+        print(f"   [DB FAIL] Status: {resp.status_code} | Body: {resp.text}")
+        return None
 
     except Exception as e:
         print(f"   !!! DB Error: {e}")

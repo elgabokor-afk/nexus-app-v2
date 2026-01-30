@@ -12,19 +12,10 @@ load_dotenv(dotenv_path=os.path.join(parent_dir, '.env.local'))
 SUPABASE_URL = os.getenv("NEXT_PUBLIC_SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
-# V2000: Import new RAG engine
-try:
-    from rag_engine_v2 import rag_engine
-    RAG_V2_AVAILABLE = True
-except ImportError:
-    RAG_V2_AVAILABLE = False
-    print("   [VALIDATOR] RAG V2 not available, using legacy mode")
-
 class AcademicValidator:
     def __init__(self):
         self.supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-        self.vector_dim = 1536  # Updated to match text-embedding-3-large
-        self.use_rag_v2 = RAG_V2_AVAILABLE
+        self.vector_dim = 3072 # OpenAI Large
         
     def generate_embedding(self, text):
         """
@@ -43,49 +34,22 @@ class AcademicValidator:
             print(f"   [RAG MOCK] Embeddings API unavailable ({e}). Using random vector.")
             return np.random.rand(self.vector_dim).tolist()
 
-    def validate_signal_logic(self, signal_context, symbol="BTC/USD", direction="LONG", technical_context=None):
+    def validate_signal_logic(self, signal_context):
         """
-        V2000: Enhanced validation using RAG Engine V2
         Queries the Academic Vector DB to see if this trade setup exists in literature.
         """
         print(f"   [PhD VALIDATION] Consulting Academic Database for: {signal_context[:50]}...")
         
-        # V2000: Use RAG Engine V2 if available
-        if self.use_rag_v2 and technical_context:
-            try:
-                result = rag_engine.validate_trading_strategy(
-                    strategy_description=signal_context,
-                    symbol=symbol,
-                    direction=direction,
-                    technical_context=technical_context
-                )
-                
-                # Convert to legacy format for compatibility
-                return {
-                    "approved": result['approved'],
-                    "score": result['confidence'] * 100,
-                    "p_value": result['p_value'],
-                    "thesis_id": result['thesis_id'],
-                    "reason": result['reasoning'],
-                    "citations": [
-                        f"{p.get('authors', 'Unknown')} ({p.get('university', 'N/A')}) - {p.get('similarity', 0):.2f}"
-                        for p in result['papers']
-                    ]
-                }
-            except Exception as e:
-                print(f"   [RAG V2 ERROR] {e}, falling back to legacy")
-        
-        # Legacy mode (fallback)
-        # 1. Embed the signal context
+        # 1. Embed the signal context (e.g. "RSI Divergence with Volume Imbalance on BTC")
         query_vec = self.generate_embedding(signal_context)
         
-        # 2. Query Supabase using match_papers function
+        # 2. Query Supabase
         try:
             res = self.supabase.rpc(
-                "match_papers",
+                "match_academic_knowledge",
                 {
                     "query_embedding": query_vec,
-                    "match_threshold": 0.70,
+                    "match_threshold": 0.70, # 70% Similarity required
                     "match_count": 3
                 }
             ).execute()
@@ -96,7 +60,7 @@ class AcademicValidator:
                 return {
                     "approved": False,
                     "score": 0,
-                    "reason": "No academic precedent found in database.",
+                    "reason": "No academic precedent found in Ivy League database.",
                     "citations": []
                 }
             
@@ -104,27 +68,28 @@ class AcademicValidator:
             score = 0
             citations = []
             for m in matches:
-                similarity = m.get('similarity', 0)
+                similarity = m['similarity']
                 score += similarity * 100
-                authors = m.get('authors', 'Unknown')
-                university = m.get('university', 'N/A')
-                citations.append(f"{authors} ({university}) - {similarity:.2f}")
+                citations.append(f"{m['title']} ({m['university']}) - {similarity:.2f}")
                 
             avg_score = score / len(matches)
             
-            # P-Value Calculation
-            p_value = max(0.001, 1 - (avg_score / 100))
+            avg_score = score / len(matches)
             
-            # Best Match Thesis ID
+            # P-Value Calculation (Inverted Probability)
+            # If similarity is 0.95, p-value is 0.05 (Significant)
+            p_value = max(0.001, 1 - avg_score)
+            
+            # Best Match Thesis ID (Prefer paper_id if returned by updated RPC)
             best_match = matches[0] if matches else {}
-            best_thesis_id = best_match.get('id')
+            best_thesis_id = best_match.get('paper_id') or best_match.get('id')
 
             return {
-                "approved": avg_score > 75,
+                "approved": avg_score > 0.75,
                 "score": avg_score,
                 "p_value": round(p_value, 4),
                 "thesis_id": best_thesis_id,
-                "reason": f"Validated by {len(matches)} papers. P-Value: {p_value:.3f}",
+                "reason": f"Validated by {len(matches)} theses. P-Value: {p_value:.3f}",
                 "citations": citations
             }
             

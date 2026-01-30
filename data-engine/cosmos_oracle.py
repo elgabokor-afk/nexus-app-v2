@@ -290,7 +290,7 @@ def get_top_vol_oracle(limit=20):
                 usdt_pairs.append(t)
         
         # Sort by Quote Volume
-        sorted_pairs = sorted(usdt_pairs, key=lambda x: float(x['quoteVolume']), reverse=True)
+        sorted_pairs = sorted(usdt_pairs, key=lambda x: float(x.get('quoteVolume', 0)), reverse=True)
         
         top_symbols = []
         for p in sorted_pairs[:limit]:

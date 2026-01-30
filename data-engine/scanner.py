@@ -550,8 +550,9 @@ def get_top_vol_pairs(limit=15):
             base = sym.replace('USDT', '')
             if base in STABLECOINS: continue
             
-            usdt_pairs.append(t)
-        
+        # Sort by Quote Volume
+        sorted_pairs = sorted(usdt_pairs, key=lambda x: float(x.get('quoteVolume', 0)), reverse=True)
+
         # Extract symbols, format to CCXT standard (BTC/USDT)
         top_symbols = []
         

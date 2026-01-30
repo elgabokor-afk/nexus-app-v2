@@ -53,7 +53,7 @@ class DeepSeekEngine:
                     {"role": "system", "content": "You are a professional crypto analyst providing short, sharp trading insights."},
                     {"role": "user", "content": prompt},
                 ],
-                max_tokens=100,
+                max_completion_tokens=100,
                 temperature=0.7
             )
 
