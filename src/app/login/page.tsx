@@ -83,14 +83,19 @@ export default function LoginPage() {
                 if (error) throw error;
                 setMessage({ type: 'success', text: lang === 'en' ? 'Check your email to confirm.' : 'Verifica tu correo para confirmar.' });
             } else {
-                const { error } = await supabase.auth.signInWithPassword({
+                const { error, data } = await supabase.auth.signInWithPassword({
                     email,
                     password,
                 });
                 if (error) throw error;
+                // alert('Login Success! Redirecting to dashboard...'); // DEBUG
+                console.log('Login successful:', data);
+                router.refresh(); // Force middleware re-run
                 router.push('/dashboard');
             }
         } catch (error: any) {
+            console.error('Login Error:', error);
+            // alert('Login Error: ' + error.message); // DEBUG
             setMessage({ type: 'error', text: error.message });
         } finally {
             setLoading(false);
