@@ -1,9 +1,5 @@
 'use client';
 
-// Force runtime rendering - don't pre-render during build
-export const runtime = 'edge';
-export const revalidate = 0;
-
 import RiskModal from '@/components/RiskModal';
 import LegalFooter from '@/components/LegalFooter';
 import { useEffect, useState } from 'react';
