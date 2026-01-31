@@ -60,11 +60,19 @@ try:
     from db import insert_signal, insert_analytics # V5600: Unified Gateway
     dex_scanner = DEXScanner()
     whale_monitor = WhaleMonitor()
+    
+    # V4200: Confirm WhaleMonitor Initialization
+    import os
+    helius_status = "ACTIVE" if os.getenv("HELIUS_API_KEY") else "PUBLIC_RPC"
+    logger.info(f">>> [WHALE MONITOR] Initialized - Helius Status: {helius_status}")
+    
     nexus_indexer = NexusIndexer() # Sovereign Engine Instance
     evm_indexer_eth = EVMIndexer(chain="ethereum")
     evm_indexer_base = EVMIndexer(chain="base")
 except ImportError as e:
     logger.warning(f"Engine import error: {e}")
+    logger.warning(">>> [WHALE MONITOR] Failed to initialize")
+    whale_monitor = None
 
 # Database Setup
 from supabase import create_client, Client
