@@ -1,5 +1,8 @@
 'use client';
 
+// Force dynamic rendering - don't pre-render during build
+export const dynamic = 'force-dynamic';
+
 import RiskModal from '@/components/RiskModal';
 import LegalFooter from '@/components/LegalFooter';
 import { useEffect, useState } from 'react';
