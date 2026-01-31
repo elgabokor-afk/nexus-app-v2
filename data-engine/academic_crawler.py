@@ -9,6 +9,11 @@ load_dotenv()
 SUPABASE_URL = os.getenv("NEXT_PUBLIC_SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
+if SUPABASE_URL and SUPABASE_KEY:
+    print(f"   [DIAGNOSTIC] URL length: {len(SUPABASE_URL)}")
+    print(f"   [DIAGNOSTIC] KEY length: {len(SUPABASE_KEY)}")
+    print(f"   [DIAGNOSTIC] KEY prefix: {SUPABASE_KEY[:10]}...")
+
 supabase = None
 if SUPABASE_URL and SUPABASE_KEY and "tu_supabase_url_aqui" not in SUPABASE_URL and "tu_service_role_key_aqui" not in SUPABASE_KEY:
     try:
