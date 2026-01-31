@@ -31,7 +31,7 @@ python -u seed_academic_knowledge.py || echo "⚠️  Academic seeding skipped (
 # 2. START CORE SERVICES
 echo ""
 echo "[3/6] Starting Cosmos Worker (Signal Generator)..."
-python -u cosmos_worker.py > /tmp/cosmos_worker.log 2>&1 &
+python -u cosmos_worker.py 2>&1 | tee /tmp/cosmos_worker.log &
 WORKER_PID=$!
 sleep 3
 if ps -p $WORKER_PID > /dev/null; then
@@ -43,7 +43,7 @@ fi
 
 echo ""
 echo "[4/6] Starting AI Oracle..."
-python -u cosmos_oracle.py > /tmp/cosmos_oracle.log 2>&1 &
+python -u cosmos_oracle.py 2>&1 | tee /tmp/cosmos_oracle.log &
 ORACLE_PID=$!
 sleep 2
 if ps -p $ORACLE_PID > /dev/null; then
@@ -54,7 +54,7 @@ fi
 
 echo ""
 echo "[5/6] Starting Macro Feed..."
-python -u macro_feed.py > /tmp/macro_feed.log 2>&1 &
+python -u macro_feed.py 2>&1 | tee /tmp/macro_feed.log &
 MACRO_PID=$!
 sleep 2
 if ps -p $MACRO_PID > /dev/null; then
@@ -65,7 +65,7 @@ fi
 
 echo ""
 echo "[6/6] Starting Nexus Executor..."
-python -u nexus_executor.py > /tmp/nexus_executor.log 2>&1 &
+python -u nexus_executor.py 2>&1 | tee /tmp/nexus_executor.log &
 EXECUTOR_PID=$!
 sleep 2
 if ps -p $EXECUTOR_PID > /dev/null; then
