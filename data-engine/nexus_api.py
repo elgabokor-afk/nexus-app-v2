@@ -136,6 +136,43 @@ class TradeRequest(BaseModel):
 def health():
     return {"status": "ok", "version": "v5.0"}
 
+@app.get("/health")
+def health_check():
+    """Comprehensive health check for Railway"""
+    status = {
+        "status": "healthy",
+        "version": "v5.0",
+        "services": {}
+    }
+    
+    # Check Supabase
+    try:
+        supabase.table("signals").select("id").limit(1).execute()
+        status["services"]["supabase"] = "connected"
+    except:
+        status["services"]["supabase"] = "disconnected"
+        status["status"] = "degraded"
+    
+    # Check Redis
+    try:
+        if redis_engine.client and redis_engine.client.ping():
+            status["services"]["redis"] = "connected"
+        else:
+            status["services"]["redis"] = "disconnected"
+    except:
+        status["services"]["redis"] = "disconnected"
+    
+    # Check Pusher
+    if pusher_client:
+        status["services"]["pusher"] = "configured"
+    else:
+        status["services"]["pusher"] = "not_configured"
+    
+    # Check WebSocket connections
+    status["services"]["websocket_clients"] = len(manager.active_connections)
+    
+    return status
+
 @app.post("/chat")
 async def chat_endpoint(request: ChatRequest):
     return cosmos_agent.analyze_signal(request.message, request.signalContext)

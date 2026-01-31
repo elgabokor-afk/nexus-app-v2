@@ -1,25 +1,35 @@
-FROM python:3.9-slim
+FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies (for building some python packages)
-RUN apt-get update && apt-get install -y gcc
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    curl \
+    procps \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements (Create this if missing, but usually defined in python projects)
+# Copy requirements and install Python dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
-# Copy the entire data-engine and necessary SQL files
-# Copy the entire data-engine and necessary SQL files
-# Copy the entire data-engine and necessary SQL files
+# Copy application code
 COPY data-engine/ ./data-engine/
+COPY config/ ./config/
 COPY start_services.sh .
 RUN chmod +x start_services.sh
 
-# FORCE RETRAIN MODEL to match container's scikit-learn version
-RUN python data-engine/force_retrain.py
+# Create log directory
+RUN mkdir -p /tmp
 
-# Note: We do NOT copy .env.local. Secrets must be injected by Railway/Docker Env.
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:${PORT:-8080}/health || exit 1
 
-# Default command (overridden by docker-compose)
-CMD ["python", "data-engine/cosmos_worker.py"]
+# Expose port (Railway will override with $PORT)
+EXPOSE 8080
+
+# Start services
+CMD ["./start_services.sh"]
