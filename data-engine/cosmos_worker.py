@@ -155,6 +155,7 @@ def fetch_win_rate():
         return 50.0
 
 def main_loop():
+    global redis_engine  # Fix: Declare as global to prevent UnboundLocalError
     logger.info("--- COSMOS AI WORKER STARTED [RAILWAY MODE] ---")
     
     # Fix 3: Importar Circuit Breaker
