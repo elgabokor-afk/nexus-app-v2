@@ -1,9 +1,17 @@
 import requests
 import sys
 
-# User provided credentials
-TOKEN = "8119493028:AAGw4Zb0OLT8DstzJJy7ThxN4mMvhuN9unw"
-CHAT_ID = "-1003537646096"
+import os
+from dotenv import load_dotenv
+
+# Path Setup
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+load_dotenv(dotenv_path=os.path.join(parent_dir, '.env.local'))
+
+# Parameters
+TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 def send_test_alert():
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"

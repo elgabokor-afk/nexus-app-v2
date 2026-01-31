@@ -58,6 +58,10 @@ backup_*/
 # Git
 .git/COMMIT_EDITMSG
 
+
 # Sensitive documentation (con API keys reales)
 DEPLOY_RAILWAY_AHORA.md
 VARIABLES_RESUMEN.md
+
+# Test scripts
+test_connection.py
