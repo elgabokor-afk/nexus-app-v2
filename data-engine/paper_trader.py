@@ -786,6 +786,18 @@ def monitor_positions():
 
                 print(f"Closing {pos['symbol']} | Reason: {exit_reason} | PnL: ${pnl:.2f} (Fees: ${total_fees:.2f})")
                 
+                # Fix 3: Registrar resultado en Circuit Breaker
+                try:
+                    from circuit_breaker import circuit_breaker
+                    circuit_breaker.record_trade(pnl)
+                    
+                    status = circuit_breaker.get_status()
+                    if status['is_tripped']:
+                        print(f"🚨 [CIRCUIT BREAKER] ACTIVATED after this trade!")
+                        print(f"   Reason: {status['trip_reason']}")
+                except Exception as cb_error:
+                    print(f"   [CIRCUIT BREAKER] Recording error: {cb_error}")
+                
                 update_data = {
                     "status": "CLOSED",
                     "exit_price": current_price,

@@ -26,6 +26,16 @@ SUPABASE_URL = os.getenv("NEXT_PUBLIC_SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 MODEL_PATH = "cosmos_model.joblib"
 
+# Fix 2: University Weights for Academic Validation
+UNIVERSITY_WEIGHTS = {
+    'MIT': 1.15,
+    'Harvard': 1.12,
+    'Oxford': 1.10,
+    'Stanford': 1.08,
+    'Cambridge': 1.07,
+    'Unknown': 1.0
+}
+
 if not SUPABASE_URL or not SUPABASE_KEY:
     print("Cosmos Engine: Supabase credentials missing (Check .env.local)") 
 
@@ -473,29 +483,38 @@ class CosmosBrain:
                 prob += smc_boost
                 print(f"       [SMC CONFLUENCE] Institutional footprints detected. Boosted Prob by +{smc_boost*100:.0f}% to {prob*100:.1f}%")
 
-        # 5. [NEW] ACADEMIC VALIDATION (PhD Layer)
+        # 5. [FIX 2] ACADEMIC VALIDATION ENDURECIDA (PhD Layer)
         # Create a "Paper Thesis" string to check against DB
         thesis_context = f"Strategy: {signal_type} on {symbol}. Technicals: RSI {features.get('rsi_value')}, Imbalance {features.get('imbalance_ratio', 0)}. Trend: {trend}."
         
         validation_result = validator.validate_signal_logic(thesis_context)
         
+        # Fix 2: Endurecer validación - No permitir trades sin respaldo académico
         if not validation_result['approved']:
-            # V4400: PhD Relaxed Mode. 
-            # If no academic backing, we still allow the trade if the AI is reasonably confident (> 65%).
-            # We don't want to paralyze the system just because Harvard hasn't written about this specific crypto pattern yet.
-            if prob < 0.65:
-                 return False, prob, f"REJECTED by Cosmos PhD: {validation_result['reason']} (and Conf {prob*100:.1f}% < 65%)"
-            else:
-                 print(f"       [PhD BYPASS] Academic support missing, but AI Confidence ({prob*100:.1f}%) is sufficient.")
+            # Penalización severa si no hay respaldo académico
+            prob *= 0.5  # Reducir confianza a la mitad
+            print(f"       [PhD PENALTY] No academic support. Confidence reduced to {prob*100:.1f}%")
             
+            # Solo permitir si la confianza es EXTREMADAMENTE alta (>90%)
+            if prob < 0.90:
+                return False, prob, f"REJECTED by Cosmos PhD: {validation_result['reason']} (Conf {prob*100:.1f}% < 90% required without PhD)"
+            else:
+                print(f"       [PhD BYPASS] No academic support, but AI Confidence ({prob*100:.1f}%) is exceptional.")
 
         if validation_result['approved']:
-             prob += 0.10
-             print(f"       [PhD VALIDATED] {validation_result['citations'][0]} (p={validation_result.get('p_value', 1.0)})")
+            # Fix 2: Aplicar peso universitario
+            university = validation_result.get('university', 'Unknown')
+            uni_weight = UNIVERSITY_WEIGHTS.get(university, 1.0)
+            prob *= uni_weight
+            
+            print(f"       [PhD VALIDATED] {validation_result['citations'][0] if validation_result['citations'] else 'Academic paper'}")
+            print(f"       [UNIVERSITY BOOST] {university}: {uni_weight}x multiplier → Final Prob: {prob*100:.1f}%")
+            print(f"       [STATISTICAL] p-value: {validation_result.get('p_value', 1.0):.4f}")
 
         # Capture P-Value and Thesis ID for DB
         self.last_p_value = validation_result.get('p_value', 1.0)
         self.last_thesis_id = validation_result.get('thesis_id', None)
+        self.last_university = validation_result.get('university', 'Unknown')  # Fix 2: Guardar universidad
              
         # 6. VPIN TOXICITY CHECK
         # Estimate volume buckets from features if available (mocking for now as we lack granular data in features)

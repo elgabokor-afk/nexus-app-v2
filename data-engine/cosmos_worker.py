@@ -22,13 +22,13 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Import Internal Engines
-# Import Internal Engines
 brain = None
 redis_engine = None
 scanner_engine = None
 macro_brain = None
 quant_engine = None
 live_trader = None
+whale_monitor = None  # Fix 1: Declarar whale_monitor globalmente
 
 try:
     from cosmos_engine import brain
@@ -144,6 +144,14 @@ def fetch_win_rate():
 def main_loop():
     logger.info("--- COSMOS AI WORKER STARTED [RAILWAY MODE] ---")
     
+    # Fix 3: Importar Circuit Breaker
+    try:
+        from circuit_breaker import circuit_breaker
+        logger.info("   [CIRCUIT BREAKER] Protection system loaded")
+    except ImportError as e:
+        logger.warning(f"   [CIRCUIT BREAKER] Not available: {e}")
+        circuit_breaker = None
+    
     # V310: Worker State (Local Scope)
     worker_started = False
     last_optimization = 0
@@ -174,6 +182,14 @@ def main_loop():
     threading.Thread(target=redis_listener, daemon=True).start()
     
     while True:
+        # Fix 3: Check Circuit Breaker ANTES de procesar
+        if circuit_breaker:
+            can_trade, reason = circuit_breaker.check_trade()
+            if not can_trade:
+                logger.warning(f"[CIRCUIT BREAKER] Trading paused: {reason}")
+                time.sleep(60)  # Esperar 1 minuto antes de revisar de nuevo
+                continue
+        
         # V3000: HEARTBEAT & STARTUP LOGGING
         # This runs ONCE per loop cycle start (or usually just once if we insert before while)
         # But we want to ensure we log at least once.
@@ -393,12 +409,15 @@ def main_loop():
                                 final_conf_boosted *= 0.8 # Moderate penalty
 
                             # V4200: Whale Sentiment
-                            whale_alerts = whale_monitor.scan_all_gatekeepers()
                             whale_sentiment = 0
-                            for alert in whale_alerts:
-                                if alert['symbol'] in symbol:
-                                    if alert['type'] == 'INFLOW': whale_sentiment += 1
-                                    else: whale_sentiment -= 1
+                            if whale_monitor:  # Fix 1: Verificar que whale_monitor existe
+                                whale_alerts = whale_monitor.scan_all_gatekeepers()
+                                for alert in whale_alerts:
+                                    if alert['symbol'] in symbol:
+                                        if alert['type'] == 'INFLOW': whale_sentiment += 1
+                                        else: whale_sentiment -= 1
+                            else:
+                                whale_alerts = []
 
                             # V5400: Academic Validation (PhD Layer)
                             academic_res = academic_validator.validate_signal_logic(
@@ -444,6 +463,13 @@ def main_loop():
                 logger.info("No signals generated this cycle.")
             
             for sig in generated_signals:
+                # Fix 3: Circuit Breaker Check antes de guardar señal
+                if circuit_breaker:
+                    can_trade, reason = circuit_breaker.check_trade()
+                    if not can_trade:
+                        logger.warning(f"[CIRCUIT BREAKER] Signal {sig['symbol']} blocked: {reason}")
+                        break  # Detener procesamiento de señales
+                
                 # 2. Save to DB (Strict Schema)
                 sig_id = save_signal_to_db(sig)
                 
@@ -515,7 +541,11 @@ def main_loop():
             # V2700: COSMOS AI AUDITOR INTEGRATION
             try:
                 # V4200: WHALE ALERT BROADCAST
-                whale_alerts = whale_monitor.scan_all_gatekeepers()
+                if whale_monitor:  # Fix 1: Verificar que whale_monitor existe
+                    whale_alerts = whale_monitor.scan_all_gatekeepers()
+                else:
+                    whale_alerts = []
+                    
                 if whale_alerts:
                     for alert in whale_alerts:
                         # Only broadcast very significant alerts (> $100k)
