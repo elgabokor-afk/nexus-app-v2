@@ -1,6 +1,9 @@
-
+"""
+NEXUS AI - Ollama Text Generation Engine
+Replaces OpenAI for trade narrative generation using local Ollama
+"""
 import os
-from openai import OpenAI
+import requests
 from dotenv import load_dotenv
 
 # Load env from parent directory
@@ -9,67 +12,78 @@ parent_dir = os.path.dirname(current_dir)
 load_dotenv(dotenv_path=os.path.join(parent_dir, '.env.local'))
 
 class OpenAIEngine:
+    """
+    Renamed to maintain compatibility with existing imports.
+    Now uses Ollama instead of OpenAI.
+    """
     def __init__(self):
-        self.api_key = os.getenv("OPENAI_API_KEY")
-        self.client = None
-        if self.api_key:
-            self.client = OpenAI(api_key=self.api_key)
-            print("   [OPENAI] Engine Initialized.")
-        else:
-            print("   [OPENAI] Warning: OPENAI_API_KEY missing in .env.local")
+        self.ollama_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+        self.model = "llama3.2:3b"  # Fast, efficient model for trade narratives
+        self.client = self  # For compatibility
+        
+        # Test connection
+        try:
+            response = requests.get(f"{self.ollama_url}/api/tags", timeout=5)
+            if response.status_code == 200:
+                print(f"   [OLLAMA] Text generation engine connected to {self.ollama_url}")
+            else:
+                print(f"   [OLLAMA] Warning: Connection issue (status {response.status_code})")
+        except Exception as e:
+            print(f"   [OLLAMA] Warning: Could not connect to {self.ollama_url}: {e}")
 
     def generate_trade_narrative(self, symbol, signal_type, features):
         """
-        Generates high-fidelity trading reasoning using OpenAI GPT-4o-mini.
+        Generates high-fidelity trading reasoning using local Ollama.
         """
-        if not self.client:
-            return None
-
         try:
-            prompt = f"""
-            Act as a Lead Strategy Quant in a global macro fund.
-            Interpret this crypto signal for {symbol} with institutional precision.
-            Maximum length: 140 characters. No fluff.
-            
-            Signal: {signal_type}
-            Price: {features.get('price', 'N/A')}
-            RSI: {features.get('rsi_value', 'N/A')}
-            EMA 200 Position: {features.get('trend', 'N/A')}
-            Order Book Imbalance: {features.get('imbalance_ratio', 'N/A')}
-            SMC Details: {features.get('smc_details', 'Detecting...')}
-            
-            Provide a direct, high-conviction institutional thesis.
-            """
+            prompt = f"""Act as a Lead Strategy Quant in a global macro fund.
+Interpret this crypto signal for {symbol} with institutional precision.
+Maximum length: 140 characters. No fluff.
 
-            try:
-                response = self.client.chat.completions.create(
-                    model="gpt-5-nano",
-                    messages=[
-                        {"role": "system", "content": "You provide sharp, concise crypto trading insights like a Bloomberg terminal."},
-                        {"role": "user", "content": prompt},
-                    ],
-                    max_completion_tokens=60,
-                    temperature=0.5
-                )
-            except Exception as ml_err:
-                 print(f"   [OPENAI WARN] GPT-5 Nano unavailable ({ml_err}). Falling back to GPT-4o-mini.")
-                 response = self.client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[
-                        {"role": "system", "content": "You provide sharp, concise crypto trading insights like a Bloomberg terminal."},
-                        {"role": "user", "content": prompt},
-                    ],
-                    max_completion_tokens=60,
-                    temperature=0.5
-                )
+Signal: {signal_type}
+Price: {features.get('price', 'N/A')}
+RSI: {features.get('rsi_value', 'N/A')}
+EMA 200 Position: {features.get('trend', 'N/A')}
+Order Book Imbalance: {features.get('imbalance_ratio', 'N/A')}
+SMC Details: {features.get('smc_details', 'Detecting...')}
 
-            narrative = response.choices[0].message.content.strip()
-            return narrative.replace('"', '').replace("'", "")
+Provide a direct, high-conviction institutional thesis."""
 
+            response = requests.post(
+                f"{self.ollama_url}/api/generate",
+                json={
+                    "model": self.model,
+                    "prompt": prompt,
+                    "stream": False,
+                    "options": {
+                        "temperature": 0.5,
+                        "num_predict": 60  # Limit tokens for concise response
+                    }
+                },
+                timeout=30
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                narrative = data.get("response", "").strip()
+                # Clean up narrative
+                narrative = narrative.replace('"', '').replace("'", "")
+                # Truncate to 140 chars
+                if len(narrative) > 140:
+                    narrative = narrative[:137] + "..."
+                return narrative
+            else:
+                print(f"   [OLLAMA ERROR] Status {response.status_code}: {response.text}")
+                return None
+
+        except requests.exceptions.RequestException as e:
+            print(f"   [OLLAMA CONNECTION ERROR] {e}")
+            return None
         except Exception as e:
-            print(f"   [OPENAI ERROR] {e}")
+            print(f"   [OLLAMA ERROR] {e}")
             return None
 
+# Singleton instance
 openai_engine = OpenAIEngine()
 
 if __name__ == "__main__":

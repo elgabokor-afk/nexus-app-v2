@@ -1,6 +1,9 @@
-
+"""
+NEXUS AI - Ollama Deep Reasoning Engine
+Replaces DeepSeek for advanced reasoning using local Ollama
+"""
 import os
-from openai import OpenAI
+import requests
 from dotenv import load_dotenv
 
 # Load env from parent directory
@@ -9,63 +12,76 @@ parent_dir = os.path.dirname(current_dir)
 load_dotenv(dotenv_path=os.path.join(parent_dir, '.env.local'))
 
 class DeepSeekEngine:
+    """
+    Renamed to maintain compatibility with existing imports.
+    Now uses Ollama instead of DeepSeek API.
+    """
     def __init__(self):
-        self.api_key = os.getenv("DEEPSEEK_API_KEY")
-        self.client = None
-        if self.api_key:
-            # DeepSeek is OpenAI compatible
-            self.client = OpenAI(
-                api_key=self.api_key,
-                base_url="https://api.deepseek.com"
-            )
-            print("   [DEEPSEEK] Engine Initialized.")
-        else:
-            print("   [DEEPSEEK] Warning: DEEPSEEK_API_KEY missing in .env.local")
+        self.ollama_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+        self.model = "llama3.2:3b"  # Fast, efficient model
+        self.client = self  # For compatibility
+        
+        # Test connection
+        try:
+            response = requests.get(f"{self.ollama_url}/api/tags", timeout=5)
+            if response.status_code == 200:
+                print(f"   [OLLAMA] Deep reasoning engine connected")
+            else:
+                print(f"   [OLLAMA] Warning: Connection issue")
+        except Exception as e:
+            print(f"   [OLLAMA] Warning: Could not connect: {e}")
 
     def generate_deep_reasoning(self, symbol, signal_type, features):
         """
-        Generates advanced trading reasoning using DeepSeek AI.
+        Generates advanced trading reasoning using local Ollama.
         """
-        if not self.client:
-            return None
-
         try:
-            # Prepare context for the AI
-            prompt = f"""
-            Act as a Senior Quant Trader at a top hedge fund. 
-            Analyze this signal for {symbol} and provide a concise, professional narrative (max 150 characters).
-            
-            Signal: {signal_type}
-            Price: {features.get('price', 'N/A')}
-            RSI: {features.get('rsi_value', 'N/A')}
-            Trend: {features.get('trend', 'N/A')}
-            Order Book Imbalance: {features.get('imbalance_ratio', 'N/A')}
-            Volatility (ATR): {features.get('atr_value', 'N/A')}
-            
-            Context: The bot uses a Random Forest classifier combined with SMA/Volume filters.
-            
-            Provide a direct, high-conviction institutional reasoning.
-            """
+            prompt = f"""Act as a Senior Quant Trader at a top hedge fund. 
+Analyze this signal for {symbol} and provide a concise, professional narrative (max 150 characters).
 
-            response = self.client.chat.completions.create(
-                model="deepseek-chat", # Use deepseek-reasoner for R1 if supported/needed
-                messages=[
-                    {"role": "system", "content": "You are a professional crypto analyst providing short, sharp trading insights."},
-                    {"role": "user", "content": prompt},
-                ],
-                max_completion_tokens=100,
-                temperature=0.7
+Signal: {signal_type}
+Price: {features.get('price', 'N/A')}
+RSI: {features.get('rsi_value', 'N/A')}
+Trend: {features.get('trend', 'N/A')}
+Order Book Imbalance: {features.get('imbalance_ratio', 'N/A')}
+Volatility (ATR): {features.get('atr_value', 'N/A')}
+
+Context: The bot uses a Random Forest classifier combined with SMA/Volume filters.
+
+Provide a direct, high-conviction institutional reasoning."""
+
+            response = requests.post(
+                f"{self.ollama_url}/api/generate",
+                json={
+                    "model": self.model,
+                    "prompt": prompt,
+                    "stream": False,
+                    "options": {
+                        "temperature": 0.7,
+                        "num_predict": 100
+                    }
+                },
+                timeout=30
             )
 
-            reasoning = response.choices[0].message.content.strip()
-            # Remove quotes if AI included them
-            reasoning = reasoning.replace('"', '').replace("'", "")
-            return reasoning
+            if response.status_code == 200:
+                data = response.json()
+                reasoning = data.get("response", "").strip()
+                # Clean up
+                reasoning = reasoning.replace('"', '').replace("'", "")
+                # Truncate to 150 chars
+                if len(reasoning) > 150:
+                    reasoning = reasoning[:147] + "..."
+                return reasoning
+            else:
+                print(f"   [OLLAMA ERROR] Status {response.status_code}")
+                return None
 
         except Exception as e:
-            print(f"   [DEEPSEEK ERROR] {e}")
+            print(f"   [OLLAMA ERROR] {e}")
             return None
 
+# Singleton
 deepseek_engine = DeepSeekEngine()
 
 if __name__ == "__main__":

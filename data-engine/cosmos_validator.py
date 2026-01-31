@@ -28,19 +28,37 @@ class AcademicValidator:
         
     def generate_embedding(self, text):
         """
-        Wrapper to call OpenAI Embedding API.
-        If API key missing, returns random vector (MOCK) for dev testing.
+        Generate embeddings using local Ollama instead of OpenAI.
+        Falls back to random vector if Ollama unavailable.
         """
         try:
-            from openai import OpenAI
-            client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-            response = client.embeddings.create(
-                input=text,
-                model="text-embedding-3-large"
+            import requests
+            ollama_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+            
+            response = requests.post(
+                f"{ollama_url}/api/embeddings",
+                json={
+                    "model": "nomic-embed-text",
+                    "prompt": text[:8000]
+                },
+                timeout=30
             )
-            return response.data[0].embedding
+            
+            if response.status_code == 200:
+                data = response.json()
+                embedding = data.get("embedding")
+                # Pad or truncate to match expected dimension
+                if len(embedding) < self.vector_dim:
+                    embedding.extend([0] * (self.vector_dim - len(embedding)))
+                elif len(embedding) > self.vector_dim:
+                    embedding = embedding[:self.vector_dim]
+                return embedding
+            else:
+                print(f"   [OLLAMA ERROR] Status {response.status_code}")
+                return np.random.rand(self.vector_dim).tolist()
+                
         except Exception as e:
-            print(f"   [RAG MOCK] Embeddings API unavailable ({e}). Using random vector.")
+            print(f"   [OLLAMA MOCK] Embeddings unavailable ({e}). Using random vector.")
             return np.random.rand(self.vector_dim).tolist()
 
     def validate_signal_logic(self, signal_context, symbol="BTC/USD", direction="LONG", technical_context=None):
