@@ -1,53 +1,64 @@
-# 1. Install Dependencies only when needed
+# ===============================================
+# NEXUS AI - Frontend Service
+# Production-optimized Next.js Dockerfile for Railway
+# ===============================================
+
+# Stage 1: Install dependencies
 FROM node:20-alpine AS deps
 WORKDIR /app
-COPY package.json package-lock.json ./
-RUN npm ci
 
-# 2. Rebuild the source code only when needed
+# Install dependencies based on lockfile
+COPY package.json package-lock.json ./
+RUN npm ci --only=production
+
+# Stage 2: Build application
 FROM node:20-alpine AS builder
 WORKDIR /app
+
+# Copy dependencies from deps stage
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Declare build arguments
+# Build-time environment variables
 ARG NEXT_PUBLIC_SUPABASE_URL
 ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
 ARG NEXT_PUBLIC_PUSHER_KEY
 ARG NEXT_PUBLIC_PUSHER_CLUSTER
 ARG NEXT_PUBLIC_API_URL
 
-# Set environment variables for build
-ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
-ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
-ENV NEXT_PUBLIC_PUSHER_KEY=$NEXT_PUBLIC_PUSHER_KEY
-ENV NEXT_PUBLIC_PUSHER_CLUSTER=$NEXT_PUBLIC_PUSHER_CLUSTER
-ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+# Set build environment
+ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
+    NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY \
+    NEXT_PUBLIC_PUSHER_KEY=$NEXT_PUBLIC_PUSHER_KEY \
+    NEXT_PUBLIC_PUSHER_CLUSTER=$NEXT_PUBLIC_PUSHER_CLUSTER \
+    NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
+# Build Next.js application
 RUN npm run build
 
-# 3. Production image, copy all the files and run next
-# 3. Production image, copy all the files and run next
+# Stage 3: Production runtime
 FROM node:20-alpine AS runner
 WORKDIR /app
 
-ENV NODE_ENV production
+# Production environment
+ENV NODE_ENV=production
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+# Create system user for security
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
 
-# Standard Next.js Build needs node_modules too (or standalone disabled)
-# Since we disabled standalone, we copy .next and public
+# Copy necessary files from builder
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 
+# Switch to non-root user
 USER nextjs
 
-EXPOSE 3000
+# Railway will set PORT dynamically, default to 3000 for local dev
+EXPOSE ${PORT:-3000}
 
-ENV PORT 3000
-ENV HOSTNAME "0.0.0.0"
-
+# Start Next.js server
+# Railway's $PORT will be used automatically by Next.js
 CMD ["npm", "start"]

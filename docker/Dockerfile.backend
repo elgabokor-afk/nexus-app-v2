@@ -1,29 +1,44 @@
+# ===============================================
+# NEXUS AI - Backend Service
+# Production-grade Dockerfile for Railway deployment
+# ===============================================
+
 FROM python:3.9-slim
 
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y gcc curl procps && rm -rf /var/lib/apt/lists/*
+# Install system dependencies (minimal for security)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    curl \
+    procps \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-# Upgrade pip
+# Upgrade pip to latest
 RUN pip install --no-cache-dir --upgrade pip
 
-# Copy and install requirements
+# Copy and install Python dependencies
+# This layer is cached unless requirements.txt changes
 COPY data-engine/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application and startup script
+# Copy application code and startup script
 COPY data-engine/ ./data-engine/
 COPY start_services.sh .
 
 # Make startup script executable
 RUN chmod +x start_services.sh
 
-# Set environment
-ENV PYTHONUNBUFFERED=1
+# Environment configuration
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
 
-# Expose port
+# Expose API port (Railway will override with $PORT)
 EXPOSE 8080
 
-# Start all services
+# Health check (handled by Railway)
+# HEALTHCHECK disabled - using Railway's built-in monitoring
+
+# Start all AI services
 CMD ["./start_services.sh"]
