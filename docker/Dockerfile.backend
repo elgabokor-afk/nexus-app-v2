@@ -2,35 +2,24 @@ FROM python:3.9-slim
 
 WORKDIR /app
 
-# Install system dependencies (gcc for compiling some python libs)
-RUN apt-get update && apt-get install -y \
-    gcc \
-    curl \
-    procps \
-    && rm -rf /var/lib/apt/lists/*
+# Install system dependencies
+RUN apt-get update && apt-get install -y gcc curl procps && rm -rf /var/lib/apt/lists/*
 
 # Upgrade pip
 RUN pip install --no-cache-dir --upgrade pip
 
-# Copy requirements first to leverage Docker cache
+# Copy and install requirements
 COPY data-engine/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the entire data-engine directory
+# Copy application
 COPY data-engine/ ./data-engine/
-COPY start_services_debug.sh .
 
-# Make startup script executable
-RUN chmod +x start_services_debug.sh
-
-# Environment variables will be injected by Railway
-# But we set a default unbuffered output for logs
+# Set environment
 ENV PYTHONUNBUFFERED=1
 
-# Expose API Port
+# Expose port
 EXPOSE 8080
 
-# Temporarily remove healthcheck to see logs
-# HEALTHCHECK disabled for debugging
-
-CMD ["./start_services_debug.sh"]
+# Direct Python command - no bash script
+CMD cd data-engine && python -c "import os; print('='*50); print('DIAGNOSTIC MODE'); print('='*50); print('PORT:', os.getenv('PORT', '8080')); print('SUPABASE_URL:', 'SET' if os.getenv('SUPABASE_URL') else 'MISSING'); print('NEXT_PUBLIC_SUPABASE_URL:', 'SET' if os.getenv('NEXT_PUBLIC_SUPABASE_URL') else 'MISSING'); print('SUPABASE_SERVICE_ROLE_KEY:', 'SET' if os.getenv('SUPABASE_SERVICE_ROLE_KEY') else 'MISSING'); print('='*50); exec(open('/app/data-engine/nexus_api.py').read())" || echo "STARTUP FAILED"
