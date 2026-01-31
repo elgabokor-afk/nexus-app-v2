@@ -5,37 +5,100 @@ Manages academic papers, embeddings, and clustering
 import os
 import numpy as np
 from datetime import datetime
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
 from supabase import create_client, Client
-from openai import OpenAI
 from dotenv import load_dotenv
+import requests
+import json
 
 load_dotenv('.env.local')
 
 SUPABASE_URL = os.getenv("NEXT_PUBLIC_SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-OPENAI_KEY = os.getenv("OPENAI_API_KEY")
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+
+# Import institutional filter
+from academic_filter import comprehensive_filter
 
 class AcademicManager:
     """Manages academic papers and embeddings"""
     
     def __init__(self):
         self.supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-        self.openai_client = OpenAI(api_key=OPENAI_KEY)
-        self.embedding_model = "text-embedding-3-large"
-        self.embedding_dim = 1536
+        self.ollama_url = OLLAMA_BASE_URL
+        self.embedding_model = "nomic-embed-text"  # Local Ollama model
+        self.embedding_dim = 768  # nomic-embed-text dimension
+        self.similarity_threshold = 0.75  # Institutional threshold
         
     def generate_embedding(self, text: str) -> Optional[List[float]]:
-        """Generate embedding for text"""
+        """Generate embedding using local Ollama (RTX 4070 via ngrok)"""
         try:
-            response = self.openai_client.embeddings.create(
-                input=text[:8000],  # Limit to avoid token limits
-                model=self.embedding_model
+            # Call Ollama API via ngrok tunnel
+            response = requests.post(
+                f"{self.ollama_url}/api/embeddings",
+                json={
+                    "model": self.embedding_model,
+                    "prompt": text[:8000]  # Limit to avoid token limits
+                },
+                timeout=30
             )
-            return response.data[0].embedding
+            
+            if response.status_code == 200:
+                data = response.json()
+                return data.get("embedding")
+            else:
+                print(f"   [OLLAMA ERROR] Status {response.status_code}: {response.text}")
+                return None
+                
+        except requests.exceptions.RequestException as e:
+            print(f"   [OLLAMA CONNECTION ERROR] {e}")
+            print(f"   [INFO] Ensure Ollama is running and ngrok tunnel is active")
+            return None
         except Exception as e:
             print(f"   [EMBEDDING ERROR] {e}")
             return None
+    
+    def validate_paper(
+        self,
+        title: str,
+        abstract: str,
+        journal: Optional[str] = None,
+        university: Optional[str] = None,
+        full_text: Optional[str] = None
+    ) -> Dict:
+        """
+        Apply institutional-grade filters to paper.
+        Returns filter results with prestige score.
+        """
+        return comprehensive_filter(
+            title=title,
+            abstract=abstract,
+            journal=journal,
+            university=university,
+            full_text=full_text
+        )
+    
+    def check_similarity_threshold(
+        self,
+        paper_embedding: List[float],
+        strategy_embedding: List[float]
+    ) -> Tuple[bool, float]:
+        """
+        Check if paper meets 0.75 similarity threshold with Nexus strategy.
+        Returns (meets_threshold, similarity_score).
+        """
+        try:
+            # Cosine similarity
+            dot_product = np.dot(paper_embedding, strategy_embedding)
+            norm_a = np.linalg.norm(paper_embedding)
+            norm_b = np.linalg.norm(strategy_embedding)
+            similarity = dot_product / (norm_a * norm_b)
+            
+            meets_threshold = similarity >= self.similarity_threshold
+            return meets_threshold, float(similarity)
+        except Exception as e:
+            print(f"   [SIMILARITY ERROR] {e}")
+            return False, 0.0
     
     def get_paper_by_id(self, paper_id: int) -> Optional[Dict]:
         """Fetch a single paper by ID"""
