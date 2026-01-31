@@ -18,10 +18,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the entire data-engine directory
 COPY data-engine/ ./data-engine/
-COPY start_services.sh .
+COPY start_services_debug.sh .
 
 # Make startup script executable
-RUN chmod +x start_services.sh
+RUN chmod +x start_services_debug.sh
 
 # Environment variables will be injected by Railway
 # But we set a default unbuffered output for logs
@@ -30,8 +30,7 @@ ENV PYTHONUNBUFFERED=1
 # Expose API Port
 EXPOSE 8080
 
-# Healthcheck - give more time for startup script to complete
-HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
-    CMD curl -f http://localhost:${PORT:-8080}/health || exit 1
+# Temporarily remove healthcheck to see logs
+# HEALTHCHECK disabled for debugging
 
-CMD ["./start_services.sh"]
+CMD ["./start_services_debug.sh"]
