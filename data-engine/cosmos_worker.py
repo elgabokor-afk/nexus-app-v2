@@ -59,10 +59,14 @@ try:
     from cosmos_validator import validator as academic_validator # V5400 (PhD)
     from db import insert_signal, insert_analytics # V5600: Unified Gateway
     dex_scanner = DEXScanner()
+    
+    # Debug Logging Check
+    import os
+    logger.info(">>> [DEBUG] Attempting to initialize WhaleMonitor...")
+    
     whale_monitor = WhaleMonitor()
     
     # V4200: Confirm WhaleMonitor Initialization
-    import os
     helius_status = "ACTIVE" if os.getenv("HELIUS_API_KEY") else "PUBLIC_RPC"
     logger.info(f">>> [WHALE MONITOR] Initialized - Helius Status: {helius_status}")
     
