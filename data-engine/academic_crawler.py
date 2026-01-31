@@ -8,7 +8,15 @@ import os
 load_dotenv()
 SUPABASE_URL = os.getenv("NEXT_PUBLIC_SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+supabase = None
+if SUPABASE_URL and SUPABASE_KEY and "tu_supabase_url_aqui" not in SUPABASE_URL and "tu_service_role_key_aqui" not in SUPABASE_KEY:
+    try:
+        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+    except Exception as e:
+        print(f"   !!! Supabase Client Error: {e}")
+else:
+    print("   ⚠️  Supabase credentials missing or invalid. Academic ingestion will be skipped.")
 
 def crawl_arxiv(query="quantitative trading", max_results=5):
     """
@@ -80,12 +88,8 @@ def crawl_arxiv(query="quantitative trading", max_results=5):
         return []
 
 def ingest_paper(paper_data):
-    """
-    1. Saves Paper Metadata to `academic_papers`.
-    2. Chunks Summary/Content.
-    3. EmbedsChunks.
-    4. Saves to `academic_chunks`.
-    """
+    if not supabase:
+        return
     try:
         # 1. Insert Paper
         res = supabase.table("academic_papers").insert({
