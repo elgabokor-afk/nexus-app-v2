@@ -114,6 +114,44 @@ MATH_COMPLEXITY_INDICATORS = [
 ]
 
 # ============================================================================
+# 4. MATHEMATICAL RIGOR REQUIREMENTS (Martingale/Markov Foundation)
+# ============================================================================
+
+REQUIRED_MATH_FOUNDATIONS = [
+    # Martingale Theory
+    "martingale", "submartingale", "supermartingale",
+    "martingale theory", "optional stopping theorem",
+    "doob's inequality", "martingale convergence",
+    
+    # Markov Processes
+    "markov process", "markov chain", "hidden markov",
+    "markov switching", "transition matrix", "stationary distribution",
+    "ergodic", "markov decision process", "mdp",
+    
+    # Stochastic Calculus
+    "stochastic differential equation", "sde",
+    "ito lemma", "ito's lemma", "ito calculus", "itô",
+    "brownian motion", "wiener process", "geometric brownian",
+    "stochastic integral", "ito integral",
+    
+    # Advanced Stochastic
+    "poisson process", "jump diffusion", "levy process",
+    "fokker-planck", "kolmogorov equation", "backward equation",
+    "feynman-kac", "girsanov theorem",
+    
+    # Measure Theory
+    "measure theory", "probability measure", "lebesgue",
+    "radon-nikodym", "borel sigma-algebra"
+]
+
+# Topics that require mathematical foundations
+TOPICS_REQUIRING_MATH_FOUNDATION = [
+    "market microstructure", "limit order book", "order book dynamics",
+    "parrondo", "complex network stability", "systemic risk",
+    "optimal execution", "price impact", "market making"
+]
+
+# ============================================================================
 # FILTER FUNCTIONS
 # ============================================================================
 
@@ -152,6 +190,41 @@ def validate_dual_keywords(text: str) -> Tuple[bool, int, List[str]]:
     
     is_valid = total_matches >= 2
     return is_valid, total_matches, matched_categories
+
+
+def validate_mathematical_rigor(text: str) -> Tuple[bool, float, List[str]]:
+    """
+    Validate paper has Martingale/Markov theoretical foundation.
+    Papers touching advanced topics MUST have mathematical rigor.
+    Returns (is_valid, rigor_score, matched_foundations).
+    """
+    text_lower = text.lower()
+    
+    # Check if paper touches topics requiring math foundation
+    requires_foundation = any(
+        topic in text_lower for topic in TOPICS_REQUIRING_MATH_FOUNDATION
+    )
+    
+    # Count mathematical foundations present
+    matched_foundations = [
+        foundation for foundation in REQUIRED_MATH_FOUNDATIONS 
+        if foundation in text_lower
+    ]
+    
+    foundation_count = len(matched_foundations)
+    
+    # Calculate rigor score (0.0 to 1.0)
+    rigor_score = min(1.0, foundation_count / 3.0)  # 3+ foundations = max score
+    
+    # Validation logic:
+    # - If requires foundation: must have at least 1 match
+    # - If doesn't require: pass automatically
+    if requires_foundation:
+        is_valid = foundation_count >= 1
+    else:
+        is_valid = True
+        
+    return is_valid, rigor_score, matched_foundations
 
 
 def calculate_prestige_score(
@@ -234,6 +307,18 @@ def comprehensive_filter(
             "matched_categories": categories
         }
     
+    # 2.5 Mathematical Rigor Validation (Martingale/Markov Foundation)
+    math_valid, rigor_score, foundations = validate_mathematical_rigor(combined_text)
+    if not math_valid:
+        return {
+            "passed": False,
+            "stage": "mathematical_rigor",
+            "reason": "Topic requires Martingale/Markov foundation but none found",
+            "prestige_score": 0.0,
+            "keyword_matches": match_count,
+            "rigor_score": rigor_score
+        }
+    
     # 3. Prestige Scoring
     prestige = calculate_prestige_score(
         text=combined_text,
@@ -242,13 +327,18 @@ def comprehensive_filter(
         abstract=abstract
     )
     
+    # Boost prestige with rigor score
+    prestige = prestige * (1 + rigor_score * 0.5)  # Up to +50% for math rigor
+    
     return {
         "passed": True,
         "stage": "complete",
-        "prestige_score": prestige,
+        "prestige_score": round(prestige, 2),
         "keyword_matches": match_count,
         "matched_categories": categories,
-        "reason": "Passed all filters"
+        "rigor_score": rigor_score,
+        "math_foundations": foundations[:5],  # Top 5 for brevity
+        "reason": "Passed all filters (including math rigor)"
     }
 
 
