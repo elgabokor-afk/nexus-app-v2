@@ -8,8 +8,10 @@ FROM node:20-alpine AS deps
 WORKDIR /app
 
 # Install dependencies based on lockfile
+# Note: Install ALL dependencies here (including devDependencies)
+# because TypeScript is needed for next.config.ts
 COPY package.json package-lock.json ./
-RUN npm ci --only=production
+RUN npm ci
 
 # Stage 2: Build application
 FROM node:20-alpine AS builder
