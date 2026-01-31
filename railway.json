@@ -1,0 +1,40 @@
+{
+    "$schema": "https://railway.app/railway.schema.json",
+    "build": {
+        "builder": "DOCKERFILE",
+        "watchPatterns": [
+            "src/**",
+            "data-engine/**",
+            "next.config.ts",
+            "package.json",
+            "requirements.txt"
+        ]
+    },
+    "deploy": {
+        "numReplicas": 1,
+        "restartPolicyType": "ON_FAILURE",
+        "restartPolicyMaxRetries": 3
+    },
+    "services": {
+        "nexus-ui": {
+            "name": "nexus-ui",
+            "dockerfilePath": "docker/Dockerfile.frontend",
+            "source": ".",
+            "variables": {
+                "PORT": "3000",
+                "NEXT_PUBLIC_API_URL": "http://nexus-api.railway.internal:8080"
+            },
+            "startCommand": "node server.js"
+        },
+        "nexus-api": {
+            "name": "nexus-api",
+            "dockerfilePath": "docker/Dockerfile.backend",
+            "source": ".",
+            "variables": {
+                "PORT": "8080",
+                "PYTHONUNBUFFERED": "1"
+            },
+            "startCommand": "sh start_services.sh"
+        }
+    }
+}

@@ -1,0 +1,8 @@
+{
+  "initial_capital": 10000,
+  "max_daily_loss_pct": 5.0,
+  "max_consecutive_losses": 5,
+  "max_drawdown_pct": 10.0,
+  "cooldown_minutes": 60,
+  "auto_reset_daily": true
+}

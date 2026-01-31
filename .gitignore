@@ -1,0 +1,63 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# Next.js
+.next/
+out/
+build/
+dist/
+
+# Environment variables
+.env
+.env.local
+.env.production
+.env.development
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+DEPLOY_LOG.txt
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Python
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ML Models
+*.joblib
+*.pkl
+!data-engine/ml_models/*.pkl
+
+# Backup files
+backup_*/
+*.bak
+
+# Git
+.git/COMMIT_EDITMSG
+
+# Sensitive documentation (con API keys reales)
+DEPLOY_RAILWAY_AHORA.md
+VARIABLES_RESUMEN.md

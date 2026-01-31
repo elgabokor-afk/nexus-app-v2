@@ -1,0 +1,14 @@
+# V402: Global Trading Configuration
+# MASTER SWITCH: Set to false for LIVE operations
+paper_trade_enabled: false
+
+# Asset Configuration
+trading_pairs:
+  - BTC/USDT
+  - DOGE/USDT
+  - SOL/USDT
+
+# Engine Configuration
+connector_type: binance_margin
+margin_mode: CROSSED
+leverage_limit: 3

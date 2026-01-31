@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  # 1. NEXUS BRAIN (RAG + AI)
+  nexus-brain:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python data-engine/cosmos_worker.py --role brain
+    environment:
+      - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - REDIS_URL=redis://nexus-cache:6379
+    depends_on:
+      - nexus-cache
+    restart: always
+    healthcheck:
+      test: [ "CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # 2. NEXUS INGEST (Hot Layer)
+  nexus-ingest:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python data-engine/stream_processor.py
+    environment:
+      - REDIS_URL=redis://nexus-cache:6379
+    depends_on:
+      - nexus-cache
+    restart: always
+
+  # 3. NEXUS CACHE (Redis)
+  nexus-cache:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --save 60 1 --loglevel warning
+
+  # 4. NEXUS GATEWAY (Notifier)
+  nexus-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python data-engine/pusher_client.py
+    environment:
+      - PUSHER_APP_ID=${PUSHER_APP_ID}
+      - PUSHER_KEY=${PUSHER_KEY}
+      - PUSHER_SECRET=${PUSHER_SECRET}
+      - REDIS_URL=redis://nexus-cache:6379
+    depends_on:
+      - nexus-cache
+
+  # 5. NEXUS WEBHOOK (Real-Time Ingest)
+  nexus-webhook:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python data-engine/nexus_webhook.py
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_URL=redis://nexus-cache:6379
+      - PORT=8000
+    depends_on:
+      - nexus-cache
+    restart: always
+
+networks:
+  default:
+    driver: bridge

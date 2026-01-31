@@ -1,0 +1,21 @@
+# Binaries & Models
+*.pkl
+*.joblib
+*.h5
+*.onnx
+__pycache__/
+*.pyc
+
+# Environment & Secrets
+.env
+.env.local
+.env.*
+
+# System
+.git/
+.gitignore
+.dockerignore
+node_modules/
+dist/
+build/
+.next/

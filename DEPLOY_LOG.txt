@@ -1,0 +1,52 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20260131122645
+Username: DESKTOP-TP0K0IU\NPC2
+RunAs User: DESKTOP-TP0K0IU\NPC2
+Configuration Name: 
+Machine: DESKTOP-TP0K0IU (Microsoft Windows NT 10.0.26200.0)
+Host Application: powershell -NoProfile -ExecutionPolicy Bypass -File FORCE_DEPLOY.ps1
+Process ID: 11324
+PSVersion: 5.1.26100.7462
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.7462
+BuildVersion: 10.0.26100.7462
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+Transcript started, output file is DEPLOY_LOG.txt
+--- DEPLOYMENT DIAGNOSTIC STARTED ---
+1. Checking Remotes...
+origin  https://github.com/elgabokor-afk/nexus-app-v2.git (fetch)
+origin  https://github.com/elgabokor-afk/nexus-app-v2.git (push)
+2. Staging Files (git add .)...
+
+On branch railway-deploy
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+        modified:   DEPLOY_LOG.txt
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+        modified:   DEPLOY_LOG.txt
+3. Committing...
+[railway-deploy daaa3db] FORCE DEPLOY: Premium UI Update (V1200)
+ 1 file changed, 18 deletions(-)
+4. Pushing to GitHub (Origin/railway-deploy)...
+Enumerating objects: 11, done.
+Counting objects: 100% (11/11), done.
+Delta compression using up to 16 threads
+Compressing objects: 100% (7/7), done.
+Writing objects: 100% (7/7), 1.09 KiB | 1.09 MiB/s, done.
+Total 7 (delta 5), reused 0 (delta 0), pack-reused 0 (from 0)
+remote: Resolving deltas: 100% (5/5), completed with 4 local objects.
+To https://github.com/elgabokor-afk/nexus-app-v2.git
+   8f12ec1..daaa3db  railway-deploy -> railway-deploy
+âœ… PUSH SUCCESSFUL!
+**********************
+Windows PowerShell transcript end
+End time: 20260131122647
+**********************

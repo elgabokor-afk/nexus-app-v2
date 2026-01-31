@@ -1,0 +1,127 @@
+@import "tailwindcss";
+
+:root {
+  --background: #050505;
+  --foreground: #ededed;
+
+  /* Cyberpunk Palette */
+  --neon-green: #00ffa3;
+  --neon-blue: #00f0ff;
+  --deep-void: #050505;
+  --glass-surface: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.08);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+/* Base Styles */
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+  overflow: hidden;
+  /* Prevent body scroll, use containers */
+}
+
+/* Custom Scrollbar - The "Cyber-Bar" */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  transition: all 0.3s;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--neon-green);
+  box-shadow: 0 0 10px var(--neon-green);
+}
+
+/* Animation Utilities */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes glowPulse {
+  0% {
+    box-shadow: 0 0 5px rgba(0, 255, 163, 0.2);
+  }
+
+  50% {
+    box-shadow: 0 0 20px rgba(0, 255, 163, 0.6);
+  }
+
+  100% {
+    box-shadow: 0 0 5px rgba(0, 255, 163, 0.2);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-glow {
+  animation: glowPulse 2s infinite;
+}
+
+/* Utilities */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+
+/* V1300: Flame Animation */
+@keyframes firePulse {
+  0% {
+    text-shadow: 0 0 5px #ff4d00, 0 0 10px #ff4d00;
+    transform: scale(1);
+  }
+
+  50% {
+    text-shadow: 0 0 20px #ff8800, 0 0 30px #ff4d00;
+    transform: scale(1.1);
+  }
+
+  100% {
+    text-shadow: 0 0 5px #ff4d00, 0 0 10px #ff4d00;
+    transform: scale(1);
+  }
+}
+
+.animate-fire {
+  animation: firePulse 1.5s infinite ease-in-out;
+}

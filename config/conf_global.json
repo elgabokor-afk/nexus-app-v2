@@ -1,0 +1,40 @@
+{
+    "paper_trade_enabled": true,
+    "analysis_timeframes": [
+        "5m",
+        "15m",
+        "1h"
+    ],
+    "priority_assets": [
+        "BTC/USDT",
+        "ETH/USDT"
+    ],
+    "trading_pairs": [
+        "BTC/USDT",
+        "ETH/USDT",
+        "SOL/USDT",
+        "BNB/USDT",
+        "XRP/USDT",
+        "ADA/USDT",
+        "AVAX/USDT",
+        "DOT/USDT",
+        "LINK/USDT",
+        "LTC/USDT",
+        "BCH/USDT",
+        "UNI/USDT",
+        "APT/USDT",
+        "ARB/USDT",
+        "OP/USDT",
+        "SUI/USDT",
+        "FIL/USDT",
+        "NEAR/USDT",
+        "ICP/USDT",
+        "IMX/USDT",
+        "RENDER/USDT",
+        "FET/USDT"
+    ],
+    "connector_type": "binance_futures",
+    "margin_mode": "CROSSED",
+    "leverage_limit": 5,
+    "max_daily_positions": 20
+}
