@@ -35,6 +35,7 @@ try:
 except ImportError as e:
     logger.warning(f"Cosmos Brain missing: {e}")
 
+redis_engine = None  # Fix: Declare globally to prevent scope errors
 try:
     from redis_engine import redis_engine
 except ImportError as e:
@@ -177,6 +178,9 @@ def main_loop():
     realtime_prices = {} 
 
     def redis_listener():
+        if not redis_engine or not redis_engine.client:
+            logger.warning("   [REALTIME] Redis not available, skipping listener")
+            return
         pubsub = redis_engine.pubsub()
         pubsub.subscribe("realtime_swaps")
         logger.info("   [REALTIME] Redis Subscriber Active on 'realtime_swaps'")
@@ -191,7 +195,8 @@ def main_loop():
                     logger.info(f"   [REALTIME] Instant Event Detected: {event.get('signature')[:8]}...")
                 except: pass
 
-    threading.Thread(target=redis_listener, daemon=True).start()
+    if redis_engine and redis_engine.client:
+        threading.Thread(target=redis_listener, daemon=True).start()
     
     while True:
         # Fix 3: Check Circuit Breaker ANTES de procesar
